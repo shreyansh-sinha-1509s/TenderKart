@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - Contractor & Administrative Login</title>
+  <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <!-- Sticky Navbar placeholder -->
+  <div id="navbar-placeholder"></div>
+
+  <!-- Login Card Section -->
+  <main style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 4rem 1.5rem;">
+    <div class="card" style="max-width: 440px; width: 100%; display: flex; flex-direction: column; gap: 24px; padding: 2.5rem; box-shadow: var(--shadow-premium);">
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
+        <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">Welcome Back</h2>
+        <p style="font-size: 0.9rem; color: var(--text-secondary);">Log in to track opportunities and view smart audits</p>
+      </div>
+
+      <form id="login-form" style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="usernameOrEmail" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Username or Email</label>
+          <input type="text" id="usernameOrEmail" class="form-input" placeholder="e.g. admin or contractor" required />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="password" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 6px; width: 100%; border: none;">Sign In</button>
+      </form>
+
+      <!-- Quick Demo Credentials Suggestions -->
+      <div style="border-top: 1px solid var(--border-color); padding-top: 18px; display: flex; flex-direction: column; gap: 12px;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: center;">Demo Credentials</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button onclick="document.getElementById('usernameOrEmail').value='admin'; document.getElementById('password').value='admin123';" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: center; transition: var(--transition-smooth); display: flex; flex-direction: column; gap: 4px;" class="card-suggest">
+            <strong style="color: var(--text-primary);">Procurement Mgr</strong>
+            <span>admin / admin123</span>
+          </button>
+          <button onclick="document.getElementById('usernameOrEmail').value='contractor'; document.getElementById('password').value='contractor123';" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: center; transition: var(--transition-smooth); display: flex; flex-direction: column; gap: 4px;" class="card-suggest">
+            <strong style="color: var(--text-primary);">Contractor User</strong>
+            <span>contractor / contractor123</span>
+          </button>
+        </div>
+      </div>
+
+      <div style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+        <span>Don't have an account? </span>
+        <a href="register.html" style="color: var(--color-primary); font-weight: 600;">Register here</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer placeholder -->
+  <div id="footer-placeholder"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

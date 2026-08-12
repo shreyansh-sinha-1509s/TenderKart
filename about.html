@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - About GovTech Platform</title>
+  <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <!-- Sticky Navbar -->
+  <div id="navbar-placeholder"></div>
+
+  <!-- About Section -->
+  <main style="flex: 1; padding: 4rem 0;">
+    <div class="container" style="display: flex; flex-direction: column; gap: 3rem;">
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 12px; max-width: 750px; margin: 0 auto;">
+        <span class="badge badge-blue" style="width: fit-content; align-self: center;">MISSION STATEMENT</span>
+        <h1 style="font-size: 2.5rem; font-weight: 850; color: var(--text-primary); letter-spacing: -1px; line-height: 1.2;">Centralizing Public Sector Infrastructure Procurement</h1>
+        <p style="font-size: 1.05rem; color: var(--text-secondary); line-height: 1.6;">
+          TenderKart is a centralized tracking prototype designed to assist contractors, engineers, and suppliers 
+          discover and manage urban growth opportunities like highways, storm networks, treatment plants, and smart lighting grids.
+        </p>
+      </div>
+
+      <hr style="border: none; border-top: 1px solid var(--border-color);" />
+
+      <!-- Columns Details -->
+      <div class="grid-2" style="gap: 3rem; align-items: center;">
+        <div>
+          <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1.25rem;">Core Features & Challenges Solved</h2>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 18px;">
+            <li style="display: flex; gap: 12px;">
+              <span style="font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;">🧭</span>
+              <div>
+                <strong style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Unified Discovery Feed</strong>
+                <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; display: block; margin-top: 4px;">Instead of digging through 50+ scattered municipal boards, view all active tenders in one single screen.</span>
+              </div>
+            </li>
+            <li style="display: flex; gap: 12px;">
+              <span style="font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;">🤖</span>
+              <div>
+                <strong style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">AI Specs Extraction</strong>
+                <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; display: block; margin-top: 4px;">Click the summarize button to parse the outlay budget, submission deadline, qualifications, and core scopes automatically.</span>
+              </div>
+            </li>
+            <li style="display: flex; gap: 12px;">
+              <span style="font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;">📂</span>
+              <div>
+                <strong style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Digital Filing Checklists</strong>
+                <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; display: block; margin-top: 4px;">Inspect dynamic required documents grids to avoid rejection because of missing certifications.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card" style="padding: 2.5rem; display: flex; flex-direction: column; gap: 18px; border: 1px solid rgba(var(--primary-rgb), 0.15); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.02) 100%);">
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">Academic Project Info</h3>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+            This project is designed as an interactive GovTech prototype demonstrating database queries, API routing, 
+            and modern frontend styles.
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">FRONTEND LAYERS</span>
+              <span style="font-weight: 700; color: var(--text-primary);">HTML5, CSS3, Vanilla JS</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">BACKEND ENGINE</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Node.js, Express.js</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">DATABASE FILE</span>
+              <span style="font-weight: 700; color: var(--text-primary);">SQLite (sqlite3 driver)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">AI PARSER</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Gemini API / Smart Local Fallback</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer placeholder -->
+  <div id="footer-placeholder"></div>
+
+  <!-- Toast overlay -->
+  <div id="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - Browse Urban Infrastructure Opportunities</title>
+  <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* Desktop layout split */
+    #tenders-split-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2rem;
+    }
+    
+    @media (max-width: 900px) {
+      #tenders-split-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <!-- Sticky Navbar -->
+  <div id="navbar-placeholder"></div>
+
+  <!-- Catalog Section -->
+  <main style="flex: 1; padding: 3rem 0;">
+    <div class="container" style="display: flex; flex-direction: column; gap: 2rem;">
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <h1 style="font-size: 2.5rem; font-weight: 850; color: var(--text-primary); letter-spacing: -1px; line-height: 1.2;">Bidding Catalog</h1>
+        <p style="font-size: 1.05rem; color: var(--text-secondary); margin-top: 4px;" id="results-count">Analyzing database opportunities...</p>
+      </div>
+
+      <!-- Split Layout -->
+      <div id="tenders-split-layout">
+        <!-- Sidebar filters -->
+        <aside style="display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 100px; height: fit-content;">
+          <div class="card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+              <h3 style="font-size: 1.05rem; font-weight: 800;">Filters</h3>
+              <button id="reset-filters" style="background: none; border: none; color: var(--color-primary); font-weight: 600; font-size: 0.8rem; cursor: pointer;">Clear All</button>
+            </div>
+
+            <form id="search-form" style="display: flex; flex-direction: column; gap: 16px;">
+              <!-- Keyword -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="search-input" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Search Tenders</label>
+                <input type="text" id="search-input" class="form-input" placeholder="e.g. Highway, Metro, Solar" />
+              </div>
+
+              <!-- Category -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="filter-category" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Category</label>
+                <select id="filter-category" class="form-input" style="cursor: pointer;">
+                  <option value="">All Categories</option>
+                  <option value="Roads">Roads & Highways</option>
+                  <option value="Bridges">Bridges & Flyovers</option>
+                  <option value="Water Supply">Water Supply</option>
+                  <option value="Buildings">Buildings & IGOC</option>
+                  <option value="Metro Projects">Metro Projects</option>
+                  <option value="Smart City">Smart City</option>
+                </select>
+              </div>
+
+              <!-- Location -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="filter-location" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Geographic Region</label>
+                <input type="text" id="filter-location" class="form-input" placeholder="e.g. Maharashtra, Delhi" />
+              </div>
+
+              <!-- Department -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="filter-department" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Procuring Authority</label>
+                <input type="text" id="filter-department" class="form-input" placeholder="e.g. MMRDA, NHAI" />
+              </div>
+
+              <!-- Budget Range -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Outlay Budget (INR)</label>
+                <div style="display: flex; gap: 8px;">
+                  <input type="number" id="filter-minBudget" class="form-input" placeholder="Min" style="padding: 0.5rem;" />
+                  <input type="number" id="filter-maxBudget" class="form-input" placeholder="Max" style="padding: 0.5rem;" />
+                </div>
+              </div>
+
+              <!-- Deadline -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label for="filter-deadline" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Deadline Before</label>
+                <input type="date" id="filter-deadline" class="form-input" />
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="border: none; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <span>Apply Filters</span>
+              </button>
+            </form>
+          </div>
+        </aside>
+
+        <!-- Grid Results -->
+        <section>
+          <div class="grid-2" id="tenders-container" style="gap: 1.5rem;">
+            <!-- Dynamic tender cards render here -->
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer placeholder -->
+  <div id="footer-placeholder"></div>
+
+  <!-- Toast overlay -->
+  <div id="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

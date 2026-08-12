@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - Opportunity Specifications</title>
+  <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* Details split layout */
+    #details-split {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 2rem;
+    }
+    
+    @media (max-width: 900px) {
+      #details-split {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <!-- Sticky Navbar -->
+  <div id="navbar-placeholder"></div>
+
+  <!-- Detail Content Section -->
+  <main style="flex: 1; padding: 3rem 0;">
+    <div class="container" style="display: flex; flex-direction: column; gap: 2rem;">
+      <!-- Breadcrumbs and back button -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <a href="tenders.html" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; color: var(--color-primary);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span>Back to Tenders</span>
+        </a>
+        <div style="display: flex; gap: 12px;">
+          <button id="details-save-btn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+            <span>Save Opportunity</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Specifications Split -->
+      <div id="details-split">
+        <!-- Left Side: Specs and Info -->
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+          <!-- Specifications Card -->
+          <div class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <span class="badge badge-blue" id="tender-category" style="width: fit-content;">Category</span>
+              <h2 id="tender-name" style="font-size: 1.85rem; font-weight: 850; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.3;">Opportunity Title</h2>
+              <span id="tender-dept" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Procuring Agency</span>
+            </div>
+
+            <!-- Parameters Grid -->
+            <div class="grid-3" style="border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 20px 0; margin: 10px 0; gap: 1.5rem;" id="specs-grid">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="height: 42px; width: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(var(--primary-rgb), 0.08); color: var(--color-primary); border: 1px solid rgba(var(--primary-rgb), 0.1);" class="badge-blue">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-indian-rupee"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3a6 6 0 0 0 6-6V8a6 6 0 0 0-6-6"/></svg>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">OUTLAY BUDGET</span>
+                  <span style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;" id="tender-budget">INR -- Cr</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="height: 42px; width: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(var(--primary-rgb), 0.08); color: var(--color-primary); border: 1px solid rgba(var(--primary-rgb), 0.1);" class="badge-blue">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">FILING DEADLINE</span>
+                  <span style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;" id="tender-deadline">YYYY-MM-DD</span>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="height: 42px; width: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(var(--primary-rgb), 0.08); color: var(--color-primary); border: 1px solid rgba(var(--primary-rgb), 0.1);" class="badge-blue">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <div>
+                  <span style="display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">GEOGRAPHIC REGION</span>
+                  <span style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;" id="tender-location">City, State</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <h3 style="font-size: 1.1rem; font-weight: 800;">Detailed Project Scope</h3>
+              <p id="tender-description" style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; text-align: justify;">Loading project scope description...</p>
+            </div>
+          </div>
+
+          <!-- Eligibility Card -->
+          <div class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 12px;">
+            <h3 style="font-size: 1.1rem; font-weight: 800;">Minimum Eligibility Criteria</h3>
+            <p id="tender-eligibility" style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; text-align: justify;">Loading qualifications...</p>
+          </div>
+        </div>
+
+        <!-- Right Side: Documents and AI Drawer -->
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+          <!-- Required Documents -->
+          <div class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 16px;">
+            <h3 style="font-size: 1.1rem; font-weight: 800;">Required Documents</h3>
+            <div id="tender-docs-grid" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Dynamic documents layout -->
+            </div>
+          </div>
+
+          <!-- AI Summarizer Drawer -->
+          <div class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 16px; border: 1px solid rgba(var(--primary-rgb), 0.25); background: linear-gradient(180deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.01) 100%);">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <h3 style="font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                <span>✨ AI Opportunities Digest</span>
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;">
+                Short on time? Let our AI assistant review the technical documents and outline the financials, 
+                deadlines, qualifications, and core tasks in bullet points.
+              </p>
+            </div>
+            
+            <button onclick="generateAISummary()" class="btn btn-primary" style="border: none; padding: 12px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span>✨ Generate Easy Summary</span>
+            </button>
+
+            <!-- Slide-down summary output card -->
+            <div id="summary-panel" style="display: none; padding: 1.25rem; background-color: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); margin-top: 10px;">
+              <!-- Dynamic AI response content -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer placeholder -->
+  <div id="footer-placeholder"></div>
+
+  <!-- Toast notifications overlay -->
+  <div id="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

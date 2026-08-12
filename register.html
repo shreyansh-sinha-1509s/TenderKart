@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - Contractor Self Registration</title>
+  <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <!-- Sticky Navbar placeholder -->
+  <div id="navbar-placeholder"></div>
+
+  <!-- Register Card Section -->
+  <main style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 4rem 1.5rem;">
+    <div class="card" style="max-width: 440px; width: 100%; display: flex; flex-direction: column; gap: 24px; padding: 2.5rem; box-shadow: var(--shadow-premium);">
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
+        <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">Create Account</h2>
+        <p style="font-size: 0.9rem; color: var(--text-secondary);">Register as a bidding contractor to unlock dashboard tools</p>
+      </div>
+
+      <form id="register-form" style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="username" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Company Username</label>
+          <input type="text" id="username" class="form-input" placeholder="e.g. BuildCorp" required />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="email" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Official Email</label>
+          <input type="email" id="email" class="form-input" placeholder="e.g. bids@buildcorp.com" required />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="password" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="Min. 6 characters" required />
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="confirmPassword" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Confirm Password</label>
+          <input type="password" id="confirmPassword" class="form-input" placeholder="Re-enter password" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 6px; width: 100%; border: none;">Sign Up</button>
+      </form>
+
+      <div style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+        <span>Already have an account? </span>
+        <a href="login.html" style="color: var(--color-primary); font-weight: 600;">Sign in here</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer placeholder -->
+  <div id="footer-placeholder"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
