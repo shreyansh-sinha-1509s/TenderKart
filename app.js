@@ -172,7 +172,7 @@ function renderNavbar() {
       <div class="container" style="display: flex; align-items: center; justify-content: space-between; height: 76px;">
         <!-- Brand -->
         <a href="index.html" style="display: flex; align-items: center; gap: 12px;">
-          <img src="/images/logo.jpg" alt="TenderKart Logo" style="height: 46px; width: 46px; border-radius: 8px; object-fit: cover;" />
+          <img src="images/logo.jpg" alt="TenderKart Logo" style="height: 46px; width: 46px; border-radius: 8px; object-fit: cover;" />
           <div style="display: flex; flex-direction: column;">
             <span style="font-size: 1.25rem; font-weight: 800; color: var(--color-primary); letter-spacing: -0.5px;">TenderKart</span>
             <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600; margin-top: -2px;">Urban Infrastructure Opportunities Tracker</span>
@@ -252,7 +252,7 @@ function renderFooter() {
         <!-- About / Brand Column -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="/images/logo.jpg" alt="TenderKart Logo" style="height: 42px; width: 42px; border-radius: 8px; object-fit: cover;" />
+            <img src="images/logo.jpg" alt="TenderKart Logo" style="height: 42px; width: 42px; border-radius: 8px; object-fit: cover;" />
             <div>
               <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--color-primary); letter-spacing: -0.5px;">TenderKart</h3>
               <p style="font-size: 0.6rem; color: var(--text-muted); font-weight: 600; margin-top: -2px;">Urban Infrastructure Opportunities Tracker</p>
