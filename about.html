@@ -3,84 +3,407 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TenderKart - About GovTech Platform</title>
+  <title>TenderKart - Project Overview & Analytics</title>
   <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
   <link rel="stylesheet" href="style.css">
+  <!-- Chart.js CDN for visual category distribution maps -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Objectives grid layout */
+    .objectives-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .objectives-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .objective-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.75rem;
+      display: flex;
+      gap: 1rem;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .objective-card:hover {
+      transform: translateY(-5px) scale(1.01);
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-primary);
+    }
+    .obj-icon {
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background-color: rgba(var(--primary-rgb), 0.08);
+      border-radius: 10px;
+      flex-shrink: 0;
+      color: var(--color-primary);
+    }
+
+    /* Analytics Section grids */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    @media (max-width: 900px) {
+      .analytics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .chart-container-wrapper {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      height: 400px;
+      transition: var(--transition-smooth);
+    }
+
+    /* Technology stack grid */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    @media (max-width: 900px) {
+      .tech-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 600px) {
+      .tech-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tech-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.25s ease, border-color 0.25s ease;
+    }
+    .tech-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--color-primary);
+    }
+    .tech-icon {
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background-color: rgba(var(--primary-rgb), 0.08);
+      border-radius: 8px;
+      color: var(--color-primary);
+      flex-shrink: 0;
+    }
+
+    /* Category Scope grid */
+    .scope-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    @media (max-width: 768px) {
+      .scope-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 480px) {
+      .scope-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .scope-item {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      transition: var(--transition-smooth);
+    }
+    .scope-item:hover {
+      background-color: var(--bg-card);
+      border-color: var(--color-primary);
+      transform: scale(1.02);
+    }
+
+    /* Scroll reveal transitions */
+    .scroll-reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .scroll-reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
 </head>
 <body style="min-height: 100vh; display: flex; flex-direction: column;">
 
-  <!-- Sticky Navbar -->
+  <!-- Sticky Glassmorphic Navbar (rendered dynamically by app.js) -->
   <div id="navbar-placeholder"></div>
 
-  <!-- About Section -->
+  <!-- Main Content Space -->
   <main style="flex: 1; padding: 4rem 0;">
-    <div class="container" style="display: flex; flex-direction: column; gap: 3rem;">
-      <div style="text-align: center; display: flex; flex-direction: column; gap: 12px; max-width: 750px; margin: 0 auto;">
-        <span class="badge badge-blue" style="width: fit-content; align-self: center;">MISSION STATEMENT</span>
-        <h1 style="font-size: 2.5rem; font-weight: 850; color: var(--text-primary); letter-spacing: -1px; line-height: 1.2;">Centralizing Public Sector Infrastructure Procurement</h1>
-        <p style="font-size: 1.05rem; color: var(--text-secondary); line-height: 1.6;">
-          TenderKart is a centralized tracking prototype designed to assist contractors, engineers, and suppliers 
-          discover and manage urban growth opportunities like highways, storm networks, treatment plants, and smart lighting grids.
+    <div class="container" style="display: flex; flex-direction: column; gap: 4.5rem;">
+      
+      <!-- Page Header Title banner -->
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 12px; max-width: 800px; margin: 0 auto;">
+        <span class="badge badge-blue" style="width: fit-content; align-self: center;">ACADEMIC WORKSPACE</span>
+        <h1 style="font-size: 2.75rem; font-weight: 850; color: var(--text-primary); letter-spacing: -1.25px; line-height: 1.15;">Project Overview</h1>
+        <p style="font-size: 1.1rem; color: var(--text-secondary); line-height: 1.6;">
+          An intelligent and centralized platform for discovering, filtering and analyzing urban infrastructure tender opportunities.
         </p>
       </div>
 
-      <hr style="border: none; border-top: 1px solid var(--border-color);" />
-
-      <!-- Columns Details -->
-      <div class="grid-2" style="gap: 3rem; align-items: center;">
-        <div>
-          <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); margin-bottom: 1.25rem;">Core Features & Challenges Solved</h2>
-          <ul style="list-style: none; display: flex; flex-direction: column; gap: 18px;">
-            <li style="display: flex; gap: 12px;">
-              <span style="font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;">🧭</span>
-              <div>
-                <strong style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Unified Discovery Feed</strong>
-                <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; display: block; margin-top: 4px;">Instead of digging through 50+ scattered municipal boards, view all active tenders in one single screen.</span>
-              </div>
-            </li>
-            <li style="display: flex; gap: 12px;">
-              <span style="font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;">🤖</span>
-              <div>
-                <strong style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">AI Specs Extraction</strong>
-                <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; display: block; margin-top: 4px;">Click the summarize button to parse the outlay budget, submission deadline, qualifications, and core scopes automatically.</span>
-              </div>
-            </li>
-            <li style="display: flex; gap: 12px;">
-              <span style="font-size: 1.25rem; flex-shrink: 0; margin-top: 2px;">📂</span>
-              <div>
-                <strong style="display: block; font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Digital Filing Checklists</strong>
-                <span style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; display: block; margin-top: 4px;">Inspect dynamic required documents grids to avoid rejection because of missing certifications.</span>
-              </div>
-            </li>
-          </ul>
+      <!-- SECTION 1 — PROJECT OVERVIEW -->
+      <section class="grid-2 scroll-reveal" style="gap: 3.5rem; align-items: center; margin-top: 1.5rem;">
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;">Centralizing Infrastructure Opportunities</h2>
+          <p style="font-size: 1.025rem; color: var(--text-secondary); line-height: 1.65;">
+            TenderKart is an academic project designed as a centralized platform for discovering and exploring urban infrastructure tender opportunities. It organizes opportunities into major infrastructure categories and provides users with a simple interface to search, filter and review relevant tender information.
+          </p>
+          <p style="font-size: 1.025rem; color: var(--text-secondary); line-height: 1.65;">
+            The platform demonstrates how web technologies, databases, data analytics and intelligent information extraction can be combined to simplify the process of finding infrastructure opportunities.
+          </p>
         </div>
 
-        <div class="card" style="padding: 2.5rem; display: flex; flex-direction: column; gap: 18px; border: 1px solid rgba(var(--primary-rgb), 0.15); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.02) 100%);">
-          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">Academic Project Info</h3>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
-            This project is designed as an interactive GovTech prototype demonstrating database queries, API routing, 
-            and modern frontend styles.
-          </p>
-          <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px; font-size: 0.85rem;">
+        <!-- Glass card Snapshot layout -->
+        <div class="card" style="padding: 2.5rem; display: flex; flex-direction: column; gap: 1.25rem; border: 1px solid rgba(var(--primary-rgb), 0.12); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.01) 100%);">
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">Project Snapshot</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">FRONTEND LAYERS</span>
-              <span style="font-weight: 700; color: var(--text-primary);">HTML5, CSS3, Vanilla JS</span>
+              <span style="font-weight: 600; color: var(--text-muted);">PROJECT TYPE</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Academic / Third-Year IT Project</span>
             </div>
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">BACKEND ENGINE</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Node.js, Express.js</span>
+              <span style="font-weight: 600; color: var(--text-muted);">DOMAIN</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Urban Infrastructure & GovTech</span>
             </div>
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">DATABASE FILE</span>
-              <span style="font-weight: 700; color: var(--text-primary);">SQLite (sqlite3 driver)</span>
+              <span style="font-weight: 600; color: var(--text-muted);">FRONTEND</span>
+              <span style="font-weight: 700; color: var(--text-primary);">HTML5, CSS3, JavaScript</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">AI PARSER</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Gemini API / Smart Local Fallback</span>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">BACKEND</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Node.js + Express.js</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">DATABASE</span>
+              <span style="font-weight: 700; color: var(--text-primary);">SQLite</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">ANALYTICS</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Tender & Category Analysis</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-bottom: 4px;">
+              <span style="font-weight: 600; color: var(--text-muted);">DEPLOYMENT</span>
+              <span style="font-weight: 700; color: var(--text-primary);">Frontend hosted using GitHub Pages</span>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <!-- SECTION 2 — KEY PROJECT OBJECTIVES -->
+      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
+        <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); text-align: center; letter-spacing: -0.5px;">Key Project Objectives</h2>
+        <div class="objectives-grid">
+          <!-- Card 1 -->
+          <div class="objective-card">
+            <div class="obj-icon">🧭</div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Centralized Discovery</h3>
+              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Bring infrastructure opportunities into a single searchable interface.</p>
+            </div>
+          </div>
+          <!-- Card 2 -->
+          <div class="objective-card">
+            <div class="obj-icon">🔍</div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Smart Filtering</h3>
+              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Allow users to narrow opportunities by category, location, authority and budget.</p>
+            </div>
+          </div>
+          <!-- Card 3 -->
+          <div class="objective-card">
+            <div class="obj-icon">💾</div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Data Organization</h3>
+              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Store and organize tender information using a structured SQLite database.</p>
+            </div>
+          </div>
+          <!-- Card 4 -->
+          <div class="objective-card">
+            <div class="obj-icon">📈</div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Decision Support</h3>
+              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Present tender and category information through simple visual analytics.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3 — TENDER ANALYTICS -->
+      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;">Tender Analytics</h2>
+          <p style="font-size: 0.95rem; color: var(--text-secondary);">Explore the distribution of demo opportunities across TenderKart’s infrastructure categories.</p>
+        </div>
+
+        <div class="analytics-grid">
+          <!-- Chart 1: Doughnut Chart -->
+          <div class="chart-container-wrapper">
+            <h3 style="font-size: 1.1rem; font-weight: 750; color: var(--text-primary); margin-bottom: 0.5rem; text-align: center;">Opportunity Distribution by Category</h3>
+            <div style="position: relative; flex: 1; min-height: 220px;">
+              <canvas id="doughnutChart"></canvas>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-align: center; font-style: italic;">Demo dataset used for academic project demonstration.</span>
+          </div>
+
+          <!-- Chart 2: Bar Chart -->
+          <div class="chart-container-wrapper">
+            <h3 style="font-size: 1.1rem; font-weight: 750; color: var(--text-primary); margin-bottom: 0.5rem; text-align: center;">Tenders by Infrastructure Category</h3>
+            <div style="position: relative; flex: 1; min-height: 240px;">
+              <canvas id="barChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4 — DATA INSIGHTS -->
+      <section id="data-insights-section" class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
+        <div class="grid-3" style="gap: 1.5rem;">
+          <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
+            <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-tenders">0</h3>
+            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Demo Tenders</span>
+          </div>
+          <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
+            <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-categories">0</h3>
+            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Infrastructure Categories</span>
+          </div>
+          <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
+            <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-highest">0</h3>
+            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Highest Category Count</span>
+          </div>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: -0.5rem;">
+          Current figures represent the academic demonstration dataset and can be updated through the database.
+        </p>
+      </section>
+
+      <!-- SECTION 5 — TECHNOLOGY OVERVIEW -->
+      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
+        <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); text-align: center; letter-spacing: -0.5px;">Technology Overview</h2>
+        <div class="tech-grid">
+          <!-- Item 1: HTML5 -->
+          <div class="tech-card">
+            <div class="tech-icon">🌐</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">HTML5</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Structure for responsive layout markup.</span>
+            </div>
+          </div>
+          <!-- Item 2: CSS3 -->
+          <div class="tech-card">
+            <div class="tech-icon">🎨</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">CSS3</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Variables-driven typography and UI themes.</span>
+            </div>
+          </div>
+          <!-- Item 3: JavaScript -->
+          <div class="tech-card">
+            <div class="tech-icon">⚡</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">JavaScript</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Dynamic UI bindings, observer events & charts.</span>
+            </div>
+          </div>
+          <!-- Item 4: Node.js -->
+          <div class="tech-card">
+            <div class="tech-icon">🟢</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Node.js</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Fast asynchronous JS runtime environment.</span>
+            </div>
+          </div>
+          <!-- Item 5: Express.js -->
+          <div class="tech-card">
+            <div class="tech-icon">🚂</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Express.js</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Web framework serving static folders & REST APIs.</span>
+            </div>
+          </div>
+          <!-- Item 6: SQLite -->
+          <div class="tech-card">
+            <div class="tech-icon">💾</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">SQLite</strong>
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Embedded relational database storing static lists.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6 — PROJECT SCOPE -->
+      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
+          <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;">Current Project Scope</h2>
+          <p style="font-size: 0.95rem; color: var(--text-secondary);">The application covers exactly six active core infrastructure categories.</p>
+        </div>
+        <div class="scope-grid">
+          <div class="scope-item">
+            <span>🛣️</span>
+            <span>Roads — 3 demo tenders</span>
+          </div>
+          <div class="scope-item">
+            <span>🌉</span>
+            <span>Bridges — 3 demo tenders</span>
+          </div>
+          <div class="scope-item">
+            <span>💧</span>
+            <span>Water Supply — 2 demo tenders</span>
+          </div>
+          <div class="scope-item">
+            <span>🏢</span>
+            <span>Buildings — 2 demo tenders</span>
+          </div>
+          <div class="scope-item">
+            <span>🏙️</span>
+            <span>Smart City — 1 demo tender</span>
+          </div>
+          <div class="scope-item">
+            <span>🚇</span>
+            <span>Metro Projects — 1 demo tender</span>
+          </div>
+        </div>
+      </section>
+
     </div>
   </main>
 
@@ -91,5 +414,187 @@
   <div id="toast-container"></div>
 
   <script src="app.js"></script>
+  
+  <!-- Analytics and Animations controller logic -->
+  <script>
+    let doughnutChart, barChart;
+
+    function getThemeColors() {
+      const isDark = document.body.classList.contains("dark-theme");
+      const computedStyle = getComputedStyle(document.body);
+      
+      // Grab main theme primary color dynamically
+      const primaryColor = computedStyle.getPropertyValue('--color-primary').trim() || (isDark ? '#3B82F6' : '#2563EB');
+      const textColor = isDark ? '#94A3B8' : '#475569';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+      
+      return { isDark, primaryColor, textColor, gridColor };
+    }
+
+    function initCharts() {
+      const colors = getThemeColors();
+      
+      // Chart 1: Doughnut Chart
+      const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
+      doughnutChart = new Chart(ctxDoughnut, {
+        type: 'doughnut',
+        data: {
+          labels: ['Roads', 'Bridges', 'Water Supply', 'Buildings', 'Smart City', 'Metro Projects'],
+          datasets: [{
+            data: [3, 3, 2, 2, 1, 1],
+            backgroundColor: ['#3B82F6', '#10B981', '#06B6D4', '#F59E0B', '#8B5CF6', '#EC4899'],
+            borderWidth: colors.isDark ? 2 : 1,
+            borderColor: colors.isDark ? '#1F2937' : '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: colors.textColor,
+                padding: 15,
+                boxWidth: 12,
+                font: { family: 'Inter, system-ui, -apple-system, sans-serif', size: 11, weight: '600' }
+              }
+            }
+          }
+        }
+      });
+
+      // Chart 2: Bar Chart
+      const ctxBar = document.getElementById('barChart').getContext('2d');
+      barChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: ['Roads', 'Bridges', 'Water Supply', 'Buildings', 'Smart City', 'Metro Projects'],
+          datasets: [{
+            label: 'Demo Tenders',
+            data: [3, 3, 2, 2, 1, 1],
+            backgroundColor: colors.primaryColor,
+            borderRadius: 6,
+            barThickness: 20
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: colors.gridColor },
+              ticks: { color: colors.textColor, font: { family: 'Inter, system-ui, -apple-system, sans-serif', weight: '600', size: 10 } }
+            },
+            y: {
+              grid: { color: colors.gridColor },
+              ticks: { color: colors.textColor, font: { family: 'Inter, system-ui, -apple-system, sans-serif', weight: '600' }, stepSize: 1 }
+            }
+          }
+        }
+      });
+    }
+
+    function updateCharts() {
+      const colors = getThemeColors();
+      if (doughnutChart) {
+        doughnutChart.data.datasets[0].borderColor = colors.isDark ? '#1F2937' : '#FFFFFF';
+        doughnutChart.data.datasets[0].borderWidth = colors.isDark ? 2 : 1;
+        doughnutChart.options.plugins.legend.labels.color = colors.textColor;
+        doughnutChart.update();
+      }
+      if (barChart) {
+        barChart.data.datasets[0].backgroundColor = colors.primaryColor;
+        barChart.options.scales.x.grid.color = colors.gridColor;
+        barChart.options.scales.x.ticks.color = colors.textColor;
+        barChart.options.scales.y.grid.color = colors.gridColor;
+        barChart.options.scales.y.ticks.color = colors.textColor;
+        barChart.update();
+      }
+    }
+
+    // Numbers animation logic
+    function initCounters() {
+      const targets = [
+        { id: 'count-tenders', target: 12 },
+        { id: 'count-categories', target: 6 },
+        { id: 'count-highest', target: 3 }
+      ];
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            targets.forEach(t => {
+              const el = document.getElementById(t.id);
+              if (el) {
+                animateValue(el, 0, t.target, 1200);
+              }
+            });
+            observer.disconnect();
+          }
+        });
+      }, { threshold: 0.15 });
+
+      const targetSection = document.getElementById('data-insights-section');
+      if (targetSection) {
+        observer.observe(targetSection);
+      }
+    }
+
+    function animateValue(element, start, end, duration) {
+      let startTime = null;
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        
+        // Cubic ease out
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const val = Math.floor(easeProgress * (end - start) + start);
+        
+        element.textContent = val;
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        }
+      }
+      window.requestAnimationFrame(step);
+    }
+
+    // Scroll reveal transitions
+    function initScrollReveal() {
+      const elements = document.querySelectorAll('.scroll-reveal');
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      elements.forEach(el => observer.observe(el));
+    }
+
+    // MutationObserver to watch class changes on document.body for real-time theme switches
+    function initThemeObserver() {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+          if (mutation.attributeName === 'class') {
+            updateCharts();
+          }
+        });
+      });
+      observer.observe(document.body, { attributes: true });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initCharts();
+      initCounters();
+      initScrollReveal();
+      initThemeObserver();
+    });
+  </script>
 </body>
 </html>
