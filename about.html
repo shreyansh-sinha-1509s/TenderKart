@@ -160,6 +160,54 @@
       opacity: 1;
       transform: translateY(0);
     }
+
+    /* Smart City Animations & Styling */
+    .smart-city-wrapper {
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+    .smart-city-wrapper svg {
+      transition: transform 0.5s ease;
+    }
+    .smart-city-wrapper:hover svg {
+      transform: rotateX(8deg) rotateY(-4deg);
+    }
+    .road-flow-line {
+      animation: flowRoad 1.2s linear infinite;
+    }
+    @keyframes flowRoad {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: -20; }
+    }
+    .pulse-node {
+      animation: pulseGlow 2s infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.3; r: 3.5; }
+      50% { opacity: 1; r: 5; }
+    }
+    .blink-node {
+      animation: blink 1.5s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    .float-pin-1 { animation: floatAnim 3.2s ease-in-out infinite; }
+    .float-pin-2 { animation: floatAnim 3.6s ease-in-out infinite 0.4s; }
+    .float-pin-3 { animation: floatAnim 3.0s ease-in-out infinite 0.8s; }
+    .float-pin-4 { animation: floatAnim 3.4s ease-in-out infinite 1.2s; }
+    @keyframes floatAnim {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .city-interactive {
+      transition: opacity 0.25s ease, filter 0.25s ease;
+    }
+    .city-interactive:hover {
+      filter: drop-shadow(0 0 8px var(--color-primary));
+      opacity: 0.95;
+    }
   </style>
 </head>
 <body style="min-height: 100vh; display: flex; flex-direction: column;">
@@ -192,38 +240,168 @@
           </p>
         </div>
 
-        <!-- Glass card Snapshot layout -->
-        <div class="card" style="padding: 2.5rem; display: flex; flex-direction: column; gap: 1.25rem; border: 1px solid rgba(var(--primary-rgb), 0.12); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.01) 100%);">
-          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">Project Snapshot</h3>
-          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.9rem;">
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">PROJECT TYPE</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Academic / Third-Year IT Project</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">DOMAIN</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Urban Infrastructure & GovTech</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">FRONTEND</span>
-              <span style="font-weight: 700; color: var(--text-primary);">HTML5, CSS3, JavaScript</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">BACKEND</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Node.js + Express.js</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">DATABASE</span>
-              <span style="font-weight: 700; color: var(--text-primary);">SQLite</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-              <span style="font-weight: 600; color: var(--text-muted);">ANALYTICS</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Tender & Category Analysis</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; padding-bottom: 4px;">
-              <span style="font-weight: 600; color: var(--text-muted);">DEPLOYMENT</span>
-              <span style="font-weight: 700; color: var(--text-primary);">Frontend hosted using GitHub Pages</span>
-            </div>
+        <!-- Smart-City Infrastructure Visualization -->
+        <div class="smart-city-wrapper" style="position: relative; width: 100%; height: 450px; background: radial-gradient(circle at center, #0F172A 0%, #020617 100%); border: 1px solid var(--border-color); border-radius: 24px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; align-items: center; justify-content: center; transition: var(--transition-smooth);">
+          <svg viewBox="0 0 500 450" width="100%" height="100%" style="overflow: visible;">
+            <defs>
+              <linearGradient id="cityGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.2" />
+                <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0.05" />
+              </linearGradient>
+              <linearGradient id="neonPurpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#D946EF" stop-opacity="0.1" />
+              </linearGradient>
+              <linearGradient id="neonTealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#10B981" />
+                <stop offset="100%" stop-color="#059669" />
+              </linearGradient>
+            </defs>
+
+            <!-- Background Isometric Grid Mesh -->
+            <g opacity="0.12" stroke="var(--color-primary)" stroke-width="1">
+              <path d="M 0,225 L 250,375 L 500,225 L 250,75 Z" fill="none" stroke-width="1.5" />
+              <path d="M 50,225 L 250,325 L 450,225" fill="none" />
+              <path d="M 100,225 L 250,275 L 400,225" fill="none" />
+              <path d="M 0,225 L 500,225 M 250,75 L 250,375" fill="none" stroke-dasharray="4 4" />
+            </g>
+
+            <!-- Water Storage Infrastructure Group -->
+            <g class="city-interactive" data-label="Water Supply" style="cursor: pointer;">
+              <!-- Storage Sphere base -->
+              <ellipse cx="420" cy="340" rx="24" ry="10" fill="rgba(6, 182, 212, 0.15)" stroke="#06B6D4" stroke-width="1.5" />
+              <path d="M 420,340 L 420,290" stroke="#06B6D4" stroke-width="3" />
+              <!-- Water Tower Tank -->
+              <circle cx="420" cy="280" r="16" fill="url(#cityGlowGrad)" stroke="#06B6D4" stroke-width="2" />
+              <circle cx="420" cy="280" r="10" fill="rgba(6, 182, 212, 0.2)" stroke="#06B6D4" stroke-width="1" stroke-dasharray="3 3" />
+              <!-- Water pipe connecting dots -->
+              <path d="M 420,340 Q 350,370 280,340" fill="none" stroke="#06B6D4" stroke-width="2" stroke-dasharray="4 4" opacity="0.6" />
+            </g>
+
+            <!-- Suspension Bridge Group -->
+            <g class="city-interactive" data-label="Bridge Projects" style="cursor: pointer;">
+              <!-- Arch Support -->
+              <path d="M 160,340 Q 230,270 300,310" fill="none" stroke="#10B981" stroke-width="3" />
+              <!-- Bridge deck -->
+              <path d="M 150,340 L 310,310" fill="none" stroke="var(--border-color)" stroke-width="5" />
+              <!-- Hanger cables -->
+              <line x1="190" y1="332" x2="190" y2="305" stroke="#10B981" stroke-width="1" />
+              <line x1="220" y1="326" x2="220" y2="295" stroke="#10B981" stroke-width="1" />
+              <line x1="250" y1="320" x2="250" y2="296" stroke="#10B981" stroke-width="1" />
+              <line x1="280" y1="314" x2="280" y2="305" stroke="#10B981" stroke-width="1" />
+            </g>
+
+            <!-- Highway & Flowing Traffic Group -->
+            <g class="city-interactive" data-label="Road Infrastructure" style="cursor: pointer;">
+              <!-- Main Road base -->
+              <path d="M 30,390 Q 150,290 250,320 T 470,250" fill="none" stroke="rgba(15, 23, 42, 0.6)" stroke-width="22" stroke-linecap="round" />
+              <path d="M 30,390 Q 150,290 250,320 T 470,250" fill="none" stroke="var(--border-color)" stroke-width="24" stroke-linecap="round" opacity="0.3" />
+              <!-- Animated lane dash lines -->
+              <path d="M 30,390 Q 150,290 250,320 T 470,250" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="10 10" class="road-flow-line" />
+              
+              <!-- Flowing Vehicles -->
+              <circle r="4" fill="#00F2FE" style="filter: drop-shadow(0 0 4px #00F2FE);">
+                <animateMotion dur="7s" repeatCount="indefinite" path="M 30,390 Q 150,290 250,320 T 470,250" />
+              </circle>
+              <circle r="4" fill="#EF4444" style="filter: drop-shadow(0 0 4px #EF4444);">
+                <animateMotion dur="10s" begin="3s" repeatCount="indefinite" path="M 30,390 Q 150,290 250,320 T 470,250" />
+              </circle>
+            </g>
+
+            <!-- Elevated Metro Rail Group -->
+            <g class="city-interactive" data-label="Metro Projects" style="cursor: pointer;">
+              <!-- Track Structure -->
+              <path d="M 40,210 L 460,170" fill="none" stroke="var(--border-color)" stroke-width="4" stroke-linecap="round" />
+              <path d="M 40,210 L 460,170" fill="none" stroke="#8B5CF6" stroke-width="1" stroke-dasharray="3 3" />
+              <!-- Pillars -->
+              <line x1="120" y1="202" x2="120" y2="270" stroke="var(--border-color)" stroke-width="3" />
+              <line x1="240" y1="192" x2="240" y2="280" stroke="var(--border-color)" stroke-width="3" />
+              <line x1="360" y1="180" x2="360" y2="240" stroke="var(--border-color)" stroke-width="3" />
+
+              <!-- Metro Train (moving) -->
+              <g>
+                <rect x="-24" y="-5" width="48" height="10" rx="4" fill="#EC4899" style="filter: drop-shadow(0 0 6px #EC4899);" />
+                <!-- Windows -->
+                <rect x="-18" y="-3" width="8" height="3" fill="#FFFFFF" opacity="0.8" />
+                <rect x="-6" y="-3" width="8" height="3" fill="#FFFFFF" opacity="0.8" />
+                <rect x="6" y="-3" width="8" height="3" fill="#FFFFFF" opacity="0.8" />
+                <circle cx="20" cy="0" r="1.5" fill="#FFFFFF" />
+                <animateMotion dur="5.5s" repeatCount="indefinite" path="M 40,210 L 460,170" />
+              </g>
+            </g>
+
+            <!-- Modern Buildings & Tech Towers Group -->
+            <g class="city-interactive" data-label="Building Projects" style="cursor: pointer;">
+              <!-- Tower 1 -->
+              <path d="M 330,120 L 360,105 L 390,120 L 390,260 L 360,275 L 330,260 Z" fill="url(#neonPurpleGrad)" stroke="#8B5CF6" stroke-width="1.5" />
+              <!-- Server blinking rows -->
+              <line x1="340" y1="140" x2="355" y2="132" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="365" y1="132" x2="380" y2="140" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="340" y1="170" x2="355" y2="162" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="365" y1="162" x2="380" y2="170" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="340" y1="200" x2="355" y2="192" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="365" y1="192" x2="380" y2="200" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+
+              <!-- Tower 2 (Smaller back tower) -->
+              <path d="M 270,90 L 295,78 L 320,90 L 320,190 L 295,202 L 270,190 Z" fill="rgba(15, 23, 42, 0.7)" stroke="#8B5CF6" stroke-width="1" />
+              
+              <!-- Tower 3 (Front Left Tower) -->
+              <path d="M 80,170 L 110,155 L 140,170 L 140,280 L 110,295 L 80,280 Z" fill="url(#neonPurpleGrad)" stroke="#8B5CF6" stroke-width="1.5" />
+              <line x1="90" y1="190" x2="105" y2="182" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="115" y1="182" x2="130" y2="190" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="90" y1="220" x2="105" y2="212" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+              <line x1="115" y1="212" x2="130" y2="220" stroke="#8B5CF6" stroke-width="2" opacity="0.8" class="blink-node" />
+            </g>
+
+            <!-- Smart City Nodes & Communication Network -->
+            <g class="city-interactive" data-label="Smart City" style="cursor: pointer;">
+              <!-- Connecting fiber paths -->
+              <path d="M 110,155 L 295,78 L 360,105 Z" fill="none" stroke="#06B6D4" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5" />
+              <!-- Glowing Nodes -->
+              <circle cx="110" cy="155" r="4" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
+              <circle cx="295" cy="78" r="4" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
+              <circle cx="360" cy="105" r="4" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
+            </g>
+
+            <!-- Floating Tender Markers (Amber/Orange accent) -->
+            <!-- Pin 1: Road Tender -->
+            <g class="float-pin-1" style="transform: translate(90px, 290px);">
+              <rect x="-42" y="-12" width="84" height="24" rx="6" fill="rgba(15, 23, 42, 0.85)" stroke="#F59E0B" stroke-width="1.5" />
+              <circle cx="-30" cy="0" r="3.5" fill="#F59E0B" class="pulse-node" />
+              <text x="-18" y="4" fill="#FFFFFF" font-size="9" font-weight="800" letter-spacing="0.5px">Road Tender</text>
+            </g>
+
+            <!-- Pin 2: Bridge Project -->
+            <g class="float-pin-2" style="transform: translate(250px, 340px);">
+              <rect x="-47" y="-12" width="94" height="24" rx="6" fill="rgba(15, 23, 42, 0.85)" stroke="#10B981" stroke-width="1.5" />
+              <circle cx="-34" cy="0" r="3.5" fill="#10B981" class="pulse-node" />
+              <text x="-22" y="4" fill="#FFFFFF" font-size="9" font-weight="800" letter-spacing="0.5px">Bridge Project</text>
+            </g>
+
+            <!-- Pin 3: Metro Opportunity -->
+            <g class="float-pin-3" style="transform: translate(160px, 150px);">
+              <rect x="-56" y="-12" width="112" height="24" rx="6" fill="rgba(15, 23, 42, 0.85)" stroke="#8B5CF6" stroke-width="1.5" />
+              <circle cx="-42" cy="0" r="3.5" fill="#8B5CF6" class="pulse-node" />
+              <text x="-30" y="4" fill="#FFFFFF" font-size="9" font-weight="800" letter-spacing="0.5px">Metro Opportunity</text>
+            </g>
+
+            <!-- Pin 4: Smart City -->
+            <g class="float-pin-4" style="transform: translate(320px, 50px);">
+              <rect x="-40" y="-12" width="80" height="24" rx="6" fill="rgba(15, 23, 42, 0.85)" stroke="#06B6D4" stroke-width="1.5" />
+              <circle cx="-28" cy="0" r="3.5" fill="#06B6D4" class="pulse-node" />
+              <text x="-16" y="4" fill="#FFFFFF" font-size="9" font-weight="800" letter-spacing="0.5px">Smart City</text>
+            </g>
+          </svg>
+
+          <!-- Branding Label -->
+          <div style="position: absolute; bottom: 20px; left: 24px; font-size: 0.72rem; font-weight: 800; letter-spacing: 1px; color: var(--color-primary); text-transform: uppercase; display: flex; align-items: center; gap: 8px; background-color: rgba(15, 23, 42, 0.75); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); backdrop-filter: blur(4px); z-index: 10; pointer-events: none;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #10B981; animation: blink 2s infinite;"></span>
+            Urban Infrastructure • Connected Opportunities
+          </div>
+
+          <!-- Tooltip Overlay -->
+          <div id="city-tooltip" style="position: absolute; display: none; background-color: rgba(15, 23, 42, 0.95); border: 1px solid var(--color-primary); border-radius: 8px; padding: 6px 12px; color: #FFFFFF; font-size: 0.75rem; font-weight: 700; pointer-events: none; box-shadow: var(--shadow-md); z-index: 100; white-space: nowrap; backdrop-filter: blur(4px); transform: translate(-50%, -100%); margin-top: -10px; transition: opacity 0.15s ease;">
+            Tooltip
           </div>
         </div>
       </section>
@@ -589,11 +767,38 @@
       observer.observe(document.body, { attributes: true });
     }
 
+    // Setup Smart City Tooltips
+    function initSmartCityTooltips() {
+      const tooltip = document.getElementById('city-tooltip');
+      const wrapper = document.querySelector('.smart-city-wrapper');
+      if (!tooltip || !wrapper) return;
+
+      document.querySelectorAll('.city-interactive').forEach(el => {
+        el.addEventListener('mousemove', (e) => {
+          const label = el.getAttribute('data-label');
+          tooltip.textContent = label;
+          tooltip.style.display = 'block';
+
+          const wrapperRect = wrapper.getBoundingClientRect();
+          const x = e.clientX - wrapperRect.left;
+          const y = e.clientY - wrapperRect.top;
+
+          tooltip.style.left = `${x}px`;
+          tooltip.style.top = `${y}px`;
+        });
+
+        el.addEventListener('mouseleave', () => {
+          tooltip.style.display = 'none';
+        });
+      });
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       initCharts();
       initCounters();
       initScrollReveal();
       initThemeObserver();
+      initSmartCityTooltips();
     });
   </script>
 </body>
