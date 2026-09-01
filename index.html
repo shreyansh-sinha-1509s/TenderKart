@@ -41,99 +41,60 @@
           </div>
         </div>
 
-        <!-- Right Hero Illustration (SVG) -->
-        <div style="display: flex; justify-content: center; align-items: center; max-width: 460px; justify-self: center; width: 100%;" class="animate-float">
-          <svg viewBox="0 0 500 500" width="100%" height="100%" style="overflow: visible;">
-            <defs>
-              <linearGradient id="roadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#1E293B" />
-                <stop offset="100%" stop-color="#0F172A" />
-              </linearGradient>
-              <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.35" />
-                <stop offset="100%" stop-color="var(--color-primary)" stop-opacity="0.08" />
-              </linearGradient>
-              <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="var(--color-primary)" />
-                <stop offset="100%" stop-color="var(--color-accent)" />
-              </linearGradient>
-              <linearGradient id="buildingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="var(--bg-secondary)" />
-                <stop offset="100%" stop-color="var(--border-color)" />
-              </linearGradient>
-              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
+        <!-- Right Hero Realistic Showcase -->
+        <div class="hero-showcase-container animate-float">
+          <!-- Main Background Image Wrapper -->
+          <div class="hero-image-wrapper">
+            <img src="images/hero-realistic.png" alt="Smart City Infrastructure Telemetry" class="hero-bg-img">
+            <div class="hero-image-overlay"></div>
+            
+            <!-- Live Radar Status Tag (Top Left) -->
+            <div class="hero-status-tag">
+              <span class="live-dot"></span>
+              <span style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.8px; color: #60A5FA;">LIVE INFRASTRUCTURE RADAR</span>
+            </div>
 
-            <!-- Grid Lines Floor (Blueprint Style) -->
-            <g opacity="0.6">
-              <line x1="50" y1="100" x2="450" y2="100" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="140" x2="450" y2="140" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="180" x2="450" y2="180" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="220" x2="450" y2="220" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="260" x2="450" y2="260" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="300" x2="450" y2="300" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="340" x2="450" y2="340" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="380" x2="450" y2="380" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="50" y1="420" x2="450" y2="420" stroke="var(--border-color)" stroke-width="1.5" />
+            <!-- Top Right Region Tag -->
+            <div class="hero-region-tag">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/></svg>
+              <span>PAN-INDIA GOVTECH</span>
+            </div>
+
+            <!-- Main Floating Glass Tender Card -->
+            <div class="hero-tender-card glass-card" id="hero-tender-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="badge badge-blue" id="hero-tender-category" style="font-size: 0.68rem; padding: 2px 8px;">ROADS</span>
+                <span style="font-size: 0.72rem; font-weight: 700; color: #34D399; display: flex; align-items: center; gap: 4px;">
+                  <span style="width: 6px; height: 6px; border-radius: 50%; background-color: #34D399; display: inline-block;"></span>
+                  Active Tender
+                </span>
+              </div>
+              <h4 id="hero-tender-title" style="font-size: 1.05rem; font-weight: 800; color: #F8FAFC; margin-bottom: 4px; line-height: 1.3;">NH-48 National Highway 6-Lane Expansion</h4>
+              <p id="hero-tender-dept" style="font-size: 0.78rem; color: #94A3B8; margin-bottom: 12px;">National Highways Authority of India (NHAI) • Gujarat-Maharashtra</p>
               
-              <line x1="100" y1="50" x2="100" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="140" y1="50" x2="140" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="180" y1="50" x2="180" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="220" y1="50" x2="220" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="260" y1="50" x2="260" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="300" y1="50" x2="300" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="340" y1="50" x2="340" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="380" y1="50" x2="380" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="420" y1="50" x2="420" y2="450" stroke="var(--border-color)" stroke-width="1.5" />
-            </g>
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div>
+                  <div style="font-size: 0.65rem; font-weight: 700; color: #64748B; text-transform: uppercase;">ESTIMATED VALUE</div>
+                  <div id="hero-tender-value" style="font-size: 1.25rem; font-weight: 850; background: linear-gradient(135deg, #60A5FA, #38BDF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">₹4,500 Cr</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 0.65rem; font-weight: 700; color: #64748B; text-transform: uppercase;">AI MATCH SCORE</div>
+                  <div id="hero-tender-match" style="font-size: 0.85rem; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.15); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); display: inline-block;">⚡ 99.2% Match</div>
+                </div>
+              </div>
+            </div>
 
-            <!-- Isometric Floor Circle -->
-            <ellipse cx="250" cy="380" rx="200" ry="80" fill="url(#skyGrad)" />
-            <ellipse cx="250" cy="380" rx="170" ry="68" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.45" />
-
-            <!-- Road Network -->
-            <path d="M 50,420 Q 200,320 250,280 T 450,200" fill="none" stroke="var(--color-primary)" stroke-width="48" stroke-linecap="round" opacity="0.15" />
-            <path d="M 50,420 Q 200,320 250,280 T 450,200" fill="none" stroke="url(#roadGrad)" stroke-width="42" stroke-linecap="round" />
-            <path d="M 50,420 Q 200,320 250,280 T 450,200" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="6 6" />
-
-            <!-- Bridge cables structure -->
-            <path d="M 170,300 L 170,230 L 220,290 M 170,230 L 120,320" fill="none" stroke="var(--color-primary)" stroke-width="3" />
-            <line x1="170" y1="230" x2="170" y2="340" stroke="var(--color-primary)" stroke-width="5" />
-
-            <!-- Buildings -->
-            <g transform="translate(300, 160)">
-              <rect x="0" y="0" width="60" height="150" rx="8" fill="url(#buildingGrad)" stroke="var(--color-primary)" stroke-width="2.5" />
-              <rect x="10" y="10" width="12" height="130" fill="var(--color-primary)" opacity="0.2" rx="2" />
-              <rect x="38" y="10" width="12" height="130" fill="var(--color-primary)" opacity="0.2" rx="2" />
-              <line x1="0" y1="15" x2="60" y2="15" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="30" x2="60" y2="30" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="45" x2="60" y2="45" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="60" x2="60" y2="60" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="75" x2="60" y2="75" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="90" x2="60" y2="90" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="105" x2="60" y2="105" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="120" x2="60" y2="120" stroke="var(--border-color)" stroke-width="1.5" />
-              <line x1="0" y1="135" x2="60" y2="135" stroke="var(--border-color)" stroke-width="1.5" />
-            </g>
-
-            <g transform="translate(80, 240)">
-              <rect x="0" y="0" width="70" height="90" rx="8" fill="url(#buildingGrad)" stroke="var(--color-primary)" stroke-width="2.5" />
-              <circle cx="35" cy="45" r="18" fill="rgba(var(--primary-rgb), 0.08)" />
-              <path d="M 25,45 Q 35,35 45,45" fill="none" stroke="var(--color-primary)" stroke-width="2" />
-            </g>
-
-            <!-- Floating node -->
-            <g transform="translate(250, 120)" class="animate-pulse-subtle">
-              <circle cx="0" cy="0" r="20" fill="url(#glowGrad)" filter="url(#glow)" />
-              <circle cx="0" cy="0" r="30" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-dasharray="5 3" />
-              <text x="0" y="5" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="800" letter-spacing="0.5px">TK</text>
-            </g>
-
-            <path d="M 250,138 L 130,240 M 250,138 L 330,160 M 170,230 L 250,138" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-dasharray="4 4" />
-          </svg>
+            <!-- Bottom Floating Mini Stat Badge -->
+            <div class="hero-floating-stat">
+              <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); display: flex; align-items: center; justify-content: center; color: #60A5FA;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div>
+                <div id="hero-pipeline-value" style="font-size: 0.85rem; font-weight: 800; color: #FFFFFF;">₹14,500+ Cr</div>
+                <div style="font-size: 0.68rem; color: #94A3B8; font-weight: 600;">Active Tender Pipeline</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
