@@ -387,7 +387,8 @@ function initHeroShowcase() {
       value: "₹4,500 Cr",
       matchScore: "⚡ 99.2% Match",
       pipeline: "₹14,500+ Cr",
-      categoryFilter: "Roads"
+      categoryFilter: "Roads",
+      image: "images/hero-roads.jpg"
     },
     {
       category: "METRO & TRANSIT",
@@ -397,7 +398,8 @@ function initHeroShowcase() {
       value: "₹6,800 Cr",
       matchScore: "⚡ 98.4% Match",
       pipeline: "₹18,200+ Cr",
-      categoryFilter: "Metro Projects"
+      categoryFilter: "Metro Projects",
+      image: "images/hero-metro.jpg"
     },
     {
       category: "GOVT BUILDINGS",
@@ -407,7 +409,8 @@ function initHeroShowcase() {
       value: "₹1,800 Cr",
       matchScore: "⚡ 97.6% Match",
       pipeline: "₹9,400+ Cr",
-      categoryFilter: "Buildings"
+      categoryFilter: "Buildings",
+      image: "images/hero-buildings.jpg"
     },
     {
       category: "BRIDGES & FLYOVERS",
@@ -417,7 +420,8 @@ function initHeroShowcase() {
       value: "₹1,200 Cr",
       matchScore: "⚡ 96.8% Match",
       pipeline: "₹11,600+ Cr",
-      categoryFilter: "Bridges"
+      categoryFilter: "Bridges",
+      image: "images/hero-bridges.jpg"
     },
     {
       category: "WATER INFRASTRUCTURE",
@@ -427,7 +431,8 @@ function initHeroShowcase() {
       value: "₹850 Cr",
       matchScore: "⚡ 95.9% Match",
       pipeline: "₹7,800+ Cr",
-      categoryFilter: "Water Supply"
+      categoryFilter: "Water Supply",
+      image: "images/hero-water.jpg"
     },
     {
       category: "SMART CITY & ICCC",
@@ -437,7 +442,8 @@ function initHeroShowcase() {
       value: "₹420 Cr",
       matchScore: "⚡ 99.1% Match",
       pipeline: "₹15,100+ Cr",
-      categoryFilter: "Smart City"
+      categoryFilter: "Smart City",
+      image: "images/hero-smartcity.jpg"
     }
   ];
 
@@ -496,8 +502,15 @@ function renderHeroTenderCard(item) {
   const matchEl = document.getElementById("hero-tender-match");
   const pipeEl = document.getElementById("hero-pipeline-value");
   const cardEl = document.getElementById("hero-tender-card");
+  const bgImgEl = document.getElementById("hero-bg-image");
 
   if (!catEl || !titleEl || !deptEl || !valEl || !matchEl) return;
+
+  // Dynamically update matching category visual background
+  if (bgImgEl && item.image) {
+    bgImgEl.src = item.image;
+    bgImgEl.alt = `${item.category} Infrastructure Visual Telemetry`;
+  }
 
   // Add subtle pulse highlight on update
   if (cardEl) {
