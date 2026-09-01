@@ -376,122 +376,133 @@ function initHomepage() {
   setupScrollFade();
 }
 
-/* ---------------- HERO ACTIVE TENDER ROTATION ON RELOAD ---------------- */
-function initHeroShowcase() {
-  const showcaseTenders = [
-    {
-      category: "ROADS & HIGHWAYS",
-      badgeClass: "badge-blue",
-      title: "NH-48 National Highway 6-Lane Expansion",
-      department: "National Highways Authority of India (NHAI) • Gujarat-Maharashtra",
-      value: "₹4,500 Cr",
-      matchScore: "⚡ 99.2% Match",
-      pipeline: "₹14,500+ Cr",
-      categoryFilter: "Roads",
-      image: "images/hero-roads.jpg"
-    },
-    {
-      category: "METRO & TRANSIT",
-      badgeClass: "badge-purple",
-      title: "Metro Line 4 - Elevated Viaduct & 4 Stations",
-      department: "MMRDA Urban Transit Board • Thane, Maharashtra",
-      value: "₹6,800 Cr",
-      matchScore: "⚡ 98.4% Match",
-      pipeline: "₹18,200+ Cr",
-      categoryFilter: "Metro Projects",
-      image: "images/hero-metro.jpg"
-    },
-    {
-      category: "GOVT BUILDINGS",
-      badgeClass: "badge-orange",
-      title: "Greenfield Integrated Govt Office Complex (IGOC)",
-      department: "Central Public Works Department (CPWD) • New Delhi",
-      value: "₹1,800 Cr",
-      matchScore: "⚡ 97.6% Match",
-      pipeline: "₹9,400+ Cr",
-      categoryFilter: "Buildings",
-      image: "images/hero-buildings.jpg"
-    },
-    {
-      category: "BRIDGES & FLYOVERS",
-      badgeClass: "badge-green",
-      title: "Cable-Stayed Bridge Construction over Thane Creek",
-      department: "Mumbai Metropolitan Region Dev Authority • Mumbai",
-      value: "₹1,200 Cr",
-      matchScore: "⚡ 96.8% Match",
-      pipeline: "₹11,600+ Cr",
-      categoryFilter: "Bridges",
-      image: "images/hero-bridges.jpg"
-    },
-    {
-      category: "WATER INFRASTRUCTURE",
-      badgeClass: "badge-cyan",
-      title: "100 MLD Centralized Water Treatment Plant",
-      department: "Pune Municipal Corporation (PMC) • Pune, Maharashtra",
-      value: "₹850 Cr",
-      matchScore: "⚡ 95.9% Match",
-      pipeline: "₹7,800+ Cr",
-      categoryFilter: "Water Supply",
-      image: "images/hero-water.jpg"
-    },
-    {
-      category: "SMART CITY & ICCC",
-      badgeClass: "badge-purple",
-      title: "Smart City Integrated Command & Control Center (ICCC)",
-      department: "Bhopal Smart City Development Corp • Bhopal",
-      value: "₹420 Cr",
-      matchScore: "⚡ 99.1% Match",
-      pipeline: "₹15,100+ Cr",
-      categoryFilter: "Smart City",
-      image: "images/hero-smartcity.jpg"
-    }
-  ];
-
-  // Retrieve current sequential index from localStorage
-  let currentIndex = parseInt(localStorage.getItem("tenderkart_hero_tender_index"), 10);
-  if (isNaN(currentIndex) || currentIndex < 0) {
-    currentIndex = 0;
+/* ---------------- HERO ACTIVE TENDER ROTATION & INTERACTIVE KEYS ---------------- */
+const HERO_SHOWCASE_TENDERS = [
+  {
+    category: "ROADS & HIGHWAYS",
+    badgeClass: "badge-blue",
+    title: "NH-48 National Highway 6-Lane Expansion",
+    department: "National Highways Authority of India (NHAI) • Gujarat-Maharashtra",
+    value: "₹4,500 Cr",
+    matchScore: "⚡ 99.2% Match",
+    pipeline: "₹14,500+ Cr",
+    categoryFilter: "Roads",
+    image: "images/hero-roads.jpg"
+  },
+  {
+    category: "METRO & TRANSIT",
+    badgeClass: "badge-purple",
+    title: "Metro Line 4 - Elevated Viaduct & 4 Stations",
+    department: "MMRDA Urban Transit Board • Thane, Maharashtra",
+    value: "₹6,800 Cr",
+    matchScore: "⚡ 98.4% Match",
+    pipeline: "₹18,200+ Cr",
+    categoryFilter: "Metro Projects",
+    image: "images/hero-metro.jpg"
+  },
+  {
+    category: "GOVT BUILDINGS",
+    badgeClass: "badge-orange",
+    title: "Greenfield Integrated Govt Office Complex (IGOC)",
+    department: "Central Public Works Department (CPWD) • New Delhi",
+    value: "₹1,800 Cr",
+    matchScore: "⚡ 97.6% Match",
+    pipeline: "₹9,400+ Cr",
+    categoryFilter: "Buildings",
+    image: "images/hero-buildings.jpg"
+  },
+  {
+    category: "BRIDGES & FLYOVERS",
+    badgeClass: "badge-green",
+    title: "Cable-Stayed Bridge Construction over Thane Creek",
+    department: "Mumbai Metropolitan Region Dev Authority • Mumbai",
+    value: "₹1,200 Cr",
+    matchScore: "⚡ 96.8% Match",
+    pipeline: "₹11,600+ Cr",
+    categoryFilter: "Bridges",
+    image: "images/hero-bridges.jpg"
+  },
+  {
+    category: "WATER INFRASTRUCTURE",
+    badgeClass: "badge-cyan",
+    title: "100 MLD Centralized Water Treatment Plant",
+    department: "Pune Municipal Corporation (PMC) • Pune, Maharashtra",
+    value: "₹850 Cr",
+    matchScore: "⚡ 95.9% Match",
+    pipeline: "₹7,800+ Cr",
+    categoryFilter: "Water Supply",
+    image: "images/hero-water.jpg"
+  },
+  {
+    category: "SMART CITY & ICCC",
+    badgeClass: "badge-purple",
+    title: "Smart City Integrated Command & Control Center (ICCC)",
+    department: "Bhopal Smart City Development Corp • Bhopal",
+    value: "₹420 Cr",
+    matchScore: "⚡ 99.1% Match",
+    pipeline: "₹15,100+ Cr",
+    categoryFilter: "Smart City",
+    image: "images/hero-smartcity.jpg"
   }
+];
 
-  // Pick the active tender for this reload
-  const selectedTender = showcaseTenders[currentIndex % showcaseTenders.length];
+let currentHeroTenderIndex = 0;
+
+function initHeroShowcase() {
+  // Retrieve current sequential index from localStorage
+  let savedIndex = parseInt(localStorage.getItem("tenderkart_hero_tender_index"), 10);
+  if (isNaN(savedIndex) || savedIndex < 0) {
+    savedIndex = 0;
+  }
+  currentHeroTenderIndex = savedIndex % HERO_SHOWCASE_TENDERS.length;
+
+  // Render initial tender for this reload
+  renderHeroTenderCard(HERO_SHOWCASE_TENDERS[currentHeroTenderIndex]);
 
   // Increment index for the NEXT page refresh / reload
-  const nextIndex = (currentIndex + 1) % showcaseTenders.length;
+  const nextIndex = (currentHeroTenderIndex + 1) % HERO_SHOWCASE_TENDERS.length;
   localStorage.setItem("tenderkart_hero_tender_index", nextIndex.toString());
 
-  // Render tender details to DOM
+  // Setup previous and next interactive navigation keys
+  const prevBtn = document.getElementById("hero-prev-btn");
+  const nextBtn = document.getElementById("hero-next-btn");
+
+  if (prevBtn) {
+    prevBtn.onclick = (e) => {
+      e.stopPropagation();
+      changeHeroTender(-1);
+    };
+  }
+
+  if (nextBtn) {
+    nextBtn.onclick = (e) => {
+      e.stopPropagation();
+      changeHeroTender(1);
+    };
+  }
+
+  // Keyboard navigation support (ArrowLeft / ArrowRight)
+  window.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+    if (e.key === "ArrowLeft") {
+      changeHeroTender(-1);
+    } else if (e.key === "ArrowRight") {
+      changeHeroTender(1);
+    }
+  });
+}
+
+function changeHeroTender(direction) {
+  const total = HERO_SHOWCASE_TENDERS.length;
+  currentHeroTenderIndex = (currentHeroTenderIndex + direction + total) % total;
+
+  // Render selected tender
+  const selectedTender = HERO_SHOWCASE_TENDERS[currentHeroTenderIndex];
   renderHeroTenderCard(selectedTender);
 
-  // Link card click to tender details or catalog category
-  const card = document.getElementById("hero-tender-card");
-  if (card) {
-    card.style.cursor = "pointer";
-    card.title = "Click to view tender details";
-    card.onclick = () => {
-      window.location.href = `tenders.html?category=${encodeURIComponent(selectedTender.categoryFilter)}`;
-    };
-
-    // Try linking directly to exact tender id if API is accessible
-    fetch(`${API_BASE}/tenders`)
-      .then(res => res.ok ? res.json() : null)
-      .then(dbTenders => {
-        if (dbTenders && Array.isArray(dbTenders)) {
-          const match = dbTenders.find(t => 
-            t.category.toLowerCase() === selectedTender.categoryFilter.toLowerCase() ||
-            t.name.toLowerCase().includes(selectedTender.title.toLowerCase().slice(0, 12))
-          );
-          if (match && match.id) {
-            card.onclick = () => {
-              window.location.href = `tenderDetails.html?id=${match.id}`;
-            };
-          }
-        }
-      })
-      .catch(() => {
-        // Fallback already bound
-      });
-  }
+  // Update localStorage index for next visit/refresh
+  const nextIndex = (currentHeroTenderIndex + 1) % total;
+  localStorage.setItem("tenderkart_hero_tender_index", nextIndex.toString());
 }
 
 function renderHeroTenderCard(item) {
@@ -506,15 +517,25 @@ function renderHeroTenderCard(item) {
 
   if (!catEl || !titleEl || !deptEl || !valEl || !matchEl) return;
 
-  // Dynamically update matching category visual background
+  // Dynamically update matching category visual background with smooth cross-fade
   if (bgImgEl && item.image) {
-    bgImgEl.src = item.image;
-    bgImgEl.alt = `${item.category} Infrastructure Visual Telemetry`;
+    bgImgEl.style.opacity = "0.6";
+    bgImgEl.style.transform = "scale(0.98)";
+    setTimeout(() => {
+      bgImgEl.src = item.image;
+      bgImgEl.alt = `${item.category} Infrastructure Visual Telemetry`;
+      bgImgEl.style.opacity = "1";
+      bgImgEl.style.transform = "scale(1)";
+    }, 120);
   }
 
-  // Add subtle pulse highlight on update
+  // Add subtle pop animation on card
   if (cardEl) {
-    cardEl.style.transition = "transform 0.3s ease, border-color 0.3s ease";
+    cardEl.style.transition = "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease";
+    cardEl.style.transform = "translateY(-3px)";
+    setTimeout(() => {
+      cardEl.style.transform = "translateY(0)";
+    }, 220);
   }
 
   catEl.textContent = item.category;
@@ -529,6 +550,33 @@ function renderHeroTenderCard(item) {
 
   if (pipeEl && item.pipeline) {
     pipeEl.textContent = item.pipeline;
+  }
+
+  // Bind click on card to view tender
+  if (cardEl) {
+    cardEl.style.cursor = "pointer";
+    cardEl.title = `Click to view ${item.title}`;
+    cardEl.onclick = () => {
+      window.location.href = `tenders.html?category=${encodeURIComponent(item.categoryFilter)}`;
+    };
+
+    // Try linking directly to exact tender id if API is accessible
+    fetch(`${API_BASE}/tenders`)
+      .then(res => res.ok ? res.json() : null)
+      .then(dbTenders => {
+        if (dbTenders && Array.isArray(dbTenders)) {
+          const match = dbTenders.find(t => 
+            t.category.toLowerCase() === item.categoryFilter.toLowerCase() ||
+            t.name.toLowerCase().includes(item.title.toLowerCase().slice(0, 12))
+          );
+          if (match && match.id) {
+            cardEl.onclick = () => {
+              window.location.href = `tenderDetails.html?id=${match.id}`;
+            };
+          }
+        }
+      })
+      .catch(() => {});
   }
 }
 
