@@ -773,6 +773,13 @@ body.dark-theme .how-card {
 }
 
 /* ---------------- HERO LEFT COLUMN CONTENT STYLING ---------------- */
+#hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
 .hero-kicker-badge {
   display: inline-flex;
   align-items: center;
@@ -1388,6 +1395,283 @@ body.dark-theme .hero-nav-btn:hover {
 
 .site-footer-dark .footer-top-btn:hover {
   color: #38BDF8 !important;
+}
+
+/* ---------------- COMPREHENSIVE MOBILE UI OPTIMIZATIONS ---------------- */
+
+/* Tablets & Small Laptops (<= 960px) */
+@media (max-width: 960px) {
+  #hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 2.25rem !important;
+  }
+  
+  .hero-headline {
+    font-size: 2.45rem !important;
+    letter-spacing: -1px !important;
+  }
+  
+  .hero-showcase-container {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .hero-image-wrapper {
+    aspect-ratio: 16 / 10 !important;
+    border-radius: 22px !important;
+  }
+
+  #tenders-split-layout aside,
+  #dashboard-grid aside,
+  #admin-grid aside {
+    position: static !important;
+  }
+}
+
+/* Standard Mobile Devices (<= 768px) */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1.25rem !important;
+  }
+
+  /* Navigation on mobile */
+  nav .container {
+    height: 66px !important;
+  }
+  
+  #mobile-menu-drawer {
+    border-radius: 0 0 16px 16px !important;
+  }
+
+  /* Stats grid 2-columns on mobile */
+  #stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  .stat-box {
+    padding: 1.35rem 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  .stat-number {
+    font-size: 2.3rem !important;
+  }
+
+  .stat-suffix {
+    font-size: 1.4rem !important;
+  }
+
+  /* Categories Grid 2-columns on tablets, 1 on small mobile */
+  #categories-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* How It Works & Why TenderKart */
+  .why-card {
+    padding: 1.5rem !important;
+    border-radius: 16px !important;
+  }
+
+  .how-card {
+    padding: 1.5rem !important;
+    border-radius: 16px !important;
+  }
+
+  /* Footer on mobile */
+  #footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2.25rem !important;
+  }
+
+  .site-footer-dark {
+    padding: 3rem 0 1.5rem 0 !important;
+  }
+}
+
+/* Small Smart Phones (<= 640px) */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 1rem !important;
+  }
+
+  .section {
+    padding: 2.75rem 0 !important;
+  }
+
+  /* Hero adjustments for small phones */
+  .hero-headline {
+    font-size: 2rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .hero-description {
+    font-size: 0.92rem !important;
+    line-height: 1.55 !important;
+  }
+
+  .hero-kicker-badge {
+    font-size: 0.7rem !important;
+    padding: 4px 10px !important;
+    gap: 6px !important;
+  }
+
+  .hero-search-box {
+    flex-direction: column !important;
+    padding: 8px !important;
+    gap: 8px !important;
+    border-radius: 14px !important;
+  }
+
+  .hero-search-input-wrap {
+    width: 100% !important;
+    padding: 2px 4px !important;
+  }
+
+  .hero-search-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.65rem 1rem !important;
+    border-radius: 10px !important;
+  }
+
+  .hero-quick-chips {
+    gap: 6px !important;
+  }
+
+  .hero-chip {
+    font-size: 0.74rem !important;
+    padding: 3px 8px !important;
+  }
+
+  .hero-trust-row {
+    flex-wrap: wrap !important;
+    gap: 12px 20px !important;
+    justify-content: space-between !important;
+  }
+
+  .trust-val {
+    font-size: 0.95rem !important;
+  }
+
+  .trust-lbl {
+    font-size: 0.68rem !important;
+  }
+
+  .trust-divider {
+    display: none !important;
+  }
+
+  /* Right Showcase mobile adjustments */
+  .hero-image-wrapper {
+    aspect-ratio: 4 / 3 !important;
+    border-radius: 18px !important;
+  }
+
+  .hero-status-tag {
+    top: 10px !important;
+    left: 10px !important;
+    padding: 4px 10px !important;
+  }
+
+  .hero-status-tag span.status-text {
+    font-size: 0.64rem !important;
+  }
+
+  .hero-region-tag {
+    top: 10px !important;
+    right: 10px !important;
+    padding: 4px 10px !important;
+    font-size: 0.64rem !important;
+  }
+
+  .hero-floating-stat {
+    display: none !important;
+  }
+
+  .hero-nav-btn {
+    width: 36px !important;
+    height: 36px !important;
+    top: 38% !important;
+    opacity: 0.88 !important;
+  }
+
+  .hero-tender-card {
+    bottom: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    padding: 0.75rem 0.85rem !important;
+    border-radius: 12px !important;
+  }
+
+  #hero-tender-title {
+    font-size: 0.88rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 2px !important;
+  }
+
+  #hero-tender-dept {
+    font-size: 0.7rem !important;
+    margin-bottom: 6px !important;
+  }
+
+  #hero-tender-value {
+    font-size: 1.05rem !important;
+  }
+
+  #hero-tender-match {
+    font-size: 0.72rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Categories on small mobile: 1 column */
+  #categories-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .category-card {
+    padding: 1.25rem !important;
+  }
+
+  /* Footer on small mobile: 1 column */
+  #footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.75rem !important;
+  }
+
+  .footer-bottom-bar > .container {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 8px !important;
+  }
+
+  /* Table responsiveness */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Extra Small Phones (<= 380px) */
+@media (max-width: 380px) {
+  .hero-headline {
+    font-size: 1.75rem !important;
+  }
+
+  #stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero-kicker-badge .kicker-sub {
+    display: none !important;
+  }
+  
+  .hero-kicker-badge .kicker-sep {
+    display: none !important;
+  }
 }
 
 
