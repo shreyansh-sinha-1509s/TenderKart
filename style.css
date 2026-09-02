@@ -1337,4 +1337,57 @@ body.dark-theme .hero-nav-btn:hover {
   }
 }
 
+/* ---------------- PERMANENT DARK THEME FOOTER ---------------- */
+.site-footer-dark {
+  background: #0B1120 !important;
+  color: #F8FAFC !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 4rem 0 2rem 0 !important;
+  margin-top: auto !important;
+}
+
+.site-footer-dark h3 {
+  color: #38BDF8 !important;
+}
+
+.site-footer-dark h4 {
+  color: #F1F5F9 !important;
+}
+
+.site-footer-dark p {
+  color: #94A3B8 !important;
+}
+
+.site-footer-dark .footer-link {
+  color: #94A3B8 !important;
+  font-size: 0.9rem;
+  transition: all 0.25s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.site-footer-dark .footer-link:hover {
+  color: #38BDF8 !important;
+  transform: translateX(4px);
+}
+
+.site-footer-dark .footer-bottom-bar {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 1.75rem 0 0.5rem 0 !important;
+}
+
+.site-footer-dark .footer-copyright {
+  color: #64748B !important;
+}
+
+.site-footer-dark .footer-top-btn {
+  color: #94A3B8 !important;
+  transition: all 0.25s ease;
+  text-decoration: none;
+}
+
+.site-footer-dark .footer-top-btn:hover {
+  color: #38BDF8 !important;
+}
+
 

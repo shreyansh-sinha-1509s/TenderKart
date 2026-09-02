@@ -247,59 +247,59 @@ function renderFooter() {
   if (!placeholder) return;
 
   placeholder.innerHTML = `
-    <footer style="background-color: var(--bg-secondary); color: var(--text-primary); border-top: 1px solid var(--border-color); padding: 4rem 0 2rem 0; margin-top: auto; transition: var(--transition-smooth);">
+    <footer class="site-footer-dark">
       <div class="container" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 4rem; padding-bottom: 3rem;" id="footer-grid">
         <!-- About / Brand Column -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <img src="images/logo.jpg" alt="TenderKart Logo" style="height: 42px; width: 42px; border-radius: 8px; object-fit: cover;" />
             <div>
-              <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--color-primary); letter-spacing: -0.5px;">TenderKart</h3>
-              <p style="font-size: 0.6rem; color: var(--text-muted); font-weight: 600; margin-top: -2px;">Urban Infrastructure Opportunities Tracker</p>
+              <h3 style="font-size: 1.2rem; font-weight: 800; color: #38BDF8; letter-spacing: -0.5px;">TenderKart</h3>
+              <p style="font-size: 0.65rem; color: #64748B; font-weight: 600; margin-top: -2px;">Urban Infrastructure Opportunities Tracker</p>
             </div>
           </div>
-          <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); max-width: 320px;">
-            Simplifying urban infrastructure discovery for businesses — smart tracking, dynamic categories, and AI-powered tender digests in one place.
+          <p style="font-size: 0.9rem; line-height: 1.6; color: #94A3B8; max-width: 320px;">
+            Simplifying urban infrastructure discovery for businesses — smart tracking, dynamic categories, and tender intelligence in one place.
           </p>
         </div>
 
         <!-- Column 2 (PRODUCT) -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-          <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;">Product</h4>
+          <h4 style="font-size: 0.8rem; font-weight: 800; color: #F1F5F9; text-transform: uppercase; letter-spacing: 1px;">Product</h4>
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
-            <li><a href="tenders.html" style="font-size: 0.9rem; color: var(--text-muted);">Browse Tenders</a></li>
-            <li><a href="tenders.html" style="font-size: 0.9rem; color: var(--text-muted);">Search & Filter</a></li>
-            <li><a href="tenders.html" style="font-size: 0.9rem; color: var(--text-muted);">AI Summary Digests</a></li>
-            <li><a href="dashboard.html" style="font-size: 0.9rem; color: var(--text-muted);">Dashboard</a></li>
+            <li><a href="tenders.html" class="footer-link">Browse Tenders</a></li>
+            <li><a href="tenders.html" class="footer-link">Search & Filter</a></li>
+            <li><a href="tenders.html" class="footer-link">Tender Intelligence</a></li>
+            <li><a href="dashboard.html" class="footer-link">Dashboard</a></li>
           </ul>
         </div>
 
         <!-- Column 3 (ACCOUNT) -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-          <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;">Account</h4>
+          <h4 style="font-size: 0.8rem; font-weight: 800; color: #F1F5F9; text-transform: uppercase; letter-spacing: 1px;">Account</h4>
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
-            <li><a href="login.html" style="font-size: 0.9rem; color: var(--text-muted);">Login</a></li>
-            <li><a href="register.html" style="font-size: 0.9rem; color: var(--text-muted);">Register</a></li>
+            <li><a href="login.html" class="footer-link">Login</a></li>
+            <li><a href="register.html" class="footer-link">Register</a></li>
           </ul>
         </div>
 
         <!-- Column 4 (NAVIGATE) -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-          <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;">Navigate</h4>
+          <h4 style="font-size: 0.8rem; font-weight: 800; color: #F1F5F9; text-transform: uppercase; letter-spacing: 1px;">Navigate</h4>
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
-            <li><a href="index.html" style="font-size: 0.9rem; color: var(--text-muted);">← Home</a></li>
-            <li><a href="tenders.html" style="font-size: 0.9rem; color: var(--text-muted);">Browse Tenders</a></li>
-            <li><a href="about.html" style="font-size: 0.9rem; color: var(--text-muted);">About Us</a></li>
-            <li><a href="contact.html" style="font-size: 0.9rem; color: var(--text-muted);">Contact Us</a></li>
+            <li><a href="index.html" class="footer-link">← Home</a></li>
+            <li><a href="tenders.html" class="footer-link">Browse Tenders</a></li>
+            <li><a href="about.html" class="footer-link">About Us</a></li>
+            <li><a href="contact.html" class="footer-link">Contact Us</a></li>
           </ul>
         </div>
       </div>
 
       <!-- Bottom bar copyright and Back to Top link -->
-      <div style="border-top: 1px solid var(--border-color); padding: 1.75rem 0 0.5rem 0;">
-        <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.85rem; color: var(--text-muted);">
-          <span>© 2026 TenderKart · Created by Shreyansh Sinha</span>
-          <a href="#" style="color: var(--text-muted); font-weight: 500; font-size: 0.85rem; transition: var(--transition-smooth); display: inline-flex; align-items: center; gap: 4px;">← Back to Top</a>
+      <div class="footer-bottom-bar">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+          <span class="footer-copyright">© 2026 TenderKart · Created by Shreyansh Sinha</span>
+          <a href="#" class="footer-top-btn" style="display: inline-flex; align-items: center; gap: 4px;">← Back to Top</a>
         </div>
       </div>
     </footer>
