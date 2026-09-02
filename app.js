@@ -337,6 +337,17 @@ function setupAuthUI() {
 }
 
 /* ---------------- HOMEPAGE LOGIC ---------------- */
+function handleHeroSearch(e) {
+  if (e) e.preventDefault();
+  const input = document.getElementById("hero-search-query");
+  const query = input ? input.value.trim() : "";
+  if (query) {
+    window.location.href = `tenders.html?search=${encodeURIComponent(query)}`;
+  } else {
+    window.location.href = `tenders.html`;
+  }
+}
+
 function initHomepage() {
   // Rotate and render active tender on the hero showcase for every fresh reload
   initHeroShowcase();
