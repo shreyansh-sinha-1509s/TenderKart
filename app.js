@@ -458,6 +458,25 @@ const HERO_SHOWCASE_TENDERS = [
 ];
 
 let currentHeroTenderIndex = 0;
+let heroAutoRotateTimer = null;
+
+function startHeroAutoRotate() {
+  stopHeroAutoRotate();
+  heroAutoRotateTimer = setInterval(() => {
+    changeHeroTender(1);
+  }, 5000);
+}
+
+function stopHeroAutoRotate() {
+  if (heroAutoRotateTimer) {
+    clearInterval(heroAutoRotateTimer);
+    heroAutoRotateTimer = null;
+  }
+}
+
+function resetHeroAutoRotate() {
+  startHeroAutoRotate();
+}
 
 function initHeroShowcase() {
   // Retrieve current sequential index from localStorage
@@ -482,6 +501,7 @@ function initHeroShowcase() {
     prevBtn.onclick = (e) => {
       e.stopPropagation();
       changeHeroTender(-1);
+      resetHeroAutoRotate();
     };
   }
 
@@ -489,6 +509,7 @@ function initHeroShowcase() {
     nextBtn.onclick = (e) => {
       e.stopPropagation();
       changeHeroTender(1);
+      resetHeroAutoRotate();
     };
   }
 
@@ -497,10 +518,26 @@ function initHeroShowcase() {
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
     if (e.key === "ArrowLeft") {
       changeHeroTender(-1);
+      resetHeroAutoRotate();
     } else if (e.key === "ArrowRight") {
       changeHeroTender(1);
+      resetHeroAutoRotate();
     }
   });
+
+  // Start 5-second automatic rotation
+  startHeroAutoRotate();
+
+  // Pause on hover for readability, resume when mouse leaves
+  const showcaseContainer = document.querySelector(".hero-showcase-container");
+  if (showcaseContainer) {
+    showcaseContainer.addEventListener("mouseenter", stopHeroAutoRotate);
+    showcaseContainer.addEventListener("mouseleave", startHeroAutoRotate);
+    showcaseContainer.addEventListener("touchstart", stopHeroAutoRotate, { passive: true });
+    showcaseContainer.addEventListener("touchend", () => {
+      setTimeout(startHeroAutoRotate, 3000);
+    }, { passive: true });
+  }
 }
 
 function changeHeroTender(direction) {
