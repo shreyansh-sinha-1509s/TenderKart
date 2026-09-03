@@ -1,0 +1,4 @@
+// Vercel Serverless Function Entrypoint
+const app = require("../backend/server");
+
+module.exports = app;

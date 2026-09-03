@@ -1,7 +1,9 @@
 // TenderKart - Frontend Application Logic (app.js)
 // Traditional student-friendly coding style
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && window.location.port !== "" && window.location.port !== "5000"
+  ? "http://localhost:5000/api"
+  : "/api";
 
 // Page-specific initialization when the DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
