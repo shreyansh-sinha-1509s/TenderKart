@@ -1714,17 +1714,37 @@ function initContactPage() {
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const name = document.getElementById("contact-name").value.trim();
-    const email = document.getElementById("contact-email").value.trim();
-    const message = document.getElementById("contact-message").value.trim();
+    const nameEl = document.getElementById("contact-name");
+    const emailEl = document.getElementById("contact-email");
+    const messageEl = document.getElementById("contact-message");
+    const subjectEl = document.getElementById("contact-subject");
+
+    const name = nameEl ? nameEl.value.trim() : "";
+    const email = emailEl ? emailEl.value.trim() : "";
+    const message = messageEl ? messageEl.value.trim() : "";
+    const subject = subjectEl ? subjectEl.value : "General Inquiry";
 
     if (!name || !email || !message) {
-      showToast("Please fill in required fields", "warning");
+      showToast("Please complete all required fields", "warning");
       return;
     }
 
-    // Mock send success
-    showToast("Thank you! Your inquiry has been sent to our GovTech team.", "success");
-    form.reset();
+    const submitBtn = form.querySelector("button[type='submit']");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Transmitting Inquiry...</span>`;
+    }
+
+    setTimeout(() => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `
+          <span>Submit Inquiry to Helpdesk</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        `;
+      }
+      form.reset();
+      showToast(`Thank you, ${name}! Your inquiry regarding "${subject}" has been registered. Our procurement desk will contact you within 2 hours.`, "success");
+    }, 600);
   });
 }
