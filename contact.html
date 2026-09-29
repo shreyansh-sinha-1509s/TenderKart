@@ -14,7 +14,7 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 1.25rem 0 1.75rem 0;
+      padding: 1.15rem 0 1.65rem 0;
       position: relative;
     }
 
@@ -23,8 +23,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
-      margin-bottom: 1.15rem;
+      gap: 5px;
+      margin-bottom: 1.1rem;
     }
 
     .contact-split-grid {
@@ -93,39 +93,40 @@
     .contact-info-col {
       display: flex;
       flex-direction: column;
-      gap: 0.9rem;
+      gap: 0.85rem;
       justify-content: space-between;
     }
 
-    /* 3D GIS Telemetry Stage */
+    /* --- High-Tech 3D GIS Telemetry Section --- */
     .gis-card-3d {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 18px;
-      padding: 1.15rem 1.35rem;
-      box-shadow: var(--shadow-sm);
+      padding: 1.1rem 1.25rem;
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.12);
       display: flex;
       flex-direction: column;
       gap: 8px;
-      transition: var(--transition-smooth);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
       overflow: hidden;
     }
 
     .gis-card-3d:hover {
-      border-color: rgba(var(--primary-rgb), 0.45);
-      box-shadow: 0 12px 30px -8px rgba(var(--primary-rgb), 0.2);
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 16px 36px -8px rgba(37, 99, 235, 0.22), 0 0 0 1px rgba(56, 189, 248, 0.2);
+      transform: translateY(-2px);
     }
 
     .gis-stage-3d {
       width: 100%;
-      height: 125px;
+      height: 135px;
       position: relative;
-      background: radial-gradient(ellipse at 50% 100%, rgba(var(--primary-rgb), 0.16) 0%, rgba(var(--primary-rgb), 0.03) 60%, var(--bg-primary) 100%);
+      background: radial-gradient(ellipse at 50% 120%, rgba(37, 99, 235, 0.22) 0%, rgba(15, 23, 42, 0.6) 70%, var(--bg-primary) 100%);
       border-radius: 12px;
       overflow: hidden;
-      border: 1px solid var(--border-color);
-      box-shadow: inset 0 2px 10px rgba(0,0,0,0.12);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      box-shadow: inset 0 2px 14px rgba(0,0,0,0.25);
     }
 
     .gis-scanline {
@@ -133,65 +134,94 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.9) 50%, transparent 100%);
-      animation: scanline3d 3.5s ease-in-out infinite;
+      height: 2.5px;
+      background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.85) 50%, transparent 100%);
+      animation: scanline3d 3.2s ease-in-out infinite;
       pointer-events: none;
-      opacity: 0.7;
+      opacity: 0.85;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
     }
 
     @keyframes scanline3d {
-      0% { transform: translateY(-2px); opacity: 0; }
-      15% { opacity: 0.9; }
-      85% { opacity: 0.9; }
-      100% { transform: translateY(128px); opacity: 0; }
+      0% { transform: translateY(-3px); opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translateY(138px); opacity: 0; }
     }
 
     @keyframes flowPipeline3d {
-      to { stroke-dashoffset: -30; }
+      to { stroke-dashoffset: -36; }
     }
 
     @keyframes floatNodeHQ {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-3.5px); }
+      50% { transform: translateY(-4px); }
     }
 
-    @keyframes floatNodeSub {
+    @keyframes floatNodeDelhi {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-2.5px); }
+      50% { transform: translateY(-3px); }
+    }
+
+    @keyframes floatNodeMumbai {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3.2px); }
+    }
+
+    @keyframes gyroSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes radarSweep {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     .iso-node-hq {
-      animation: floatNodeHQ 3.2s ease-in-out infinite;
+      animation: floatNodeHQ 3s ease-in-out infinite;
+      cursor: pointer;
     }
 
     .iso-node-delhi {
-      animation: floatNodeSub 3.8s ease-in-out infinite 0.4s;
+      animation: floatNodeDelhi 3.6s ease-in-out infinite 0.3s;
+      cursor: pointer;
     }
 
     .iso-node-mumbai {
-      animation: floatNodeSub 3.5s ease-in-out infinite 0.9s;
+      animation: floatNodeMumbai 3.4s ease-in-out infinite 0.7s;
+      cursor: pointer;
+    }
+
+    .iso-node-blr {
+      animation: floatNodeDelhi 4s ease-in-out infinite 1.1s;
+      cursor: pointer;
     }
 
     .data-pipeline-3d {
       stroke-dasharray: 6 4;
-      animation: flowPipeline3d 1.1s linear infinite;
+      animation: flowPipeline3d 0.9s linear infinite;
+    }
+
+    .radar-sweep-beam {
+      transform-origin: 240px 90px;
+      animation: radarSweep 7s linear infinite;
     }
 
     .contact-channels-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.7rem;
+      gap: 0.65rem;
     }
 
     .channel-box {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 14px;
-      padding: 0.7rem 0.85rem;
+      padding: 0.65rem 0.8rem;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.7rem;
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
@@ -201,8 +231,8 @@
     }
 
     .channel-icon {
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       border-radius: 10px;
       background: rgba(var(--primary-rgb), 0.08);
       color: var(--color-primary);
@@ -219,7 +249,7 @@
     }
 
     .channel-tag {
-      font-size: 0.66rem;
+      font-size: 0.64rem;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -227,7 +257,7 @@
     }
 
     .channel-value {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
       color: var(--text-primary);
       white-space: nowrap;
@@ -239,7 +269,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 14px;
-      padding: 0.6rem 1rem;
+      padding: 0.55rem 0.95rem;
       display: flex;
       align-items: center;
       justify-content: space-around;
@@ -247,13 +277,13 @@
     }
 
     .trust-stat-val {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 850;
       color: var(--color-primary);
     }
 
     .trust-stat-lbl {
-      font-size: 0.64rem;
+      font-size: 0.62rem;
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
@@ -378,166 +408,213 @@
           
           <!-- 3D GIS Operations Hub Card -->
           <div class="gis-card-3d">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #10B981; display: inline-block;" class="animate-pulse-subtle"></span>
-                <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">3D Geospatial Secretariat & Radar</span>
+            <!-- Header with Live Pulse & Telemetry Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+              <div style="display: flex; align-items: center; gap: 7px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: #10B981; display: inline-block; box-shadow: 0 0 8px #10B981;" class="animate-pulse-subtle"></span>
+                <span style="font-size: 0.74rem; font-weight: 850; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.6px;">3D Geospatial Secretariat & Radar</span>
               </div>
-              <span style="font-size: 0.68rem; font-weight: 700; color: #10B981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 20px;">● 3D LIVE HUB</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 0.64rem; font-weight: 700; color: #38BDF8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); padding: 1px 7px; border-radius: 12px; display: flex; align-items: center; gap: 4px;">
+                  <span style="width: 5px; height: 5px; border-radius: 50%; background-color: #38BDF8;"></span>
+                  MESH ACTIVE
+                </span>
+                <span style="font-size: 0.64rem; font-weight: 800; color: #10B981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); padding: 1px 7px; border-radius: 12px;">
+                  3D HUB
+                </span>
+              </div>
             </div>
 
             <!-- Authentic 3D Isometric Geospatial Topology Stage -->
             <div class="gis-stage-3d">
               <div class="gis-scanline"></div>
               
-              <svg viewBox="0 0 460 135" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="display: block; overflow: visible;">
+              <svg viewBox="0 0 480 135" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="display: block; overflow: visible;">
                 <defs>
-                  <!-- 3D Gradients -->
+                  <!-- 3D Gradients & Filters -->
                   <radialGradient id="hqGroundGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#2563EB" stop-opacity="0.35" />
-                    <stop offset="60%" stop-color="#38BDF8" stop-opacity="0.12" />
+                    <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.45" />
+                    <stop offset="50%" stop-color="#2563EB" stop-opacity="0.2" />
                     <stop offset="100%" stop-color="#2563EB" stop-opacity="0" />
                   </radialGradient>
 
-                  <linearGradient id="hqPillarGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stop-color="#2563EB" stop-opacity="0.15" />
-                    <stop offset="70%" stop-color="#38BDF8" stop-opacity="0.85" />
-                    <stop offset="100%" stop-color="#FFFFFF" stop-opacity="1" />
+                  <linearGradient id="volBeamHQ" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.05" />
+                    <stop offset="60%" stop-color="#2563EB" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.9" />
                   </linearGradient>
 
-                  <linearGradient id="delhiPillarGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stop-color="#10B981" stop-opacity="0.1" />
-                    <stop offset="100%" stop-color="#10B981" stop-opacity="0.8" />
+                  <linearGradient id="volBeamDelhi" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" stop-color="#10B981" stop-opacity="0.05" />
+                    <stop offset="100%" stop-color="#10B981" stop-opacity="0.75" />
                   </linearGradient>
 
-                  <linearGradient id="mumbaiPillarGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.1" />
-                    <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.8" />
+                  <linearGradient id="volBeamMumbai" x1="0%" y1="100%" x2="0%" y2="0%">
+                    <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.05" />
+                    <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.75" />
                   </linearGradient>
 
                   <linearGradient id="pipeHqDelhi" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stop-color="#10B981" />
-                    <stop offset="100%" stop-color="#38BDF8" />
+                    <stop offset="50%" stop-color="#38BDF8" />
+                    <stop offset="100%" stop-color="#60A5FA" />
                   </linearGradient>
 
                   <linearGradient id="pipeHqMumbai" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#38BDF8" />
+                    <stop offset="0%" stop-color="#60A5FA" />
+                    <stop offset="50%" stop-color="#38BDF8" />
                     <stop offset="100%" stop-color="#F59E0B" />
                   </linearGradient>
 
-                  <!-- Filter for 3D glow -->
-                  <filter id="glow3d" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <linearGradient id="pipeHqBlr" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#818CF8" />
+                    <stop offset="100%" stop-color="#38BDF8" />
+                  </linearGradient>
+
+                  <!-- 3D Glow Filter -->
+                  <filter id="neonGlow3d" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+
+                  <filter id="dropShadowBadge" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.4" />
                   </filter>
                 </defs>
 
-                <!-- 1. 3D Isometric Ground Grid Mesh -->
-                <g opacity="0.35">
+                <!-- 1. 3D Isometric Ground Grid & Coordinate Crosshairs -->
+                <g opacity="0.45">
                   <!-- Outer Diamond Plane -->
-                  <polygon points="40,75 230,22 420,75 230,128" fill="none" stroke="var(--border-color)" stroke-width="1.2" />
+                  <polygon points="35,76 240,16 445,76 240,134" fill="rgba(37, 99, 235, 0.03)" stroke="#38BDF8" stroke-width="1.2" stroke-opacity="0.5" />
                   
-                  <!-- Isometric Perspective Lines (Axis 1) -->
-                  <line x1="88" y1="61" x2="278" y2="114" stroke="var(--border-color)" stroke-width="0.8" stroke-dasharray="3 3" />
-                  <line x1="135" y1="48" x2="325" y2="101" stroke="var(--border-color)" stroke-width="0.8" stroke-dasharray="3 3" />
-                  <line x1="182" y1="35" x2="372" y2="88" stroke="var(--border-color)" stroke-width="0.8" stroke-dasharray="3 3" />
+                  <!-- Isometric Perspective Grid Lines -->
+                  <line x1="86" y1="61" x2="291" y2="120" stroke="#38BDF8" stroke-width="0.8" stroke-dasharray="3 3" stroke-opacity="0.4" />
+                  <line x1="137" y1="46" x2="342" y2="105" stroke="#38BDF8" stroke-width="0.8" stroke-dasharray="3 3" stroke-opacity="0.4" />
+                  <line x1="188" y1="31" x2="393" y2="90" stroke="#38BDF8" stroke-width="0.8" stroke-dasharray="3 3" stroke-opacity="0.4" />
 
-                  <!-- Isometric Perspective Lines (Axis 2) -->
-                  <line x1="135" y1="101" x2="325" y2="48" stroke="var(--border-color)" stroke-width="0.8" stroke-dasharray="3 3" />
-                  <line x1="88" y1="88" x2="278" y2="35" stroke="var(--border-color)" stroke-width="0.8" stroke-dasharray="3 3" />
-                  <line x1="182" y1="114" x2="372" y2="61" stroke="var(--border-color)" stroke-width="0.8" stroke-dasharray="3 3" />
+                  <line x1="137" y1="105" x2="342" y2="46" stroke="#38BDF8" stroke-width="0.8" stroke-dasharray="3 3" stroke-opacity="0.4" />
+                  <line x1="86" y1="90" x2="291" y2="31" stroke="#38BDF8" stroke-width="0.8" stroke-dasharray="3 3" stroke-opacity="0.4" />
+                  <line x1="188" y1="120" x2="393" y2="61" stroke="#38BDF8" stroke-width="0.8" stroke-dasharray="3 3" stroke-opacity="0.4" />
+
+                  <!-- Coordinate Crosshairs at vertices -->
+                  <path d="M 86,59 v4 M 84,61 h4 M 342,103 v4 M 340,105 h4 M 137,44 v4 M 135,46 h4 M 291,118 v4 M 289,120 h4" stroke="#38BDF8" stroke-width="1" stroke-opacity="0.6" />
                 </g>
 
-                <!-- 2. 3D Topographical Depth Contour Rings on Ground -->
-                <ellipse cx="230" cy="85" rx="76" ry="24" fill="none" stroke="#2563EB" stroke-width="1" stroke-opacity="0.2" stroke-dasharray="4 4" />
-                <ellipse cx="230" cy="85" rx="46" ry="15" fill="none" stroke="#38BDF8" stroke-width="1.2" stroke-opacity="0.35" />
+                <!-- 2. Rotating 3D Radar Sweep Cone around Ground Center -->
+                <g class="radar-sweep-beam" opacity="0.35">
+                  <path d="M 240,90 L 140,55 A 110,38 0 0,1 340,55 Z" fill="url(#hqGroundGlow)" />
+                </g>
 
-                <!-- 3. Ground Footprints / Radial Drop Shadows -->
-                <ellipse cx="230" cy="85" rx="32" ry="11" fill="url(#hqGroundGlow)" />
-                <ellipse cx="98" cy="74" rx="18" ry="6.5" fill="rgba(16, 185, 129, 0.18)" />
-                <ellipse cx="362" cy="74" rx="18" ry="6.5" fill="rgba(245, 158, 11, 0.18)" />
-                <ellipse cx="210" cy="108" rx="16" ry="5.5" fill="rgba(99, 102, 241, 0.15)" />
+                <!-- 3. Topographical Elevation Contours on Ground -->
+                <ellipse cx="240" cy="90" rx="88" ry="28" fill="none" stroke="#2563EB" stroke-width="1.2" stroke-opacity="0.3" stroke-dasharray="4 4" />
+                <ellipse cx="240" cy="90" rx="54" ry="18" fill="none" stroke="#38BDF8" stroke-width="1.4" stroke-opacity="0.5" />
+                <ellipse cx="240" cy="90" rx="24" ry="8" fill="none" stroke="#60A5FA" stroke-width="1.6" stroke-opacity="0.7" />
 
-                <!-- 4. 3D Vertical Light Beams (Extrusions from Terrain to Air) -->
-                <!-- Delhi Pillar (z = 36px) -->
-                <line x1="98" y1="74" x2="98" y2="38" stroke="url(#delhiPillarGrad)" stroke-width="2.2" />
-                <line x1="98" y1="74" x2="98" y2="38" stroke="#10B981" stroke-width="1" stroke-dasharray="2 3" opacity="0.6" />
+                <!-- 4. Ground Shadow Footprints -->
+                <ellipse cx="240" cy="90" rx="38" ry="13" fill="url(#hqGroundGlow)" />
+                <ellipse cx="102" cy="76" rx="20" ry="7.5" fill="rgba(16, 185, 129, 0.25)" />
+                <ellipse cx="376" cy="76" rx="20" ry="7.5" fill="rgba(245, 158, 11, 0.25)" />
+                <ellipse cx="220" cy="112" rx="18" ry="6.5" fill="rgba(99, 102, 241, 0.22)" />
 
-                <!-- Mumbai Pillar (z = 36px) -->
-                <line x1="362" y1="74" x2="362" y2="38" stroke="url(#mumbaiPillarGrad)" stroke-width="2.2" />
-                <line x1="362" y1="74" x2="362" y2="38" stroke="#F59E0B" stroke-width="1" stroke-dasharray="2 3" opacity="0.6" />
+                <!-- 5. Volumetric 3D Light Pillars (Cones of Light Rising from Ground) -->
+                <!-- Delhi Pillar Cone -->
+                <polygon points="94,76 110,76 104,36 100,36" fill="url(#volBeamDelhi)" />
+                <line x1="102" y1="76" x2="102" y2="36" stroke="#10B981" stroke-width="1.5" stroke-dasharray="2 2" opacity="0.8" />
 
-                <!-- Bengaluru Pillar (z = 28px) -->
-                <line x1="210" y1="108" x2="210" y2="80" stroke="#6366F1" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="2 2" />
+                <!-- Mumbai Pillar Cone -->
+                <polygon points="368,76 384,76 378,36 374,36" fill="url(#volBeamMumbai)" />
+                <line x1="376" y1="76" x2="376" y2="36" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" opacity="0.8" />
 
-                <!-- Central HQ Pillar (Highest 3D Elevation z = 55px) -->
-                <polygon points="224,85 236,85 233,30 227,30" fill="url(#hqGroundGlow)" opacity="0.7" />
-                <line x1="230" y1="85" x2="230" y2="30" stroke="url(#hqPillarGrad)" stroke-width="3" />
-                <line x1="230" y1="85" x2="230" y2="30" stroke="#FFFFFF" stroke-width="1" opacity="0.9" />
+                <!-- Bengaluru Pillar -->
+                <polygon points="214,112 226,112 222,82 218,82" fill="rgba(99, 102, 241, 0.25)" />
+                <line x1="220" y1="112" x2="220" y2="82" stroke="#818CF8" stroke-width="1.2" stroke-dasharray="2 2" opacity="0.8" />
 
-                <!-- 5. 3D Parabolic Curved Telemetry Pipelines -->
-                <path d="M 98,36 Q 164,12 230,28" fill="none" stroke="url(#pipeHqDelhi)" stroke-width="2.2" class="data-pipeline-3d" filter="url(#glow3d)" />
-                <path d="M 230,28 Q 296,10 362,36" fill="none" stroke="url(#pipeHqMumbai)" stroke-width="2.2" class="data-pipeline-3d" filter="url(#glow3d)" />
-                <path d="M 210,80 Q 218,52 230,28" fill="none" stroke="#38BDF8" stroke-width="1.5" class="data-pipeline-3d" opacity="0.6" stroke-dasharray="4 4" />
+                <!-- Central HQ Volumetric Light Pillar (Core Elevation) -->
+                <polygon points="230,90 250,90 244,26 236,26" fill="url(#volBeamHQ)" />
+                <line x1="240" y1="90" x2="240" y2="26" stroke="#FFFFFF" stroke-width="2.5" filter="url(#neonGlow3d)" />
+                <line x1="240" y1="90" x2="240" y2="26" stroke="#38BDF8" stroke-width="1" />
 
-                <!-- 6. Floating 3D Nodal Stations (Elevated in Isometric Space) -->
-                
+                <!-- 6. 3D Glowing Telemetry Data Pipeline Arches -->
+                <!-- Delhi to HQ Arc -->
+                <path d="M 102,34 Q 170,8 240,24" fill="none" stroke="url(#pipeHqDelhi)" stroke-width="2.6" class="data-pipeline-3d" filter="url(#neonGlow3d)" />
+                <!-- HQ to Mumbai Arc -->
+                <path d="M 240,24 Q 308,6 376,34" fill="none" stroke="url(#pipeHqMumbai)" stroke-width="2.6" class="data-pipeline-3d" filter="url(#neonGlow3d)" />
+                <!-- Bengaluru to HQ Arc -->
+                <path d="M 220,82 Q 228,50 240,24" fill="none" stroke="url(#pipeHqBlr)" stroke-width="1.8" class="data-pipeline-3d" opacity="0.8" />
+                <!-- Delhi to Mumbai Sub-Arc -->
+                <path d="M 102,34 Q 240,65 376,34" fill="none" stroke="#38BDF8" stroke-width="1" stroke-dasharray="4 6" opacity="0.4" />
+
+                <!-- 7. Floating 3D Holographic Nodal Stations -->
+
                 <!-- Delhi Nodal Cell (West) -->
-                <g class="iso-node-delhi">
-                  <ellipse cx="98" cy="38" rx="14" ry="5" fill="rgba(16, 185, 129, 0.25)" stroke="#10B981" stroke-width="1.4" />
-                  <circle cx="98" cy="35" r="4.5" fill="#10B981" stroke="#FFFFFF" stroke-width="1.2" />
+                <g class="iso-node-delhi" id="node-delhi">
+                  <ellipse cx="102" cy="36" rx="16" ry="5.5" fill="rgba(16, 185, 129, 0.3)" stroke="#10B981" stroke-width="1.6" />
+                  <ellipse cx="102" cy="36" rx="24" ry="8" fill="none" stroke="#10B981" stroke-width="1" opacity="0.5" stroke-dasharray="3 3" />
+                  <circle cx="102" cy="32" r="5" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5" filter="url(#neonGlow3d)" />
                   <!-- Delhi 3D Badge -->
-                  <rect x="56" y="16" width="84" height="15" rx="7.5" fill="var(--bg-card)" stroke="var(--border-color)" stroke-width="1" />
-                  <circle cx="64" cy="23.5" r="2.5" fill="#10B981" />
-                  <text x="70" y="26.5" fill="var(--text-secondary)" font-size="7.6" font-weight="700">Delhi Nodal Cell</text>
+                  <g filter="url(#dropShadowBadge)">
+                    <rect x="58" y="13" width="88" height="16" rx="8" fill="var(--bg-card)" stroke="#10B981" stroke-width="1.2" />
+                    <circle cx="67" cy="21" r="3" fill="#10B981" />
+                    <text x="74" y="24" fill="var(--text-primary)" font-size="7.8" font-weight="800">Delhi Nodal Cell</text>
+                  </g>
                 </g>
 
                 <!-- Mumbai Node (East) -->
-                <g class="iso-node-mumbai">
-                  <ellipse cx="362" cy="38" rx="14" ry="5" fill="rgba(245, 158, 11, 0.25)" stroke="#F59E0B" stroke-width="1.4" />
-                  <circle cx="362" cy="35" r="4.5" fill="#F59E0B" stroke="#FFFFFF" stroke-width="1.2" />
+                <g class="iso-node-mumbai" id="node-mumbai">
+                  <ellipse cx="376" cy="36" rx="16" ry="5.5" fill="rgba(245, 158, 11, 0.3)" stroke="#F59E0B" stroke-width="1.6" />
+                  <ellipse cx="376" cy="36" rx="24" ry="8" fill="none" stroke="#F59E0B" stroke-width="1" opacity="0.5" stroke-dasharray="3 3" />
+                  <circle cx="376" cy="32" r="5" fill="#F59E0B" stroke="#FFFFFF" stroke-width="1.5" filter="url(#neonGlow3d)" />
                   <!-- Mumbai 3D Badge -->
-                  <rect x="322" y="16" width="80" height="15" rx="7.5" fill="var(--bg-card)" stroke="var(--border-color)" stroke-width="1" />
-                  <circle cx="330" cy="23.5" r="2.5" fill="#F59E0B" />
-                  <text x="336" y="26.5" fill="var(--text-secondary)" font-size="7.6" font-weight="700">Mumbai Node</text>
+                  <g filter="url(#dropShadowBadge)">
+                    <rect x="332" y="13" width="88" height="16" rx="8" fill="var(--bg-card)" stroke="#F59E0B" stroke-width="1.2" />
+                    <circle cx="341" cy="21" r="3" fill="#F59E0B" />
+                    <text x="348" y="24" fill="var(--text-primary)" font-size="7.8" font-weight="800">Mumbai Gateway</text>
+                  </g>
                 </g>
 
                 <!-- Bengaluru Station (South) -->
-                <g>
-                  <ellipse cx="210" cy="80" rx="12" ry="4" fill="rgba(99, 102, 241, 0.25)" stroke="#6366F1" stroke-width="1" />
-                  <circle cx="210" cy="77.5" r="3.2" fill="#6366F1" stroke="#FFFFFF" stroke-width="1" />
-                  <text x="210" y="93" text-anchor="middle" fill="var(--text-muted)" font-size="6.8" font-weight="700">Bengaluru Cell</text>
+                <g class="iso-node-blr" id="node-blr">
+                  <ellipse cx="220" cy="82" rx="14" ry="5" fill="rgba(99, 102, 241, 0.3)" stroke="#818CF8" stroke-width="1.4" />
+                  <circle cx="220" cy="79" r="4" fill="#818CF8" stroke="#FFFFFF" stroke-width="1.2" />
+                  <g filter="url(#dropShadowBadge)">
+                    <rect x="180" y="63" width="80" height="14" rx="7" fill="var(--bg-card)" stroke="#818CF8" stroke-width="1" />
+                    <text x="220" y="73" text-anchor="middle" fill="var(--text-primary)" font-size="7.2" font-weight="700">Bengaluru Hub</text>
+                  </g>
                 </g>
 
-                <!-- Central HQ Kolkata (Elevated Centerpiece) -->
-                <g class="iso-node-hq">
+                <!-- Central HQ Kolkata (Highest Elevation / Centerpiece) -->
+                <g class="iso-node-hq" id="node-hq">
                   <!-- Holographic Base Discs -->
-                  <ellipse cx="230" cy="30" rx="26" ry="9" fill="rgba(37, 99, 235, 0.2)" stroke="#38BDF8" stroke-width="1.6" />
-                  <ellipse cx="230" cy="30" rx="16" ry="5.5" fill="none" stroke="#60A5FA" stroke-width="1.2" stroke-dasharray="4 2" />
+                  <ellipse cx="240" cy="26" rx="30" ry="10.5" fill="rgba(37, 99, 235, 0.35)" stroke="#38BDF8" stroke-width="2" />
+                  <ellipse cx="240" cy="26" rx="42" ry="14" fill="none" stroke="#38BDF8" stroke-width="1.2" opacity="0.6" stroke-dasharray="4 3" />
+                  <ellipse cx="240" cy="26" rx="18" ry="6.5" fill="none" stroke="#60A5FA" stroke-width="1.5" />
                   
                   <!-- Pulsing 3D Wave Ripple -->
-                  <ellipse cx="230" cy="30" rx="34" ry="12" fill="none" stroke="#38BDF8" stroke-width="1.2" opacity="0.6" class="animate-pulse-subtle" />
+                  <ellipse cx="240" cy="26" rx="52" ry="17" fill="none" stroke="#38BDF8" stroke-width="1" opacity="0.4" class="animate-pulse-subtle" />
                   
-                  <!-- Glowing Central 3D Sphere -->
-                  <circle cx="230" cy="24" r="6.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.8" filter="url(#glow3d)" />
-                  <circle cx="230" cy="24" r="2.5" fill="#FFFFFF" />
+                  <!-- Glowing Central 3D Sphere Core -->
+                  <circle cx="240" cy="20" r="7.5" fill="#0284C7" stroke="#FFFFFF" stroke-width="2.2" filter="url(#neonGlow3d)" />
+                  <circle cx="240" cy="20" r="3" fill="#FFFFFF" />
 
                   <!-- 3D HQ Floating Command Badge -->
-                  <rect x="162" y="2" width="136" height="17" rx="8.5" fill="var(--bg-card)" stroke="#38BDF8" stroke-width="1.2" />
-                  <circle cx="172" cy="10.5" r="3.2" fill="#38BDF8" />
-                  <text x="179" y="13.5" fill="var(--text-primary)" font-size="8.2" font-weight="850" letter-spacing="0.4">HQ • KOLKATA SECTOR V</text>
+                  <g filter="url(#dropShadowBadge)">
+                    <rect x="164" y="0" width="152" height="18" rx="9" fill="var(--bg-card)" stroke="#38BDF8" stroke-width="1.5" />
+                    <circle cx="175" cy="9" r="3.5" fill="#38BDF8" class="animate-pulse-subtle" />
+                    <text x="183" y="12.5" fill="var(--text-primary)" font-size="8.4" font-weight="850" letter-spacing="0.5">HQ • KOLKATA SECTOR V</text>
+                  </g>
                 </g>
               </svg>
             </div>
 
-            <!-- Telemetry Footer Bar -->
-            <div style="font-size: 0.74rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-top: 2px;">
-              <span style="display: flex; align-items: center; gap: 4px;">
+            <!-- Dynamic Telemetry Readout Footer -->
+            <div style="font-size: 0.73rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; margin-top: 1px; padding: 0 2px;">
+              <span style="display: flex; align-items: center; gap: 5px;">
                 <span style="color: var(--color-primary); font-weight: 700;">📍 Sector V, Salt Lake City</span>
-                <span style="color: var(--text-muted);">(22.57°N, 88.43°E)</span>
+                <span style="color: var(--text-muted); font-size: 0.68rem;">(22.57°N, 88.43°E)</span>
               </span>
-              <span style="color: #10B981; font-weight: 700; font-size: 0.7rem; background: rgba(16, 185, 129, 0.08); padding: 1px 6px; border-radius: 6px;">
-                Alt: +18m MSL • GovNet 100%
+              <span style="color: #10B981; font-weight: 700; font-size: 0.68rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1px 7px; border-radius: 8px; display: flex; align-items: center; gap: 4px;">
+                <span style="width: 4px; height: 4px; border-radius: 50%; background-color: #10B981;"></span>
+                Alt: +18m MSL • GovNet 10Gbps
               </span>
             </div>
           </div>
