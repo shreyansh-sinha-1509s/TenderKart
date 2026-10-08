@@ -40,10 +40,20 @@ db.serialize(() => {
       username TEXT NOT NULL UNIQUE,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
-      role TEXT DEFAULT 'user',
+      role TEXT DEFAULT 'contractor',
+      name TEXT,
+      company TEXT,
+      department TEXT,
+      user_code TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
+
+  // Gracefully ensure extra user columns exist for existing database instances
+  db.run("ALTER TABLE users ADD COLUMN name TEXT", () => {});
+  db.run("ALTER TABLE users ADD COLUMN company TEXT", () => {});
+  db.run("ALTER TABLE users ADD COLUMN department TEXT", () => {});
+  db.run("ALTER TABLE users ADD COLUMN user_code TEXT", () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS tenders (
@@ -63,9 +73,7 @@ db.serialize(() => {
   `);
 
   // Gracefully ensure source_url column exists for existing database instances
-  db.run("ALTER TABLE tenders ADD COLUMN source_url TEXT", (err) => {
-    // Column may already exist, ignore error
-  });
+  db.run("ALTER TABLE tenders ADD COLUMN source_url TEXT", () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS saved_tenders (
@@ -89,15 +97,145 @@ db.serialize(() => {
     );
   `);
 
-  // Seed default admin and contractor if users table is empty
+  // Seed default 5 Contractors and 6 Managers if users table is empty
   db.get("SELECT COUNT(*) AS count FROM users", (err, row) => {
     if (!err && row && row.count === 0) {
-      console.log("Seeding default users...");
-      const adminPass = bcrypt.hashSync("admin123", 10);
-      const contractorPass = bcrypt.hashSync("contractor123", 10);
+      console.log("Seeding realistic contractor and manager accounts...");
+      const defaultUsers = [
+        // --- 5 CONTRACTOR ACCOUNTS ---
+        {
+          username: "CON1001",
+          user_code: "CON1001",
+          name: "Rajesh Mehta",
+          company: "Mehta Infrastructure Works",
+          department: null,
+          email: "rajesh.mehta@demo.tenderkart.in",
+          passwordRaw: "Contractor@1001",
+          role: "contractor",
+          created_at: "2026-08-05 10:30:00"
+        },
+        {
+          username: "CON1002",
+          user_code: "CON1002",
+          name: "Amit Kulkarni",
+          company: "Kulkarni Civil Projects",
+          department: null,
+          email: "amit.kulkarni@demo.tenderkart.in",
+          passwordRaw: "Contractor@1002",
+          role: "contractor",
+          created_at: "2026-08-18 14:15:00"
+        },
+        {
+          username: "CON1003",
+          user_code: "CON1003",
+          name: "Suresh Patil",
+          company: "Patil Road & Bridge Contractors",
+          department: null,
+          email: "suresh.patil@demo.tenderkart.in",
+          passwordRaw: "Contractor@1003",
+          role: "contractor",
+          created_at: "2026-09-03 09:45:00"
+        },
+        {
+          username: "CON1004",
+          user_code: "CON1004",
+          name: "Neeraj Sharma",
+          company: "Sharma Urban Construction",
+          department: null,
+          email: "neeraj.sharma@demo.tenderkart.in",
+          passwordRaw: "Contractor@1004",
+          role: "contractor",
+          created_at: "2026-09-21 16:20:00"
+        },
+        {
+          username: "CON1005",
+          user_code: "CON1005",
+          name: "Vikram Desai",
+          company: "Desai Infrastructure Solutions",
+          department: null,
+          email: "vikram.desai@demo.tenderkart.in",
+          passwordRaw: "Contractor@1005",
+          role: "contractor",
+          created_at: "2026-10-07 11:10:00"
+        },
 
-      db.run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ["admin", "admin@tenderkart.gov", adminPass, "admin"]);
-      db.run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ["contractor", "info@buildcorp.com", contractorPass, "user"]);
+        // --- 6 MANAGER ACCOUNTS ---
+        {
+          username: "MGR2001",
+          user_code: "MGR2001",
+          name: "Anil Joshi",
+          company: null,
+          department: "Public Works Department",
+          email: "anil.joshi@demo.tenderkart.in",
+          passwordRaw: "Manager@2001",
+          role: "manager",
+          created_at: "2026-08-11 08:30:00"
+        },
+        {
+          username: "MGR2002",
+          user_code: "MGR2002",
+          name: "Priya Nair",
+          company: null,
+          department: "Urban Development Department",
+          email: "priya.nair@demo.tenderkart.in",
+          passwordRaw: "Manager@2002",
+          role: "manager",
+          created_at: "2026-08-29 12:00:00"
+        },
+        {
+          username: "MGR2003",
+          user_code: "MGR2003",
+          name: "Rohan Shah",
+          company: null,
+          department: "Municipal Infrastructure",
+          email: "rohan.shah@demo.tenderkart.in",
+          passwordRaw: "Manager@2003",
+          role: "manager",
+          created_at: "2026-09-14 15:45:00"
+        },
+        {
+          username: "MGR2004",
+          user_code: "MGR2004",
+          name: "Kavita Rao",
+          company: null,
+          department: "Water Supply Department",
+          email: "kavita.rao@demo.tenderkart.in",
+          passwordRaw: "Manager@2004",
+          role: "manager",
+          created_at: "2026-09-26 10:15:00"
+        },
+        {
+          username: "MGR2005",
+          user_code: "MGR2005",
+          name: "Manoj Verma",
+          company: null,
+          department: "Metro Infrastructure",
+          email: "manoj.verma@demo.tenderkart.in",
+          passwordRaw: "Manager@2005",
+          role: "manager",
+          created_at: "2026-10-09 14:00:00"
+        },
+        {
+          username: "MGR2006",
+          user_code: "MGR2006",
+          name: "Sneha Iyer",
+          company: null,
+          department: "Smart City Development",
+          email: "sneha.iyer@demo.tenderkart.in",
+          passwordRaw: "Manager@2006",
+          role: "manager",
+          created_at: "2026-10-24 17:30:00"
+        }
+      ];
+
+      defaultUsers.forEach(u => {
+        const hashedPassword = bcrypt.hashSync(u.passwordRaw, 10);
+        db.run(
+          `INSERT INTO users (username, user_code, name, company, department, email, password, role, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [u.username, u.user_code, u.name, u.company, u.department, u.email, hashedPassword, u.role, u.created_at]
+        );
+      });
     }
   });
 

@@ -77,8 +77,8 @@ router.post("/login", (req, res) => {
   }
 
   db.query(
-    "SELECT id, username, email, password, role FROM users WHERE username = ? OR email = ? LIMIT 1",
-    [usernameOrEmail, usernameOrEmail],
+    "SELECT id, username, email, password, role, name, company, department, user_code, created_at FROM users WHERE username = ? OR email = ? OR user_code = ? LIMIT 1",
+    [usernameOrEmail, usernameOrEmail, usernameOrEmail],
     (err, results) => {
       if (err) return res.status(500).json({ message: err.message });
 
@@ -93,14 +93,23 @@ router.post("/login", (req, res) => {
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        { id: user.id, username: user.username, role: user.role, name: user.name },
         JWT_SECRET,
         { expiresIn: "7d" }
       );
 
       return res.json({
         token,
-        user: { id: user.id, username: user.username, email: user.email, role: user.role },
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          email: user.email, 
+          role: user.role,
+          name: user.name,
+          company: user.company,
+          department: user.department,
+          user_code: user.user_code
+        },
         message: "Login successful"
       });
     }
@@ -110,7 +119,7 @@ router.post("/login", (req, res) => {
 // 3. Get Active User Profile
 router.get("/me", checkAuth, (req, res) => {
   db.query(
-    "SELECT id, username, email, role, created_at FROM users WHERE id = ? LIMIT 1",
+    "SELECT id, username, email, role, name, company, department, user_code, created_at FROM users WHERE id = ? LIMIT 1",
     [req.user.id],
     (err, results) => {
       if (err) return res.status(500).json({ message: err.message });

@@ -5,7 +5,7 @@ const db = require("../db");
 
 const JWT_SECRET = "student_secret_key_12345";
 
-// Middleware to check if user is admin
+// Middleware to check if user is admin or manager
 function checkAdmin(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -18,8 +18,9 @@ function checkAdmin(req, res, next) {
     if (err) {
       return res.status(403).json({ message: "Session expired. Please login again." });
     }
-    if (decoded.role !== "admin") {
-      return res.status(403).json({ message: "Access denied. Admin privileges required." });
+    const r = (decoded.role || "").toLowerCase();
+    if (r !== "admin" && r !== "manager") {
+      return res.status(403).json({ message: "Access denied. Admin or Manager privileges required." });
     }
     req.user = decoded;
     next();
@@ -32,8 +33,8 @@ router.get("/stats", checkAdmin, (req, res) => {
   db.query("SELECT COUNT(*) as count FROM tenders", [], (err, tendersRes) => {
     if (err) return res.status(500).json({ message: err.message });
     
-    // Query 2: Users Count
-    db.query("SELECT COUNT(*) as count FROM users WHERE role != 'admin'", [], (err, usersRes) => {
+    // Query 2: Contractors Count
+    db.query("SELECT COUNT(*) as count FROM users WHERE LOWER(role) NOT IN ('admin', 'manager')", [], (err, usersRes) => {
       if (err) return res.status(500).json({ message: err.message });
       
       // Query 3: Saved Tenders Count
@@ -49,11 +50,10 @@ router.get("/stats", checkAdmin, (req, res) => {
             if (err) return res.status(500).json({ message: err.message });
 
             // Query 6: Recent activities (logs)
-            // Fetch recent 3 tenders and 3 users to build mock activity list
             db.query("SELECT id, name, created_at FROM tenders ORDER BY id DESC LIMIT 3", [], (err, recentTenders) => {
               if (err) return res.status(500).json({ message: err.message });
 
-              db.query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 3", [], (err, recentUsers) => {
+              db.query("SELECT id, username, name, created_at FROM users ORDER BY id DESC LIMIT 3", [], (err, recentUsers) => {
                 if (err) return res.status(500).json({ message: err.message });
 
                 const recentActivity = [];
@@ -67,7 +67,7 @@ router.get("/stats", checkAdmin, (req, res) => {
                 recentUsers.forEach(u => {
                   recentActivity.push({
                     type: "user_registered",
-                    message: `New contractor "${u.username}" registered.`,
+                    message: `User "${u.name || u.username}" registered.`,
                     time: u.created_at
                   });
                 });
@@ -96,7 +96,7 @@ router.get("/stats", checkAdmin, (req, res) => {
 // 2. Get User/Contractor List
 router.get("/users", checkAdmin, (req, res) => {
   db.query(
-    "SELECT id, username, email, role, created_at FROM users ORDER BY id DESC",
+    "SELECT id, username, user_code, name, company, department, email, role, created_at FROM users ORDER BY id ASC",
     [],
     (err, results) => {
       if (err) return res.status(500).json({ message: err.message });

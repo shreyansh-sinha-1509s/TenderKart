@@ -144,9 +144,11 @@ function renderNavbar() {
 
   let authSectionHtml = "";
   if (user) {
-    const dashboardPage = user.role === "admin" ? "admin.html" : "dashboard.html";
-    const dashboardLabel = user.role === "admin" ? "Admin" : "Dashboard";
-    const dashboardIcon = user.role === "admin" 
+    const roleLower = (user.role || "").toLowerCase();
+    const isManagerOrAdmin = roleLower === "admin" || roleLower === "manager";
+    const dashboardPage = isManagerOrAdmin ? "admin.html" : "dashboard.html";
+    const dashboardLabel = isManagerOrAdmin ? "Manager Portal" : "Dashboard";
+    const dashboardIcon = isManagerOrAdmin 
       ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-alert"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>'
       : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
@@ -324,18 +326,21 @@ function setupAuthUI() {
   const user = userJson ? JSON.parse(userJson) : null;
   const path = currentPage();
 
-  if (path === "dashboard.html" && (!user || user.role === "admin")) {
+  const roleLower = (user && user.role ? user.role : "").toLowerCase();
+  const isManagerOrAdmin = roleLower === "admin" || roleLower === "manager";
+
+  if (path === "dashboard.html" && (!user || isManagerOrAdmin)) {
     alert("Please login first as contractor to access dashboard.");
     window.location.href = "login.html";
   }
 
-  if (path === "admin.html" && (!user || user.role !== "admin")) {
-    alert("Access denied. Admin authorization required.");
+  if (path === "admin.html" && (!user || !isManagerOrAdmin)) {
+    alert("Access denied. Manager / Admin authorization required.");
     window.location.href = "login.html";
   }
 
   if ((path === "login.html" || path === "register.html") && user) {
-    window.location.href = user.role === "admin" ? "admin.html" : "dashboard.html";
+    window.location.href = isManagerOrAdmin ? "admin.html" : "dashboard.html";
   }
 }
 
@@ -1320,8 +1325,11 @@ async function initDashboardPage() {
   const userJson = localStorage.getItem("user");
   const user = JSON.parse(userJson);
 
-  document.getElementById("profile-name").textContent = user.username;
-  document.getElementById("profile-email").textContent = `${user.email} • Contractor Workspace`;
+  const displayName = user.name || user.username;
+  const subText = user.company ? `${user.company} • ${user.email}` : `${user.email} • Contractor Workspace`;
+
+  document.getElementById("profile-name").textContent = displayName;
+  document.getElementById("profile-email").textContent = subText;
 
   // Tabs navigation
   window.switchTab = (tabName) => {
@@ -1649,21 +1657,27 @@ async function fetchAdminWorkspace() {
       }
     }
 
-    // 3. Fetch Contractor User accounts
+    // 3. Fetch User registry accounts (Contractors and Managers)
     const usersRes = await fetch(`${API_BASE}/admin/users`, { headers });
     if (usersRes.ok) {
       const usersData = await usersRes.json();
       const usersTableBody = document.getElementById("admin-users-table");
       if (usersTableBody) {
-        usersTableBody.innerHTML = usersData.map(u => `
-          <tr style="border-bottom: 1px solid var(--border-color);">
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">#${u.id}</td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><strong>${u.username}</strong></td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${u.email}</td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><span class="badge ${u.role === 'admin' ? 'badge-orange' : 'badge-green'}">${u.role}</span></td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${u.created_at.substring(0, 10)}</td>
-          </tr>
-        `).join("");
+        usersTableBody.innerHTML = usersData.map(u => {
+          const roleLower = (u.role || "").toLowerCase();
+          const badgeClass = (roleLower === 'admin' || roleLower === 'manager') ? 'badge-orange' : 'badge-green';
+          const orgInfo = u.company ? ` • ${u.company}` : (u.department ? ` • ${u.department}` : '');
+          const nameDisplay = u.name ? `<strong>${u.name}</strong><br><span style="font-size: 0.72rem; color: var(--text-muted);">${u.username}${orgInfo}</span>` : `<strong>${u.username}</strong>`;
+          return `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;">${u.user_code || u.username}</td>
+              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${nameDisplay}</td>
+              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${u.email}</td>
+              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><span class="badge ${badgeClass}" style="text-transform: capitalize;">${u.role}</span></td>
+              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${(u.created_at || '').substring(0, 10)}</td>
+            </tr>
+          `;
+        }).join("");
       }
     }
 
