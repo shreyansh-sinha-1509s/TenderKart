@@ -89,7 +89,7 @@
       background-color: var(--bg-card);
     }
 
-    /* Right Support Info & 3D Map Column */
+    /* Right Support Info & 3D Command Center Column */
     .contact-info-col {
       display: flex;
       flex-direction: column;
@@ -97,8 +97,8 @@
       justify-content: space-between;
     }
 
-    /* --- 3D Urban Infrastructure Connected Opportunities Section --- */
-    .smart-city-card {
+    /* --- 3D GovTech Secretariat & Procurement Telemetry Command Center --- */
+    .command-center-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 18px;
@@ -112,13 +112,13 @@
       overflow: hidden;
     }
 
-    .smart-city-card:hover {
+    .command-center-card:hover {
       border-color: rgba(56, 189, 248, 0.5);
       box-shadow: 0 16px 36px -8px rgba(37, 99, 235, 0.22), 0 0 0 1px rgba(56, 189, 248, 0.2);
       transform: translateY(-2px);
     }
 
-    .smart-city-wrapper {
+    .command-stage-wrapper {
       position: relative;
       width: 100%;
       height: 155px;
@@ -158,22 +158,26 @@
       50% { opacity: 1; }
     }
 
-    .float-pin-1 { animation: floatAnim 3.2s ease-in-out infinite; }
-    .float-pin-2 { animation: floatAnim 3.6s ease-in-out infinite 0.4s; }
-    .float-pin-3 { animation: floatAnim 3.0s ease-in-out infinite 0.8s; }
-    .float-pin-4 { animation: floatAnim 3.4s ease-in-out infinite 1.2s; }
+    .float-pin-hq { animation: floatHQ 3.2s ease-in-out infinite; }
+    .float-pin-delhi { animation: floatHQ 3.6s ease-in-out infinite 0.4s; }
+    .float-pin-mumbai { animation: floatHQ 3.0s ease-in-out infinite 0.8s; }
+    .float-pin-desk { animation: floatHQ 3.4s ease-in-out infinite 1.2s; }
 
-    @keyframes floatAnim {
+    @keyframes floatHQ {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-4px); }
     }
 
-    .city-interactive {
+    .satellite-orbit {
+      animation: satOrbit 12s linear infinite;
+    }
+
+    .cmd-interactive {
       cursor: pointer;
       transition: opacity 0.2s ease, filter 0.2s ease;
     }
-    .city-interactive:hover {
-      filter: brightness(1.25) drop-shadow(0 0 8px rgba(37, 99, 235, 0.4));
+    .cmd-interactive:hover {
+      filter: brightness(1.3) drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));
     }
 
     .contact-channels-grid {
@@ -371,190 +375,227 @@
           </form>
         </div>
 
-        <!-- Right: Multi-Channel Support & 3D Urban Infrastructure Showcase -->
+        <!-- Right: Multi-Channel Support & 3D GovTech Secretariat Command Center -->
         <div class="contact-info-col">
           
-          <!-- 3D Urban Infrastructure Connected Opportunities Card -->
-          <div class="smart-city-card">
-            <div class="smart-city-wrapper">
-              <svg viewBox="0 0 500 360" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="overflow: visible;">
+          <!-- Bespoke 3D GovTech Secretariat & Procurement Telemetry Command Center -->
+          <div class="command-center-card">
+            <div class="command-stage-wrapper">
+              <svg viewBox="0 0 500 320" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="overflow: visible;">
                 <defs>
-                  <linearGradient id="cityGlowGradContact" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0.05" />
+                  <!-- 3D Gradients & Filters -->
+                  <linearGradient id="cmdHqLeftGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#0284C7" stop-opacity="0.9" />
+                    <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95" />
                   </linearGradient>
-                  <linearGradient id="neonPurpleGradContact" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.5" />
-                    <stop offset="100%" stop-color="#D946EF" stop-opacity="0.1" />
+
+                  <linearGradient id="cmdHqRightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.95" />
+                    <stop offset="100%" stop-color="#0369A1" stop-opacity="0.95" />
                   </linearGradient>
-                  <linearGradient id="neonCyanGradContact" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.6" />
-                    <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.15" />
+
+                  <linearGradient id="cmdDelhiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#10B981" stop-opacity="0.85" />
+                    <stop offset="100%" stop-color="#064E3B" stop-opacity="0.9" />
                   </linearGradient>
-                  <linearGradient id="neonTealGradContact" x1="0%" y1="0%" x2="100%" y2="100%">
+
+                  <linearGradient id="cmdMumbaiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.85" />
+                    <stop offset="100%" stop-color="#78350F" stop-opacity="0.9" />
+                  </linearGradient>
+
+                  <linearGradient id="cmdBlrGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.85" />
+                    <stop offset="100%" stop-color="#3B0764" stop-opacity="0.9" />
+                  </linearGradient>
+
+                  <linearGradient id="laserBeamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stop-color="#10B981" />
-                    <stop offset="100%" stop-color="#059669" />
+                    <stop offset="50%" stop-color="#38BDF8" />
+                    <stop offset="100%" stop-color="#F59E0B" />
                   </linearGradient>
-                  <filter id="glowFilterContact" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
+
+                  <filter id="neonGlowCmd" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3.5" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
                   </filter>
                 </defs>
 
-                <!-- Background Isometric Grid Mesh -->
+                <!-- 1. Background Isometric Base Grid -->
                 <g opacity="0.18" stroke="#38BDF8" stroke-width="1">
-                  <path d="M 0,180 L 250,315 L 500,180 L 250,45 Z" fill="none" stroke-width="1.5" />
-                  <path d="M 50,180 L 250,270 L 450,180" fill="none" />
-                  <path d="M 100,180 L 250,225 L 400,180" fill="none" />
-                  <path d="M 0,180 L 500,180 M 250,45 L 250,315" fill="none" stroke-dasharray="4 4" />
+                  <path d="M 0,160 L 250,290 L 500,160 L 250,30 Z" fill="none" stroke-width="1.5" />
+                  <path d="M 50,160 L 250,250 L 450,160" fill="none" />
+                  <path d="M 100,160 L 250,210 L 400,160" fill="none" />
+                  <path d="M 0,160 L 500,160 M 250,30 L 250,290" fill="none" stroke-dasharray="4 4" />
                 </g>
 
-                <!-- Water Treatment & Environmental Infrastructure -->
-                <g class="city-interactive">
-                  <!-- Clarifier 1 -->
-                  <ellipse cx="420" cy="275" rx="26" ry="11" fill="rgba(6, 182, 212, 0.15)" stroke="#06B6D4" stroke-width="1.5" />
-                  <ellipse cx="420" cy="275" rx="16" ry="7" fill="rgba(6, 182, 212, 0.25)" stroke="#06B6D4" stroke-width="1" stroke-dasharray="3 3" />
-                  <circle cx="420" cy="275" r="3" fill="#06B6D4" />
-                  <line x1="420" y1="275" x2="444" y2="272" stroke="#06B6D4" stroke-width="1.5" />
-                  <!-- Water Tower Tank / Antenna -->
-                  <path d="M 420,275 L 420,225" stroke="#06B6D4" stroke-width="2.5" />
-                  <circle cx="420" cy="216" r="14" fill="url(#cityGlowGradContact)" stroke="#06B6D4" stroke-width="2" />
-                  <circle cx="420" cy="216" r="8" fill="rgba(6, 182, 212, 0.3)" stroke="#06B6D4" stroke-width="1" />
-                  <!-- Pipeline Network -->
-                  <path d="M 420,275 Q 345,305 270,275" fill="none" stroke="#06B6D4" stroke-width="2" stroke-dasharray="4 4" opacity="0.7" />
-                </g>
+                <!-- 2. Concentric Holographic Ground Rings around HQ -->
+                <ellipse cx="250" cy="225" rx="80" ry="26" fill="none" stroke="#2563EB" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="4 4" />
+                <ellipse cx="250" cy="225" rx="50" ry="16" fill="none" stroke="#38BDF8" stroke-width="1.2" stroke-opacity="0.5" />
+                <ellipse cx="250" cy="225" rx="22" ry="7" fill="rgba(56, 189, 248, 0.25)" stroke="#38BDF8" stroke-width="1.5" />
 
-                <!-- Cable-Stayed Bridge Infrastructure -->
-                <g class="city-interactive">
-                  <!-- A-Frame Pylon -->
-                  <path d="M 230,165 L 210,265 L 250,265 Z" fill="none" stroke="#10B981" stroke-width="2.5" />
-                  <line x1="220" y1="215" x2="240" y2="215" stroke="#10B981" stroke-width="1.5" />
-                  <!-- Suspension Cables -->
-                  <line x1="230" y1="165" x2="160" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-                  <line x1="230" y1="165" x2="185" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-                  <line x1="230" y1="165" x2="275" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-                  <line x1="230" y1="165" x2="300" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-                  <!-- Bridge Deck -->
-                  <path d="M 145,268 L 315,260" fill="none" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round" />
-                </g>
+                <!-- 3. Fiber-Optic Mesh Telemetry Laser Lines -->
+                <!-- Delhi to HQ -->
+                <path d="M 100,125 Q 175,70 250,85" fill="none" stroke="#10B981" stroke-width="2" stroke-dasharray="5 4" class="road-flow-line" filter="url(#neonGlowCmd)" />
+                <!-- HQ to Mumbai -->
+                <path d="M 250,85 Q 325,65 400,120" fill="none" stroke="#F59E0B" stroke-width="2" stroke-dasharray="5 4" class="road-flow-line" filter="url(#neonGlowCmd)" />
+                <!-- Bengaluru to HQ -->
+                <path d="M 310,185 Q 280,135 250,85" fill="none" stroke="#8B5CF6" stroke-width="1.8" stroke-dasharray="4 4" class="road-flow-line" opacity="0.8" />
+                <!-- Delhi to Mumbai Horizon Link -->
+                <path d="M 100,125 Q 250,140 400,120" fill="none" stroke="#38BDF8" stroke-width="1" stroke-dasharray="3 4" opacity="0.4" />
 
-                <!-- Highway & Flowing Traffic Corridor -->
-                <g class="city-interactive">
-                  <!-- Main Road Base -->
-                  <path d="M 20,315 Q 140,225 250,255 T 480,195" fill="none" stroke="rgba(15, 23, 42, 0.7)" stroke-width="22" stroke-linecap="round" />
-                  <path d="M 20,315 Q 140,225 250,255 T 480,195" fill="none" stroke="var(--border-color)" stroke-width="24" stroke-linecap="round" opacity="0.35" />
-                  <!-- Center Lane Dash Line -->
-                  <path d="M 20,315 Q 140,225 250,255 T 480,195" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="8 8" class="road-flow-line" />
+                <!-- 4. Front S-Curved Data Highway Corridor -->
+                <g class="cmd-interactive">
+                  <path d="M 25,275 Q 140,195 250,230 T 475,190" fill="none" stroke="rgba(15, 23, 42, 0.75)" stroke-width="20" stroke-linecap="round" />
+                  <path d="M 25,275 Q 140,195 250,230 T 475,190" fill="none" stroke="var(--border-color)" stroke-width="22" stroke-linecap="round" opacity="0.4" />
+                  <!-- Center neon dashed flow line -->
+                  <path d="M 25,275 Q 140,195 250,230 T 475,190" fill="none" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="6 6" class="road-flow-line" />
                   
-                  <!-- Flowing Vehicles -->
-                  <circle r="4" fill="#00F2FE" style="filter: drop-shadow(0 0 5px #00F2FE);">
-                    <animateMotion dur="6s" repeatCount="indefinite" path="M 20,315 Q 140,225 250,255 T 480,195" />
+                  <!-- Flowing Vehicle / Data Packets -->
+                  <circle r="3.5" fill="#00F2FE" style="filter: drop-shadow(0 0 5px #00F2FE);">
+                    <animateMotion dur="5.5s" repeatCount="indefinite" path="M 25,275 Q 140,195 250,230 T 475,190" />
                   </circle>
-                  <circle r="3.5" fill="#EF4444" style="filter: drop-shadow(0 0 5px #EF4444);">
-                    <animateMotion dur="8.5s" begin="2s" repeatCount="indefinite" path="M 20,315 Q 140,225 250,255 T 480,195" />
+                  <circle r="3" fill="#EC4899" style="filter: drop-shadow(0 0 5px #EC4899);">
+                    <animateMotion dur="7.5s" begin="2s" repeatCount="indefinite" path="M 25,275 Q 140,195 250,230 T 475,190" />
                   </circle>
-                  <circle r="3.5" fill="#FBBF24" style="filter: drop-shadow(0 0 4px #FBBF24);">
-                    <animateMotion dur="11s" begin="4.5s" repeatCount="indefinite" path="M 20,315 Q 140,225 250,255 T 480,195" />
+                  <circle r="3" fill="#10B981" style="filter: drop-shadow(0 0 4px #10B981);">
+                    <animateMotion dur="10s" begin="4s" repeatCount="indefinite" path="M 25,275 Q 140,195 250,230 T 475,190" />
                   </circle>
                 </g>
 
-                <!-- Elevated Metro Rail System -->
-                <g class="city-interactive">
-                  <!-- Track Structure -->
-                  <path d="M 35,160 L 465,125" fill="none" stroke="var(--border-color)" stroke-width="4" stroke-linecap="round" />
-                  <path d="M 35,160 L 465,125" fill="none" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="4 4" />
-                  <!-- Concrete Piers -->
-                  <line x1="110" y1="154" x2="110" y2="215" stroke="var(--border-color)" stroke-width="3" />
-                  <line x1="230" y1="144" x2="230" y2="225" stroke="var(--border-color)" stroke-width="3" />
-                  <line x1="350" y1="134" x2="350" y2="195" stroke="var(--border-color)" stroke-width="3" />
+                <!-- 5. 3D Architecture: North Node (Delhi Ministry Wing - Left) -->
+                <g class="cmd-interactive">
+                  <!-- Tower Left Face -->
+                  <path d="M 75,140 L 100,125 L 100,215 L 75,225 Z" fill="url(#cmdDelhiGrad)" stroke="#10B981" stroke-width="1.2" />
+                  <!-- Tower Right Face -->
+                  <path d="M 100,125 L 125,140 L 125,225 L 100,215 Z" fill="#065F46" stroke="#10B981" stroke-width="1.2" />
+                  <!-- Tower Roof Cap -->
+                  <polygon points="75,140 100,125 125,140 100,152" fill="#34D399" />
+                  <!-- Antenna Spire -->
+                  <line x1="100" y1="125" x2="100" y2="100" stroke="#10B981" stroke-width="2" />
+                  <circle cx="100" cy="100" r="3" fill="#10B981" class="pulse-node" style="filter: drop-shadow(0 0 6px #10B981);" />
+                  <!-- Windows slits -->
+                  <line x1="83" y1="155" x2="94" y2="148" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                  <line x1="106" y1="148" x2="117" y2="155" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                  <line x1="83" y1="180" x2="94" y2="173" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                  <line x1="106" y1="173" x2="117" y2="180" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                </g>
 
-                  <!-- High-Speed Metro Bullet Train -->
-                  <g>
-                    <rect x="-22" y="-5" width="44" height="10" rx="3.5" fill="#EC4899" style="filter: drop-shadow(0 0 6px #EC4899);" />
-                    <!-- Windows -->
-                    <rect x="-16" y="-3" width="7" height="3" fill="#FFFFFF" opacity="0.85" />
-                    <rect x="-6" y="-3" width="7" height="3" fill="#FFFFFF" opacity="0.85" />
-                    <rect x="4" y="-3" width="7" height="3" fill="#FFFFFF" opacity="0.85" />
-                    <circle cx="18" cy="0" r="1.5" fill="#00F2FE" />
-                    <animateMotion dur="5s" repeatCount="indefinite" path="M 35,160 L 465,125" />
+                <!-- 6. 3D Architecture: West Node (Mumbai Gateway - Right) -->
+                <g class="cmd-interactive">
+                  <!-- Tower Left Face -->
+                  <path d="M 375,135 L 400,120 L 400,210 L 375,220 Z" fill="url(#cmdMumbaiGrad)" stroke="#F59E0B" stroke-width="1.2" />
+                  <!-- Tower Right Face -->
+                  <path d="M 400,120 L 425,135 L 425,220 L 400,210 Z" fill="#92400E" stroke="#F59E0B" stroke-width="1.2" />
+                  <!-- Tower Roof Cap -->
+                  <polygon points="375,135 400,120 425,135 400,147" fill="#FBBF24" />
+                  <!-- Antenna Spire -->
+                  <line x1="400" y1="120" x2="400" y2="95" stroke="#F59E0B" stroke-width="2" />
+                  <circle cx="400" cy="95" r="3" fill="#F59E0B" class="pulse-node" style="filter: drop-shadow(0 0 6px #F59E0B);" />
+                  <!-- Windows slits -->
+                  <line x1="383" y1="150" x2="394" y2="143" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                  <line x1="406" y1="143" x2="417" y2="150" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                  <line x1="383" y1="175" x2="394" y2="168" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                  <line x1="406" y1="168" x2="417" y2="175" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
+                </g>
+
+                <!-- 7. 3D Architecture: South Node (Bengaluru Tech Cell - Sub-Center) -->
+                <g class="cmd-interactive">
+                  <path d="M 290,195 L 310,185 L 310,245 L 290,255 Z" fill="url(#cmdBlrGrad)" stroke="#8B5CF6" stroke-width="1.2" />
+                  <path d="M 310,185 L 330,195 L 330,255 L 310,245 Z" fill="#581C87" stroke="#8B5CF6" stroke-width="1.2" />
+                  <polygon points="290,195 310,185 330,195 310,203" fill="#C084FC" />
+                  <line x1="310" y1="185" x2="310" y2="170" stroke="#8B5CF6" stroke-width="1.5" />
+                  <circle cx="310" cy="170" r="2.5" fill="#8B5CF6" />
+                </g>
+
+                <!-- 8. 3D Architecture: Central HQ Command Secretariat Tower (Kolkata Sector V) -->
+                <g class="cmd-interactive">
+                  <!-- Main Glass Hexagonal Tower (Left Facet) -->
+                  <path d="M 215,100 L 250,82 L 250,225 L 215,238 Z" fill="url(#cmdHqLeftGrad)" stroke="#0284C7" stroke-width="1.5" />
+                  <!-- Main Glass Hexagonal Tower (Right Facet) -->
+                  <path d="M 250,82 L 285,100 L 285,238 L 250,225 Z" fill="url(#cmdHqRightGrad)" stroke="#38BDF8" stroke-width="1.5" />
+                  <!-- Penthouse Cap Platform -->
+                  <polygon points="215,100 250,82 285,100 250,114" fill="#60A5FA" stroke="#38BDF8" stroke-width="1.2" />
+                  
+                  <!-- Central Glowing Ridge Spine -->
+                  <line x1="250" y1="82" x2="250" y2="225" stroke="#FFFFFF" stroke-width="1.5" opacity="0.9" />
+
+                  <!-- Facade Modern Architectural Window Slits -->
+                  <line x1="225" y1="120" x2="242" y2="111" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="258" y1="111" x2="275" y2="120" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="225" y1="145" x2="242" y2="136" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="258" y1="136" x2="275" y2="145" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="225" y1="170" x2="242" y2="161" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="258" y1="161" x2="275" y2="170" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="225" y1="195" x2="242" y2="186" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+                  <line x1="258" y1="186" x2="275" y2="195" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
+
+                  <!-- Spire & Satellite Radar Antenna on Penthouse -->
+                  <line x1="250" y1="82" x2="250" y2="48" stroke="#38BDF8" stroke-width="2.5" />
+                  <circle cx="250" cy="48" r="4.5" fill="#38BDF8" stroke="#FFFFFF" stroke-width="1.5" style="filter: drop-shadow(0 0 8px #38BDF8);" class="pulse-node" />
+                  <ellipse cx="250" cy="58" rx="9" ry="3.5" fill="none" stroke="#60A5FA" stroke-width="1.2" />
+                </g>
+
+                <!-- 9. Orbital Telemetry Satellite with Laser Transmission Link -->
+                <g>
+                  <!-- Orbit Path -->
+                  <path d="M 50,60 Q 250,15 450,60" fill="none" stroke="#38BDF8" stroke-width="0.75" stroke-dasharray="3 4" opacity="0.35" />
+                  
+                  <!-- Satellite Body & Solar Panels -->
+                  <g class="satellite-orbit">
+                    <path d="M 50,60 Q 250,15 450,60">
+                      <animateMotion dur="14s" repeatCount="indefinite" path="M 50,60 Q 250,15 450,60" />
+                    </path>
+                    <rect x="-8" y="-3" width="16" height="6" rx="1.5" fill="#FFFFFF" stroke="#0284C7" stroke-width="1" />
+                    <rect x="-18" y="-4" width="8" height="8" rx="1" fill="#0284C7" stroke="#38BDF8" stroke-width="0.8" />
+                    <rect x="10" y="-4" width="8" height="8" rx="1" fill="#0284C7" stroke="#38BDF8" stroke-width="0.8" />
+                    <circle cx="0" cy="0" r="2" fill="#10B981" />
                   </g>
                 </g>
 
-                <!-- Modern Architectural Buildings & Smart Complexes -->
-                <g class="city-interactive">
-                  <!-- Center Tower -->
-                  <path d="M 325,90 L 355,75 L 385,90 L 385,205 L 355,218 L 325,205 Z" fill="url(#neonPurpleGradContact)" stroke="#8B5CF6" stroke-width="1.5" />
-                  <!-- Facade Server Node Lines -->
-                  <line x1="335" y1="108" x2="350" y2="100" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="360" y1="100" x2="375" y2="108" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="335" y1="135" x2="350" y2="128" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="360" y1="128" x2="375" y2="135" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="335" y1="162" x2="350" y2="155" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="360" y1="155" x2="375" y2="162" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-
-                  <!-- Back Tower -->
-                  <path d="M 265,65 L 290,52 L 315,65 L 315,148 L 290,158 L 265,148 Z" fill="rgba(15, 23, 42, 0.75)" stroke="#8B5CF6" stroke-width="1" />
-                  
-                  <!-- Front Left Complex -->
-                  <path d="M 75,130 L 105,115 L 135,130 L 135,220 L 105,232 L 75,220 Z" fill="url(#neonCyanGradContact)" stroke="#06B6D4" stroke-width="1.5" />
-                  <line x1="85" y1="148" x2="100" y2="140" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="110" y1="140" x2="125" y2="148" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="85" y1="175" x2="100" y2="168" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                  <line x1="110" y1="168" x2="125" y2="175" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-                </g>
-
-                <!-- Smart City Communication Nodes -->
-                <g class="city-interactive">
-                  <!-- Fiber Optics Network Link -->
-                  <path d="M 105,115 L 290,52 L 355,75 Z" fill="none" stroke="#06B6D4" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6" />
-                  <circle cx="105" cy="115" r="3.5" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
-                  <circle cx="290" cy="52" r="3.5" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
-                  <circle cx="355" cy="75" r="3.5" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
-                </g>
-
-                <!-- ---------------- ISOMETRIC FLOATING TENDER PINS ---------------- -->
+                <!-- 10. Floating 3D Holographic Status Pins (Themed for Helpdesk & Secretariat) -->
                 
-                <!-- Pin 1: Road Tender (Bottom-Left over highway) -->
-                <g transform="translate(100, 260)">
-                  <g class="float-pin-1">
-                    <rect x="-40" y="-11" width="80" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#F59E0B" stroke-width="1.5" />
-                    <circle cx="-28" cy="0" r="3" fill="#F59E0B" class="pulse-node" />
-                    <text x="-18" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Road Tender</text>
+                <!-- Pin 1: Central HQ Command (Top-Center) -->
+                <g transform="translate(250, 22)">
+                  <g class="float-pin-hq">
+                    <rect x="-65" y="-11" width="130" height="22" rx="7" fill="rgba(15, 23, 42, 0.94)" stroke="#38BDF8" stroke-width="1.5" filter="url(#neonGlowCmd)" />
+                    <circle cx="-50" cy="0" r="3.2" fill="#38BDF8" class="pulse-node" />
+                    <text x="-40" y="3.5" fill="#FFFFFF" font-size="8.2" font-weight="850" letter-spacing="0.4px">HQ Secretariat (Kolkata)</text>
                   </g>
                 </g>
 
-                <!-- Pin 2: Bridge Project (Center-Right over bridge) -->
-                <g transform="translate(245, 285)">
-                  <g class="float-pin-2">
-                    <rect x="-44" y="-11" width="88" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#10B981" stroke-width="1.5" />
-                    <circle cx="-31" cy="0" r="3" fill="#10B981" class="pulse-node" />
-                    <text x="-21" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Bridge Project</text>
+                <!-- Pin 2: Delhi Nodal (Left) -->
+                <g transform="translate(100, 80)">
+                  <g class="float-pin-delhi">
+                    <rect x="-48" y="-10" width="96" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#10B981" stroke-width="1.5" />
+                    <circle cx="-36" cy="0" r="3" fill="#10B981" class="pulse-node" />
+                    <text x="-27" y="3.5" fill="#FFFFFF" font-size="8" font-weight="800" letter-spacing="0.3px">Delhi Nodal Cell</text>
                   </g>
                 </g>
 
-                <!-- Pin 3: Metro Transit (Center-Left over elevated rail) -->
-                <g transform="translate(150, 110)">
-                  <g class="float-pin-3">
-                    <rect x="-46" y="-11" width="92" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#8B5CF6" stroke-width="1.5" />
-                    <circle cx="-33" cy="0" r="3" fill="#8B5CF6" class="pulse-node" />
-                    <text x="-22" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Metro Transit</text>
+                <!-- Pin 3: Mumbai Gateway (Right) -->
+                <g transform="translate(400, 75)">
+                  <g class="float-pin-mumbai">
+                    <rect x="-48" y="-10" width="96" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#F59E0B" stroke-width="1.5" />
+                    <circle cx="-36" cy="0" r="3" fill="#F59E0B" class="pulse-node" />
+                    <text x="-27" y="3.5" fill="#FFFFFF" font-size="8" font-weight="800" letter-spacing="0.3px">Mumbai Gateway</text>
                   </g>
                 </g>
 
-                <!-- Pin 4: Smart City (Top-Right over tower network) -->
-                <g transform="translate(360, 42)">
-                  <g class="float-pin-4">
-                    <rect x="-40" y="-11" width="80" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#06B6D4" stroke-width="1.5" />
-                    <circle cx="-28" cy="0" r="3" fill="#06B6D4" class="pulse-node" />
-                    <text x="-18" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Smart City</text>
+                <!-- Pin 4: Helpdesk Active Desk (Bottom-Left over Data Corridor) -->
+                <g transform="translate(125, 235)">
+                  <g class="float-pin-desk">
+                    <rect x="-55" y="-10" width="110" height="20" rx="6" fill="rgba(15, 23, 42, 0.94)" stroke="#8B5CF6" stroke-width="1.5" />
+                    <circle cx="-42" cy="0" r="3" fill="#8B5CF6" class="pulse-node" />
+                    <text x="-32" y="3.5" fill="#FFFFFF" font-size="7.8" font-weight="800" letter-spacing="0.3px">24x7 Helpdesk Desk</text>
                   </g>
                 </g>
               </svg>
 
               <!-- Branding Tag Label -->
-              <div style="position: absolute; bottom: 8px; left: 10px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.7px; color: #38BDF8; text-transform: uppercase; display: flex; align-items: center; gap: 5px; background-color: rgba(15, 23, 42, 0.88); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.25); backdrop-filter: blur(4px); z-index: 10; pointer-events: none;">
+              <div style="position: absolute; bottom: 8px; left: 10px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.7px; color: #38BDF8; text-transform: uppercase; display: flex; align-items: center; gap: 5px; background-color: rgba(15, 23, 42, 0.9); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); backdrop-filter: blur(4px); z-index: 10; pointer-events: none;">
                 <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background-color: #10B981;" class="pulse-node"></span>
-                Urban Infrastructure • Connected Opportunities
+                GovTech Command & Procurement Coordination Desk
               </div>
             </div>
           </div>
