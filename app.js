@@ -382,7 +382,7 @@ function initHomepage() {
       renderCategoryGrid(categories);
     })
     .catch(err => {
-      console.warn("Using fallback counts for demo illustration:", err.message);
+      console.warn("Using fallback counts for category illustration:", err.message);
       renderCategoryGrid(categories);
     });
 

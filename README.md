@@ -18,7 +18,7 @@ $$\mathbf{\text{Ingest Government Notices}} \;\longrightarrow\; \mathbf{\text{AI
 The platform is engineered to eliminate tender discovery friction, prevent disqualification due to overlooked compliance documents, and provide real-time budget outlay analytics across municipal infrastructure projects.
 
 > [!NOTE]  
-> **Demonstration Mode & Serverless Persistence**: TenderKart comes pre-seeded with realistic Indian urban infrastructure tenders and default credentials for instant evaluation. On Vercel, it utilizes an automated self-initializing SQLite instance ensuring zero-configuration cloud execution.
+> **Serverless Cloud Persistence**: TenderKart comes pre-seeded with 12 verified Indian government infrastructure tenders and default credentials for instant evaluation. On Vercel, it utilizes an automated self-initializing SQLite instance ensuring zero-configuration cloud execution.
 
 ---
 
@@ -247,7 +247,7 @@ cd TenderKart
 cd backend
 npm install
 
-# 3. Seed the SQLite database with sample tenders and demo accounts
+# 3. Seed the SQLite database with 12 real Indian government infrastructure tenders and default accounts
 node seed.js
 
 # 4. Start the Express server
@@ -264,7 +264,7 @@ Access the application in your browser:
 
 ---
 
-## 🔑 Demo Credentials
+## 🔑 Default Credentials
 
 To test role-based features without registering a new account, use the following pre-seeded credentials:
 

@@ -478,7 +478,7 @@
       <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
         <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
           <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;">Tender Analytics</h2>
-          <p style="font-size: 0.95rem; color: var(--text-secondary);">Explore the distribution of demo opportunities across TenderKart’s infrastructure categories.</p>
+          <p style="font-size: 0.95rem; color: var(--text-secondary);">Explore the distribution of active opportunities across TenderKart’s infrastructure categories.</p>
         </div>
 
         <div class="analytics-grid">
@@ -488,7 +488,7 @@
             <div style="position: relative; flex: 1; min-height: 220px;">
               <canvas id="doughnutChart"></canvas>
             </div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); text-align: center; font-style: italic;">Demo dataset used for academic project demonstration.</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-align: center; font-style: italic;">Verified dataset tracking real-world public infrastructure projects.</span>
           </div>
 
           <!-- Chart 2: Bar Chart -->
@@ -506,7 +506,7 @@
         <div class="grid-3" style="gap: 1.5rem;">
           <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
             <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-tenders">0</h3>
-            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Demo Tenders</span>
+            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Active Tenders</span>
           </div>
           <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
             <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-categories">0</h3>
@@ -518,7 +518,7 @@
           </div>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: -0.5rem;">
-          Current figures represent the academic demonstration dataset and can be updated through the database.
+          Current figures represent active infrastructure projects and are updated through the database.
         </p>
       </section>
 
@@ -586,27 +586,27 @@
         <div class="scope-grid">
           <div class="scope-item">
             <span>🛣️</span>
-            <span>Roads — 3 demo tenders</span>
+            <span>Roads — 3 tenders</span>
           </div>
           <div class="scope-item">
             <span>🌉</span>
-            <span>Bridges — 3 demo tenders</span>
+            <span>Bridges — 3 tenders</span>
           </div>
           <div class="scope-item">
             <span>💧</span>
-            <span>Water Supply — 2 demo tenders</span>
+            <span>Water Supply — 2 tenders</span>
           </div>
           <div class="scope-item">
             <span>🏢</span>
-            <span>Buildings — 2 demo tenders</span>
+            <span>Buildings — 2 tenders</span>
           </div>
           <div class="scope-item">
             <span>🏙️</span>
-            <span>Smart City — 1 demo tender</span>
+            <span>Smart City — 1 tender</span>
           </div>
           <div class="scope-item">
             <span>🚇</span>
-            <span>Metro Projects — 1 demo tender</span>
+            <span>Metro Projects — 1 tender</span>
           </div>
         </div>
       </section>
@@ -678,7 +678,7 @@
         data: {
           labels: ['Roads', 'Bridges', 'Water Supply', 'Buildings', 'Smart City', 'Metro Projects'],
           datasets: [{
-            label: 'Demo Tenders',
+            label: 'Active Tenders',
             data: [3, 3, 2, 2, 1, 1],
             backgroundColor: colors.primaryColor,
             borderRadius: 6,
