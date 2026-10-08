@@ -107,7 +107,7 @@ router.get("/users", checkAdmin, (req, res) => {
 
 // 3. Create Tender
 router.post("/tenders", checkAdmin, (req, res) => {
-  const { name, department, category, budget, location, deadline, eligibility, required_documents, description } = req.body;
+  const { name, department, category, budget, location, deadline, eligibility, required_documents, description, source_url } = req.body;
 
   if (!name || !department || !category || !budget || !location || !deadline || !eligibility || !description) {
     return res.status(400).json({ message: "All tender parameters are required" });
@@ -118,9 +118,9 @@ router.post("/tenders", checkAdmin, (req, res) => {
     : JSON.stringify([]);
 
   db.query(
-    `INSERT INTO tenders (name, department, category, budget, location, deadline, eligibility, required_documents, description)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [name, department, category, parseFloat(budget), location, deadline, eligibility, docString, description],
+    `INSERT INTO tenders (name, department, category, budget, location, deadline, eligibility, required_documents, description, source_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [name, department, category, parseFloat(budget), location, deadline, eligibility, docString, description, source_url || "https://eprocure.gov.in/eprocure/app"],
     (err, result) => {
       if (err) return res.status(500).json({ message: err.message });
 
@@ -139,7 +139,7 @@ router.post("/tenders", checkAdmin, (req, res) => {
 
 // 4. Update Tender
 router.put("/tenders/:id", checkAdmin, (req, res) => {
-  const { name, department, category, budget, location, deadline, eligibility, required_documents, description } = req.body;
+  const { name, department, category, budget, location, deadline, eligibility, required_documents, description, source_url } = req.body;
 
   if (!name || !department || !category || !budget || !location || !deadline || !eligibility || !description) {
     return res.status(400).json({ message: "All fields are required" });
@@ -151,9 +151,9 @@ router.put("/tenders/:id", checkAdmin, (req, res) => {
 
   db.query(
     `UPDATE tenders 
-     SET name = ?, department = ?, category = ?, budget = ?, location = ?, deadline = ?, eligibility = ?, required_documents = ?, description = ?
+     SET name = ?, department = ?, category = ?, budget = ?, location = ?, deadline = ?, eligibility = ?, required_documents = ?, description = ?, source_url = ?
      WHERE id = ?`,
-    [name, department, category, parseFloat(budget), location, deadline, eligibility, docString, description, req.params.id],
+    [name, department, category, parseFloat(budget), location, deadline, eligibility, docString, description, source_url || "https://eprocure.gov.in/eprocure/app", req.params.id],
     (err, result) => {
       if (err) return res.status(500).json({ message: err.message });
       if (result.affectedRows === 0) return res.status(404).json({ message: "Tender not found" });

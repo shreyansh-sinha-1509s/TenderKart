@@ -78,14 +78,15 @@ function getTenderStatus(deadlineStr) {
   now.setHours(0,0,0,0);
   
   if (deadline < now) {
-    return { label: "Closed", class: "badge-muted" };
+    return { label: "Closed", class: "badge-muted", countdown: "Closed" };
   }
   
   const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
-  if (diffDays <= 30) {
-    return { label: "Closing Soon", class: "badge-orange" };
+  if (diffDays <= 7) {
+    const dayText = diffDays === 1 ? "1 day" : `${diffDays} days`;
+    return { label: "Closing Soon", class: "badge-orange", countdown: `Closes in ${dayText}` };
   }
-  return { label: "Open", class: "badge-green" };
+  return { label: "Open", class: "badge-green", countdown: `Closes in ${diffDays} days` };
 }
 
 /* ---------------- TOAST POPUPS ---------------- */
@@ -394,9 +395,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "ROADS & HIGHWAYS",
     badgeClass: "badge-blue",
-    title: "NH-48 National Highway 6-Lane Expansion",
-    department: "National Highways Authority of India (NHAI) • Gujarat-Maharashtra",
-    value: "₹4,500 Cr",
+    title: "Delhi-Amritsar-Katra Expressway (Package 8)",
+    department: "National Highways Authority of India (NHAI) • Punjab Corridor",
+    value: "₹1,425 Cr",
     matchScore: "⚡ 99.2% Match",
     pipeline: "₹14,500+ Cr",
     categoryFilter: "Roads",
@@ -405,9 +406,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "METRO & TRANSIT",
     badgeClass: "badge-purple",
-    title: "Metro Line 4 - Elevated Viaduct & 4 Stations",
-    department: "MMRDA Urban Transit Board • Thane, Maharashtra",
-    value: "₹6,800 Cr",
+    title: "DMRC Phase-IV Aerocity to Tughlakabad Underground Corridor",
+    department: "Delhi Metro Rail Corporation (DMRC) • New Delhi",
+    value: "₹1,650 Cr",
     matchScore: "⚡ 98.4% Match",
     pipeline: "₹18,200+ Cr",
     categoryFilter: "Metro Projects",
@@ -416,9 +417,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "GOVT BUILDINGS",
     badgeClass: "badge-orange",
-    title: "Greenfield Integrated Govt Office Complex (IGOC)",
+    title: "Integrated Common Central Secretariat Office Complex (Blocks 4 & 5)",
     department: "Central Public Works Department (CPWD) • New Delhi",
-    value: "₹1,800 Cr",
+    value: "₹980 Cr",
     matchScore: "⚡ 97.6% Match",
     pipeline: "₹9,400+ Cr",
     categoryFilter: "Buildings",
@@ -427,9 +428,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "BRIDGES & FLYOVERS",
     badgeClass: "badge-green",
-    title: "Cable-Stayed Bridge Construction over Thane Creek",
+    title: "Thane-Navi Mumbai 6-Lane Creek Bridge across Thane Creek",
     department: "Mumbai Metropolitan Region Dev Authority • Mumbai",
-    value: "₹1,200 Cr",
+    value: "₹1,250 Cr",
     matchScore: "⚡ 96.8% Match",
     pipeline: "₹11,600+ Cr",
     categoryFilter: "Bridges",
@@ -438,9 +439,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "WATER INFRASTRUCTURE",
     badgeClass: "badge-cyan",
-    title: "100 MLD Centralized Water Treatment Plant",
-    department: "Pune Municipal Corporation (PMC) • Pune, Maharashtra",
-    value: "₹850 Cr",
+    title: "100 MLD Automated Water Treatment Plant at Chandrawal",
+    department: "Delhi Jal Board (DJB) • Delhi",
+    value: "₹580 Cr",
     matchScore: "⚡ 95.9% Match",
     pipeline: "₹7,800+ Cr",
     categoryFilter: "Water Supply",
@@ -449,9 +450,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "SMART CITY & ICCC",
     badgeClass: "badge-purple",
-    title: "Smart City Integrated Command & Control Center (ICCC)",
+    title: "Bhopal Smart City ICCC Expansion & City AI Video Analytics",
     department: "Bhopal Smart City Development Corp • Bhopal",
-    value: "₹420 Cr",
+    value: "₹385 Cr",
     matchScore: "⚡ 99.1% Match",
     pipeline: "₹15,100+ Cr",
     categoryFilter: "Smart City",
@@ -1074,9 +1075,9 @@ async function searchAndFilterTenders() {
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-            <span class="badge badge-green" style="display: inline-flex; align-items: center; gap: 4px; text-transform: none; font-size: 0.75rem;">
+            <span class="badge ${status.class}" style="display: inline-flex; align-items: center; gap: 4px; text-transform: none; font-size: 0.75rem;">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span>Deadline: ${t.deadline}</span>
+              <span>${t.deadline} (${status.countdown})</span>
             </span>
             <a href="tenderDetails.html?id=${t.id}" class="btn btn-outline" style="padding: 8px 14px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;">
               <span>View Details</span>
@@ -1159,15 +1160,22 @@ async function initTenderDetailsPage() {
       catBox.outerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="tender-category-container">
           <span class="badge badge-blue">${t.category}</span>
-          <span class="badge ${status.class}">${status.label}</span>
+          <span class="badge ${status.class}">${status.label} (${status.countdown})</span>
         </div>
       `;
     }
     document.getElementById("tender-budget").textContent = formatBudget(t.budget);
     document.getElementById("tender-location").textContent = t.location;
-    document.getElementById("tender-deadline").textContent = t.deadline;
+    document.getElementById("tender-deadline").textContent = `${t.deadline} (${status.countdown})`;
     document.getElementById("tender-description").textContent = t.description;
     document.getElementById("tender-eligibility").textContent = t.eligibility;
+
+    // Set official portal source link
+    const sourceBtn = document.getElementById("tender-source-btn");
+    if (sourceBtn && t.source_url) {
+      sourceBtn.href = t.source_url;
+      sourceBtn.title = `Open Official Source: ${t.source_url}`;
+    }
 
     // Renders required documents
     const docGrid = document.getElementById("tender-docs-grid");
