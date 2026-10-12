@@ -147,7 +147,7 @@ function renderNavbar() {
     const roleLower = (user.role || "").toLowerCase();
     const isManagerOrAdmin = roleLower === "admin" || roleLower === "manager";
     const dashboardPage = isManagerOrAdmin ? "admin.html" : "dashboard.html";
-    const dashboardLabel = isManagerOrAdmin ? "Manager Portal" : "Dashboard";
+    const dashboardLabel = roleLower === "admin" ? "Admin Helpdesk" : (roleLower === "manager" ? "Manager Portal" : "Dashboard");
     const dashboardIcon = isManagerOrAdmin 
       ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-alert"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>'
       : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
@@ -1528,9 +1528,9 @@ async function initDashboardPage() {
   const codeEl = document.getElementById("profile-code");
   if (codeEl) codeEl.textContent = user.user_code || "CON1001";
 
-  // Tabs navigation (Applications, Saved, Notifications)
+  // Tabs navigation (Applications, Saved, Notifications, Helpdesk)
   window.switchTab = (tabName) => {
-    const tabs = ["applications", "saved", "notifications"];
+    const tabs = ["applications", "saved", "notifications", "helpdesk"];
     tabs.forEach(t => {
       const panel = document.getElementById(`tab-${t}`);
       const btn = document.getElementById(`btn-${t}`);
@@ -1550,9 +1550,18 @@ async function initDashboardPage() {
       activeBtn.style.color = "#FFFFFF";
       activeBtn.classList.add("active");
     }
+
+    if (tabName === "helpdesk") {
+      fetchContractorHelpdesk();
+    }
   };
 
-  switchTab("applications");
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("tab") === "helpdesk" || window.location.hash === "#helpdesk") {
+    switchTab("helpdesk");
+  } else {
+    switchTab("applications");
+  }
   await fetchDashboardData();
 }
 
@@ -1655,10 +1664,255 @@ async function fetchDashboardData() {
       }
     }
 
+    // 4. Fetch Helpdesk Tickets Summary for Badge
+    const helpdeskRes = await fetch(`${API_BASE}/inquiries/mine`, { headers });
+    if (helpdeskRes.ok) {
+      const helpdeskData = await helpdeskRes.json();
+      const helpdeskBadge = document.getElementById("helpdesk-count");
+      if (helpdeskBadge) {
+        helpdeskBadge.textContent = helpdeskData.summary.totalTickets;
+      }
+    }
+
   } catch (err) {
     showToast("Error updating workspace data", "error");
   }
 }
+
+let currentContractorTicketId = null;
+
+async function fetchContractorHelpdesk() {
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/mine`, { headers });
+    if (!res.ok) {
+      showToast("Could not load helpdesk tickets", "error");
+      return;
+    }
+    const data = await res.json();
+    renderContractorHelpdesk(data);
+  } catch (err) {
+    showToast("Network error fetching helpdesk tickets", "error");
+  }
+}
+
+function renderContractorHelpdesk(data) {
+  const summary = data.summary || { totalTickets: 0, awaitingAdmin: 0, adminReplied: 0, resolved: 0 };
+  const tickets = data.tickets || [];
+
+  const totalEl = document.getElementById("stat-helpdesk-total");
+  const awaitingEl = document.getElementById("stat-helpdesk-awaiting");
+  const repliedEl = document.getElementById("stat-helpdesk-replied");
+  const resolvedEl = document.getElementById("stat-helpdesk-resolved");
+  const badgeEl = document.getElementById("helpdesk-count");
+
+  if (totalEl) totalEl.textContent = summary.totalTickets;
+  if (awaitingEl) awaitingEl.textContent = summary.awaitingAdmin;
+  if (repliedEl) repliedEl.textContent = summary.adminReplied;
+  if (resolvedEl) resolvedEl.textContent = summary.resolved;
+  if (badgeEl) badgeEl.textContent = summary.totalTickets;
+
+  const tbody = document.getElementById("helpdesk-tickets-tbody");
+  const emptyState = document.getElementById("helpdesk-empty-state");
+
+  if (!tbody) return;
+
+  if (tickets.length === 0) {
+    tbody.innerHTML = "";
+    if (emptyState) emptyState.style.display = "flex";
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = "none";
+
+  tbody.innerHTML = tickets.map(t => {
+    const statusLower = (t.status || "").toLowerCase();
+    let statusBadgeClass = "badge-blue";
+    if (statusLower === "new") statusBadgeClass = "badge-orange";
+    else if (statusLower === "in progress") statusBadgeClass = "badge-orange";
+    else if (statusLower === "awaiting user response") statusBadgeClass = "badge-blue";
+    else if (statusLower === "resolved") statusBadgeClass = "badge-green";
+
+    const tenderInfo = t.related_tender_id 
+      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${t.tender_name || ''}">TND-${t.related_tender_id}</span>`
+      : `<span style="color: var(--text-muted); font-size: 0.8rem;">General</span>`;
+
+    const lastActivity = t.last_activity_at 
+      ? new Date(t.last_activity_at).toLocaleDateString()
+      : (t.created_at ? new Date(t.created_at).toLocaleDateString() : "--");
+
+    const submittedDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : "--";
+
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--color-primary);">${t.ticket_number}</td>
+        <td style="font-weight: 600; color: var(--text-primary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.subject}">
+          ${t.subject}
+        </td>
+        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${t.inquiry_category}</span></td>
+        <td>${tenderInfo}</td>
+        <td style="color: var(--text-secondary); font-size: 0.8rem;">${submittedDate}</td>
+        <td><span class="badge ${statusBadgeClass}" style="font-size: 0.75rem;">${t.status}</span></td>
+        <td style="color: var(--text-muted); font-size: 0.8rem;">${lastActivity}</td>
+        <td style="text-align: right;">
+          <button onclick="openContractorTicketModal(${t.id})" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 12px;">
+            Open Ticket
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.openContractorTicketModal = async (id) => {
+  currentContractorTicketId = id;
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers });
+    if (!res.ok) {
+      showToast("Could not open ticket details", "error");
+      return;
+    }
+    const data = await res.json();
+    const t = data.ticket;
+    const messages = data.messages || [];
+
+    document.getElementById("cmodal-ticket-number").textContent = t.ticket_number;
+    document.getElementById("cmodal-ticket-subject").textContent = t.subject;
+    document.getElementById("cmodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Submitted on ${t.created_at}`;
+
+    const statusBadge = document.getElementById("cmodal-ticket-status-badge");
+    statusBadge.textContent = t.status;
+    const statusLower = (t.status || "").toLowerCase();
+    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
+
+    const prioBadge = document.getElementById("cmodal-ticket-priority-badge");
+    prioBadge.textContent = `${t.priority} Priority`;
+    prioBadge.className = "badge " + (t.priority === "High" || t.priority === "Urgent" ? "badge-orange" : "badge-secondary");
+
+    // Tender info
+    const tenderInfoBox = document.getElementById("cmodal-tender-info");
+    if (t.related_tender_id && t.tender_name) {
+      tenderInfoBox.style.display = "block";
+      document.getElementById("cmodal-tender-name").textContent = `${t.tender_name} (${t.tender_category || ''})`;
+    } else {
+      tenderInfoBox.style.display = "none";
+    }
+
+    // Admin alert banner
+    const adminAlert = document.getElementById("cmodal-admin-alert");
+    if (statusLower === "awaiting user response") {
+      adminAlert.style.display = "flex";
+    } else {
+      adminAlert.style.display = "none";
+    }
+
+    // Reply vs Resolved actions
+    const replyBox = document.getElementById("cmodal-reply-box");
+    const resolvedBox = document.getElementById("cmodal-resolved-box");
+    if (statusLower === "resolved") {
+      replyBox.style.display = "none";
+      resolvedBox.style.display = "flex";
+    } else {
+      replyBox.style.display = "flex";
+      resolvedBox.style.display = "none";
+    }
+
+    // Render conversation messages
+    const thread = document.getElementById("cmodal-conversation-thread");
+    thread.innerHTML = messages.map(m => {
+      const isFromAdmin = (m.sender_role || "").toLowerCase() === "admin";
+      const align = isFromAdmin ? "flex-start" : "flex-end";
+      const bg = isFromAdmin ? "rgba(37, 99, 235, 0.05)" : "var(--bg-secondary)";
+      const border = isFromAdmin ? "1px solid rgba(37, 99, 235, 0.25)" : "1px solid var(--border-color)";
+      const senderLabel = isFromAdmin ? "TenderKart Central Admin" : (m.sender_name_cached || "You");
+      const badgeRole = isFromAdmin 
+        ? `<span class="badge badge-orange" style="font-size: 0.65rem;">Central Admin</span>`
+        : `<span class="badge badge-blue" style="font-size: 0.65rem;">Contractor</span>`;
+
+      return `
+        <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
+          <div style="max-width: 85%; background: ${bg}; border: ${border}; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong style="color: var(--text-primary); font-size: 0.82rem;">${senderLabel}</strong>
+                ${badgeRole}
+              </div>
+              <span>${m.created_at || ''}</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${m.message_body}</p>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("contractor-ticket-modal").style.display = "block";
+    thread.scrollTop = thread.scrollHeight;
+  } catch (err) {
+    showToast("Error opening ticket modal", "error");
+  }
+};
+
+window.closeContractorTicketModal = () => {
+  const modal = document.getElementById("contractor-ticket-modal");
+  if (modal) modal.style.display = "none";
+  currentContractorTicketId = null;
+};
+
+window.submitContractorReply = async () => {
+  if (!currentContractorTicketId) return;
+  const input = document.getElementById("cmodal-reply-input");
+  const body = input ? input.value.trim() : "";
+  if (!body) {
+    showToast("Please enter a reply message", "warning");
+    return;
+  }
+
+  const btn = document.getElementById("cmodal-send-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
+
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${currentContractorTicketId}/messages`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ message_body: body })
+    });
+
+    if (res.ok) {
+      if (input) input.value = "";
+      showToast("Reply sent to TenderKart Admin", "success");
+      await openContractorTicketModal(currentContractorTicketId);
+      await fetchContractorHelpdesk();
+    } else {
+      const err = await res.json();
+      showToast(err.message || "Could not send reply", "error");
+    }
+  } catch (e) {
+    showToast("Network error sending reply", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Send Reply to Admin"; }
+  }
+};
+
+window.reopenCurrentTicket = async () => {
+  if (!currentContractorTicketId) return;
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${currentContractorTicketId}/reopen`, {
+      method: "PATCH",
+      headers: getAuthHeaders()
+    });
+
+    if (res.ok) {
+      showToast("Ticket has been reopened", "success");
+      await openContractorTicketModal(currentContractorTicketId);
+      await fetchContractorHelpdesk();
+    } else {
+      showToast("Could not reopen ticket", "error");
+    }
+  } catch (e) {
+    showToast("Network error reopening ticket", "error");
+  }
+};
 
 function renderContractorApplications(data) {
   // 1. Update 5 Summary Cards
@@ -2170,12 +2424,30 @@ async function initAdminPage() {
     });
   }
 
-  // Switch tabs (Stats, Add, Tenders, Users, Apps)
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const roleLower = (user.role || "").toLowerCase();
+  const isAdmin = roleLower === "admin";
+  const isManager = roleLower === "manager";
+
+  const adminHelpdeskBtn = document.getElementById("btn-admin-helpdesk");
+  const managerHelpdeskBtn = document.getElementById("btn-manager-helpdesk");
+
+  if (isAdmin) {
+    if (adminHelpdeskBtn) adminHelpdeskBtn.style.display = "flex";
+    if (managerHelpdeskBtn) managerHelpdeskBtn.style.display = "none";
+    fetchAdminHelpdeskBadge();
+  } else if (isManager) {
+    if (adminHelpdeskBtn) adminHelpdeskBtn.style.display = "none";
+    if (managerHelpdeskBtn) managerHelpdeskBtn.style.display = "flex";
+    fetchManagerHelpdeskBadge();
+  }
+
+  // Switch tabs (Stats, Add, Tenders, Users, Apps, Helpdesk, Manager Helpdesk)
   window.switchAdminTab = (tabName) => {
-    const tabs = ["stats", "add", "tenders", "users", "apps"];
+    const tabs = ["stats", "add", "tenders", "users", "apps", "helpdesk", "manager-helpdesk"];
     tabs.forEach(t => {
       const panel = document.getElementById(`admin-tab-${t}`);
-      const btn = document.getElementById(`btn-admin-${t}`);
+      const btn = document.getElementById(`btn-admin-${t}`) || document.getElementById(`btn-manager-${t}`);
       if (panel) panel.style.display = "none";
       if (btn) {
         btn.style.backgroundColor = "transparent";
@@ -2184,7 +2456,7 @@ async function initAdminPage() {
     });
 
     const activePanel = document.getElementById(`admin-tab-${tabName}`);
-    const activeBtn = document.getElementById(`btn-admin-${tabName}`);
+    const activeBtn = document.getElementById(`btn-admin-${tabName}`) || document.getElementById(`btn-manager-${tabName}`);
     if (activePanel) activePanel.style.display = "block";
     if (activeBtn) {
       activeBtn.style.backgroundColor = "var(--color-primary)";
@@ -2193,10 +2465,41 @@ async function initAdminPage() {
 
     if (tabName === "apps") {
       fetchAdminApplications();
+    } else if (tabName === "helpdesk") {
+      fetchAdminHelpdeskQueue();
+    } else if (tabName === "manager-helpdesk") {
+      fetchManagerHelpdesk();
     }
   };
 
-  switchAdminTab("stats");
+  // Wire filter listeners for Admin Queue
+  const filterSearch = document.getElementById("filter-inquiry-search");
+  const filterRole = document.getElementById("filter-inquiry-role");
+  const filterCat = document.getElementById("filter-inquiry-category");
+  const filterStatus = document.getElementById("filter-inquiry-status");
+  const filterPrio = document.getElementById("filter-inquiry-priority");
+
+  let debounceTimer;
+  if (filterSearch) {
+    filterSearch.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => fetchAdminHelpdeskQueue(), 300);
+    });
+  }
+  if (filterRole) filterRole.addEventListener("change", () => fetchAdminHelpdeskQueue());
+  if (filterCat) filterCat.addEventListener("change", () => fetchAdminHelpdeskQueue());
+  if (filterStatus) filterStatus.addEventListener("change", () => fetchAdminHelpdeskQueue());
+  if (filterPrio) filterPrio.addEventListener("change", () => fetchAdminHelpdeskQueue());
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetTab = urlParams.get("tab");
+  if (targetTab === "helpdesk" && isAdmin) {
+    switchAdminTab("helpdesk");
+  } else if ((targetTab === "helpdesk" || targetTab === "manager-helpdesk") && isManager) {
+    switchAdminTab("manager-helpdesk");
+  } else {
+    switchAdminTab("stats");
+  }
   await fetchAdminWorkspace();
 }
 
@@ -2520,44 +2823,658 @@ window.handleDeleteTrigger = async (tenderId) => {
   }
 };
 
-/* ---------------- CONTACT FORM ---------------- */
+/* ---------------- HELP DESK & INQUIRIES MANAGEMENT (ADMIN & MANAGER) ---------------- */
+let currentAdminTicketId = null;
+let currentManagerTicketId = null;
+
+async function fetchAdminHelpdeskBadge() {
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/admin/all`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      const badge = document.getElementById("admin-helpdesk-badge");
+      if (badge) badge.textContent = (data.summary && data.summary.countNew) || 0;
+    }
+  } catch (e) {}
+}
+
+async function fetchAdminHelpdeskQueue() {
+  const headers = getAuthHeaders();
+  const search = document.getElementById("filter-inquiry-search") ? document.getElementById("filter-inquiry-search").value.trim() : "";
+  const role = document.getElementById("filter-inquiry-role") ? document.getElementById("filter-inquiry-role").value : "";
+  const category = document.getElementById("filter-inquiry-category") ? document.getElementById("filter-inquiry-category").value : "";
+  const status = document.getElementById("filter-inquiry-status") ? document.getElementById("filter-inquiry-status").value : "";
+  const priority = document.getElementById("filter-inquiry-priority") ? document.getElementById("filter-inquiry-priority").value : "";
+
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (role) params.append("role", role);
+  if (category) params.append("category", category);
+  if (status) params.append("status", status);
+  if (priority) params.append("priority", priority);
+
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/admin/all?${params.toString()}`, { headers });
+    if (!res.ok) {
+      showToast("Access denied or error fetching admin helpdesk queue", "error");
+      return;
+    }
+    const data = await res.json();
+    renderAdminHelpdeskQueue(data);
+  } catch (err) {
+    showToast("Network error fetching admin queue", "error");
+  }
+}
+
+function renderAdminHelpdeskQueue(data) {
+  const summary = data.summary || {};
+  const inquiries = data.inquiries || [];
+
+  const totalEl = document.getElementById("stat-inquiries-total");
+  const newEl = document.getElementById("stat-inquiries-new");
+  const progressEl = document.getElementById("stat-inquiries-progress");
+  const awaitingEl = document.getElementById("stat-inquiries-awaiting");
+  const resolvedEl = document.getElementById("stat-inquiries-resolved");
+  const badgeEl = document.getElementById("admin-helpdesk-badge");
+
+  if (totalEl) totalEl.textContent = summary.totalInquiries || 0;
+  if (newEl) newEl.textContent = summary.countNew || 0;
+  if (progressEl) progressEl.textContent = summary.countInProgress || 0;
+  if (awaitingEl) awaitingEl.textContent = summary.countAwaitingUser || 0;
+  if (resolvedEl) resolvedEl.textContent = summary.countResolved || 0;
+  if (badgeEl) badgeEl.textContent = summary.countNew || 0;
+
+  const tbody = document.getElementById("admin-inquiries-tbody");
+  const emptyEl = document.getElementById("admin-inquiries-empty");
+  if (!tbody) return;
+
+  if (inquiries.length === 0) {
+    tbody.innerHTML = "";
+    if (emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = "none";
+
+  tbody.innerHTML = inquiries.map(t => {
+    const statusLower = (t.status || "").toLowerCase();
+    let statusClass = "badge-blue";
+    if (statusLower === "new") statusClass = "badge-orange";
+    else if (statusLower === "in progress") statusClass = "badge-orange";
+    else if (statusLower === "awaiting user response") statusClass = "badge-blue";
+    else if (statusLower === "resolved") statusClass = "badge-green";
+
+    const isManager = (t.sender_role || "").toLowerCase() === "manager";
+    const roleBadge = isManager
+      ? `<span class="badge badge-purple" style="font-size: 0.7rem; background: rgba(147, 51, 234, 0.1); color: #9333EA; border: 1px solid rgba(147, 51, 234, 0.25);">Manager</span>`
+      : `<span class="badge badge-blue" style="font-size: 0.7rem;">Contractor</span>`;
+
+    const prioBadge = t.priority === "High" || t.priority === "Urgent"
+      ? `<span class="badge badge-orange" style="font-size: 0.72rem;">${t.priority}</span>`
+      : `<span class="badge badge-secondary" style="font-size: 0.72rem;">${t.priority}</span>`;
+
+    const tenderInfo = t.related_tender_id 
+      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${t.tender_name || ''}">TND-${t.related_tender_id}</span>`
+      : `<span style="color: var(--text-muted); font-size: 0.78rem;">General</span>`;
+
+    const submittedDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : "--";
+
+    return `
+      <tr>
+        <td style="font-weight: 700; color: #D97706;">${t.ticket_number}</td>
+        <td style="font-weight: 600; color: var(--text-primary);">${t.sender_name}</td>
+        <td>${roleBadge}</td>
+        <td style="color: var(--text-secondary); font-size: 0.82rem;">${t.organization_name || '--'}</td>
+        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${t.inquiry_category}</span></td>
+        <td style="font-weight: 600; color: var(--text-primary); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.subject}">
+          ${t.subject}
+        </td>
+        <td>${tenderInfo}</td>
+        <td>${prioBadge}</td>
+        <td><span class="badge ${statusClass}" style="font-size: 0.74rem;">${t.status}</span></td>
+        <td style="color: var(--text-muted); font-size: 0.8rem;">${submittedDate}</td>
+        <td style="text-align: right;">
+          <button onclick="openAdminTicketModal(${t.id})" class="btn btn-primary" style="font-size: 0.78rem; padding: 4px 12px;">
+            Open Ticket
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.resetAdminInquiryFilters = () => {
+  if (document.getElementById("filter-inquiry-search")) document.getElementById("filter-inquiry-search").value = "";
+  if (document.getElementById("filter-inquiry-role")) document.getElementById("filter-inquiry-role").value = "";
+  if (document.getElementById("filter-inquiry-category")) document.getElementById("filter-inquiry-category").value = "";
+  if (document.getElementById("filter-inquiry-status")) document.getElementById("filter-inquiry-status").value = "";
+  if (document.getElementById("filter-inquiry-priority")) document.getElementById("filter-inquiry-priority").value = "";
+  fetchAdminHelpdeskQueue();
+};
+
+window.openAdminTicketModal = async (id) => {
+  currentAdminTicketId = id;
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers });
+    if (!res.ok) {
+      showToast("Could not load ticket details", "error");
+      return;
+    }
+    const data = await res.json();
+    const t = data.ticket;
+    const messages = data.messages || [];
+
+    document.getElementById("amodal-ticket-number").textContent = t.ticket_number;
+    document.getElementById("amodal-ticket-subject").textContent = t.subject;
+    document.getElementById("amodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Submitted on ${t.created_at}`;
+
+    const statusBadge = document.getElementById("amodal-ticket-status-badge");
+    statusBadge.textContent = t.status;
+    const statusLower = (t.status || "").toLowerCase();
+    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
+
+    const prioBadge = document.getElementById("amodal-ticket-priority-badge");
+    prioBadge.textContent = `${t.priority} Priority`;
+    prioBadge.className = "badge " + (t.priority === "High" || t.priority === "Urgent" ? "badge-orange" : "badge-secondary");
+
+    // Sender metadata
+    document.getElementById("amodal-sender-name").textContent = t.sender_name;
+    document.getElementById("amodal-sender-role").textContent = t.sender_role;
+    document.getElementById("amodal-sender-org").textContent = t.organization_name || "Independent";
+    document.getElementById("amodal-sender-email").textContent = t.sender_email;
+    document.getElementById("amodal-sender-phone").textContent = t.contact_number || "Not provided";
+
+    // Linked Tender info
+    const tenderBox = document.getElementById("amodal-tender-info");
+    if (t.related_tender_id && t.tender_name) {
+      tenderBox.style.display = "block";
+      document.getElementById("amodal-tender-name").textContent = `[TND-${t.related_tender_id}] ${t.tender_name}`;
+      document.getElementById("amodal-tender-extra").textContent = `(${t.tender_category} • Dept: ${t.tender_authority || ''} • Deadline: ${t.tender_deadline || ''})`;
+    } else {
+      tenderBox.style.display = "none";
+    }
+
+    // Set control selects
+    document.getElementById("amodal-priority-select").value = t.priority;
+    document.getElementById("amodal-status-select").value = t.status;
+
+    // Render conversation messages
+    const thread = document.getElementById("amodal-conversation-thread");
+    thread.innerHTML = messages.map(m => {
+      const isFromAdmin = (m.sender_role || "").toLowerCase() === "admin";
+      const align = isFromAdmin ? "flex-end" : "flex-start";
+      const bg = isFromAdmin ? "rgba(245, 158, 11, 0.05)" : "var(--bg-secondary)";
+      const border = isFromAdmin ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid var(--border-color)";
+      const senderLabel = isFromAdmin ? "Admin (You)" : `${m.sender_name_cached || t.sender_name} (${t.sender_role})`;
+
+      return `
+        <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
+          <div style="max-width: 85%; background: ${bg}; border: ${border}; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+              <strong style="color: var(--text-primary); font-size: 0.82rem;">${senderLabel}</strong>
+              <span>${m.created_at || ''}</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${m.message_body}</p>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("admin-ticket-modal").style.display = "block";
+    thread.scrollTop = thread.scrollHeight;
+  } catch (err) {
+    showToast("Error opening admin ticket modal", "error");
+  }
+};
+
+window.closeAdminTicketModal = () => {
+  const modal = document.getElementById("admin-ticket-modal");
+  if (modal) modal.style.display = "none";
+  currentAdminTicketId = null;
+};
+
+window.updateAdminTicketControls = async () => {
+  if (!currentAdminTicketId) return;
+  const priority = document.getElementById("amodal-priority-select").value;
+  const status = document.getElementById("amodal-status-select").value;
+
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/admin/${currentAdminTicketId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ priority, status })
+    });
+
+    if (res.ok) {
+      showToast("Ticket controls updated", "success");
+      await openAdminTicketModal(currentAdminTicketId);
+      await fetchAdminHelpdeskQueue();
+    } else {
+      showToast("Failed to update ticket controls", "error");
+    }
+  } catch (e) {
+    showToast("Error updating controls", "error");
+  }
+};
+
+window.submitAdminReply = async (targetStatus, isRequestInfo) => {
+  if (!currentAdminTicketId) return;
+  const input = document.getElementById("amodal-reply-input");
+  let body = input ? input.value.trim() : "";
+
+  if (isRequestInfo && !body) {
+    body = "Please share the relevant document, tender ID, and specific clarification so our administrative desk can proceed with your verification.";
+  }
+
+  if (!body) {
+    showToast("Please enter an administrative reply", "warning");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/admin/${currentAdminTicketId}/reply`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ message_body: body, status: targetStatus })
+    });
+
+    if (res.ok) {
+      if (input) input.value = "";
+      showToast("Official reply dispatched to sender dashboard", "success");
+      await openAdminTicketModal(currentAdminTicketId);
+      await fetchAdminHelpdeskQueue();
+    } else {
+      const err = await res.json();
+      showToast(err.message || "Failed to submit admin reply", "error");
+    }
+  } catch (e) {
+    showToast("Network error submitting admin reply", "error");
+  }
+};
+
+/* --- Manager Self-Service Helpdesk Logic --- */
+async function fetchManagerHelpdeskBadge() {
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/mine`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      const badge = document.getElementById("manager-helpdesk-badge");
+      if (badge) badge.textContent = (data.summary && data.summary.totalTickets) || 0;
+    }
+  } catch (e) {}
+}
+
+async function fetchManagerHelpdesk() {
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/mine`, { headers });
+    if (!res.ok) {
+      showToast("Could not load manager helpdesk tickets", "error");
+      return;
+    }
+    const data = await res.json();
+    renderManagerHelpdesk(data);
+  } catch (err) {
+    showToast("Network error fetching manager helpdesk", "error");
+  }
+}
+
+function renderManagerHelpdesk(data) {
+  const summary = data.summary || { totalTickets: 0, awaitingAdmin: 0, adminReplied: 0, resolved: 0 };
+  const tickets = data.tickets || [];
+
+  const totalEl = document.getElementById("stat-mgr-helpdesk-total");
+  const awaitingEl = document.getElementById("stat-mgr-helpdesk-awaiting");
+  const repliedEl = document.getElementById("stat-mgr-helpdesk-replied");
+  const resolvedEl = document.getElementById("stat-mgr-helpdesk-resolved");
+  const badgeEl = document.getElementById("manager-helpdesk-badge");
+
+  if (totalEl) totalEl.textContent = summary.totalTickets;
+  if (awaitingEl) awaitingEl.textContent = summary.awaitingAdmin;
+  if (repliedEl) repliedEl.textContent = summary.adminReplied;
+  if (resolvedEl) resolvedEl.textContent = summary.resolved;
+  if (badgeEl) badgeEl.textContent = summary.totalTickets;
+
+  const tbody = document.getElementById("manager-helpdesk-tbody");
+  const emptyState = document.getElementById("manager-helpdesk-empty");
+  if (!tbody) return;
+
+  if (tickets.length === 0) {
+    tbody.innerHTML = "";
+    if (emptyState) emptyState.style.display = "flex";
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = "none";
+
+  tbody.innerHTML = tickets.map(t => {
+    const statusLower = (t.status || "").toLowerCase();
+    let statusClass = "badge-blue";
+    if (statusLower === "new") statusClass = "badge-orange";
+    else if (statusLower === "in progress") statusClass = "badge-orange";
+    else if (statusLower === "awaiting user response") statusClass = "badge-blue";
+    else if (statusLower === "resolved") statusClass = "badge-green";
+
+    const tenderInfo = t.related_tender_id 
+      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${t.tender_name || ''}">TND-${t.related_tender_id}</span>`
+      : `<span style="color: var(--text-muted); font-size: 0.8rem;">General</span>`;
+
+    const lastActivity = t.last_activity_at 
+      ? new Date(t.last_activity_at).toLocaleDateString()
+      : (t.created_at ? new Date(t.created_at).toLocaleDateString() : "--");
+
+    const submittedDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : "--";
+
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--color-primary);">${t.ticket_number}</td>
+        <td style="font-weight: 600; color: var(--text-primary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.subject}">
+          ${t.subject}
+        </td>
+        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${t.inquiry_category}</span></td>
+        <td>${tenderInfo}</td>
+        <td style="color: var(--text-secondary); font-size: 0.8rem;">${submittedDate}</td>
+        <td><span class="badge ${statusClass}" style="font-size: 0.75rem;">${t.status}</span></td>
+        <td style="color: var(--text-muted); font-size: 0.8rem;">${lastActivity}</td>
+        <td style="text-align: right;">
+          <button onclick="openManagerTicketModal(${t.id})" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 12px;">
+            Open Ticket
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.openManagerTicketModal = async (id) => {
+  currentManagerTicketId = id;
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers });
+    if (!res.ok) {
+      showToast("Could not open manager ticket details", "error");
+      return;
+    }
+    const data = await res.json();
+    const t = data.ticket;
+    const messages = data.messages || [];
+
+    document.getElementById("mmodal-ticket-number").textContent = t.ticket_number;
+    document.getElementById("mmodal-ticket-subject").textContent = t.subject;
+    document.getElementById("mmodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Submitted on ${t.created_at}`;
+
+    const statusBadge = document.getElementById("mmodal-ticket-status-badge");
+    statusBadge.textContent = t.status;
+    const statusLower = (t.status || "").toLowerCase();
+    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
+
+    const prioBadge = document.getElementById("mmodal-ticket-priority-badge");
+    prioBadge.textContent = `${t.priority} Priority`;
+    prioBadge.className = "badge " + (t.priority === "High" || t.priority === "Urgent" ? "badge-orange" : "badge-secondary");
+
+    // Tender info
+    const tenderInfoBox = document.getElementById("mmodal-tender-info");
+    if (t.related_tender_id && t.tender_name) {
+      tenderInfoBox.style.display = "block";
+      document.getElementById("mmodal-tender-name").textContent = `${t.tender_name} (${t.tender_category || ''})`;
+    } else {
+      tenderInfoBox.style.display = "none";
+    }
+
+    // Admin alert banner
+    const adminAlert = document.getElementById("mmodal-admin-alert");
+    if (statusLower === "awaiting user response") {
+      adminAlert.style.display = "flex";
+    } else {
+      adminAlert.style.display = "none";
+    }
+
+    // Reply vs Resolved actions
+    const replyBox = document.getElementById("mmodal-reply-box");
+    const resolvedBox = document.getElementById("mmodal-resolved-box");
+    if (statusLower === "resolved") {
+      replyBox.style.display = "none";
+      resolvedBox.style.display = "flex";
+    } else {
+      replyBox.style.display = "flex";
+      resolvedBox.style.display = "none";
+    }
+
+    // Render conversation messages
+    const thread = document.getElementById("mmodal-conversation-thread");
+    thread.innerHTML = messages.map(m => {
+      const isFromAdmin = (m.sender_role || "").toLowerCase() === "admin";
+      const align = isFromAdmin ? "flex-start" : "flex-end";
+      const bg = isFromAdmin ? "rgba(37, 99, 235, 0.05)" : "var(--bg-secondary)";
+      const border = isFromAdmin ? "1px solid rgba(37, 99, 235, 0.25)" : "1px solid var(--border-color)";
+      const senderLabel = isFromAdmin ? "TenderKart Central Admin" : (m.sender_name_cached || "You (Manager)");
+      const badgeRole = isFromAdmin 
+        ? `<span class="badge badge-orange" style="font-size: 0.65rem;">Central Admin</span>`
+        : `<span class="badge badge-purple" style="font-size: 0.65rem; background: rgba(147, 51, 234, 0.1); color: #9333EA;">Manager</span>`;
+
+      return `
+        <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
+          <div style="max-width: 85%; background: ${bg}; border: ${border}; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <strong style="color: var(--text-primary); font-size: 0.82rem;">${senderLabel}</strong>
+                ${badgeRole}
+              </div>
+              <span>${m.created_at || ''}</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${m.message_body}</p>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("manager-ticket-modal").style.display = "block";
+    thread.scrollTop = thread.scrollHeight;
+  } catch (err) {
+    showToast("Error opening manager ticket modal", "error");
+  }
+};
+
+window.closeManagerTicketModal = () => {
+  const modal = document.getElementById("manager-ticket-modal");
+  if (modal) modal.style.display = "none";
+  currentManagerTicketId = null;
+};
+
+window.submitManagerReply = async () => {
+  if (!currentManagerTicketId) return;
+  const input = document.getElementById("mmodal-reply-input");
+  const body = input ? input.value.trim() : "";
+  if (!body) {
+    showToast("Please enter a reply message", "warning");
+    return;
+  }
+
+  const btn = document.getElementById("mmodal-send-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
+
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${currentManagerTicketId}/messages`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ message_body: body })
+    });
+
+    if (res.ok) {
+      if (input) input.value = "";
+      showToast("Reply dispatched to Central Admin", "success");
+      await openManagerTicketModal(currentManagerTicketId);
+      await fetchManagerHelpdesk();
+    } else {
+      const err = await res.json();
+      showToast(err.message || "Could not send reply", "error");
+    }
+  } catch (e) {
+    showToast("Network error sending reply", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Send Reply to Admin"; }
+  }
+};
+
+window.reopenManagerCurrentTicket = async () => {
+  if (!currentManagerTicketId) return;
+  try {
+    const res = await fetch(`${API_BASE}/inquiries/${currentManagerTicketId}/reopen`, {
+      method: "PATCH",
+      headers: getAuthHeaders()
+    });
+
+    if (res.ok) {
+      showToast("Ticket has been reopened", "success");
+      await openManagerTicketModal(currentManagerTicketId);
+      await fetchManagerHelpdesk();
+    } else {
+      showToast("Could not reopen ticket", "error");
+    }
+  } catch (e) {
+    showToast("Network error reopening ticket", "error");
+  }
+};
+
+/* ---------------- SHARED CONTACT & INQUIRY FORM ---------------- */
 function initContactPage() {
   const form = document.getElementById("contact-form");
   if (!form) return;
 
-  form.addEventListener("submit", (e) => {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const token = localStorage.getItem("token");
+
+  const orgInput = document.getElementById("contact-org");
+  const nameInput = document.getElementById("contact-name");
+  const emailInput = document.getElementById("contact-email");
+  const roleInput = document.getElementById("contact-role");
+  const roleBadge = document.getElementById("contact-role-badge");
+  const tenderInput = document.getElementById("contact-tender-id");
+
+  // Prefill authenticated user profile
+  if (user) {
+    const roleLower = (user.role || "").toLowerCase();
+    const roleDisplay = roleLower === "admin" ? "Admin" : (roleLower === "manager" ? "Manager" : "Contractor");
+
+    if (roleInput) roleInput.value = roleDisplay;
+    if (roleBadge) roleBadge.textContent = `${roleDisplay} Portal Helpdesk`;
+
+    if (nameInput) {
+      nameInput.value = user.name || user.username || "";
+      nameInput.readOnly = true;
+      nameInput.style.backgroundColor = "var(--bg-secondary)";
+    }
+
+    if (emailInput) {
+      emailInput.value = user.email || "";
+      emailInput.readOnly = true;
+      emailInput.style.backgroundColor = "var(--bg-secondary)";
+    }
+
+    if (orgInput) {
+      if (roleLower === "contractor") {
+        orgInput.value = user.company || "";
+      } else if (roleLower === "manager") {
+        orgInput.value = user.department || "Municipal Department";
+      } else {
+        orgInput.value = user.department || user.company || "TenderKart Administration";
+      }
+    }
+  } else {
+    if (roleBadge) roleBadge.textContent = "General Helpdesk Inquiry";
+  }
+
+  // Check URL query parameters for related tender prefill: ?tenderId=123
+  const urlParams = new URLSearchParams(window.location.search);
+  const paramTenderId = urlParams.get("tenderId") || urlParams.get("id");
+  if (paramTenderId && tenderInput) {
+    tenderInput.value = paramTenderId;
+  }
+
+  // Handle form submission
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const nameEl = document.getElementById("contact-name");
-    const emailEl = document.getElementById("contact-email");
-    const messageEl = document.getElementById("contact-message");
-    const subjectEl = document.getElementById("contact-subject");
 
-    const name = nameEl ? nameEl.value.trim() : "";
-    const email = emailEl ? emailEl.value.trim() : "";
-    const message = messageEl ? messageEl.value.trim() : "";
-    const subject = subjectEl ? subjectEl.value : "General Inquiry";
-
-    if (!name || !email || !message) {
-      showToast("Please complete all required fields", "warning");
+    if (!token) {
+      showToast("Please log in as a contractor or manager to submit helpdesk inquiries", "warning");
+      setTimeout(() => { window.location.href = "login.html"; }, 1500);
       return;
     }
 
-    const submitBtn = form.querySelector("button[type='submit']");
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span>Transmitting Inquiry...</span>`;
+    const org = orgInput ? orgInput.value.trim() : "";
+    const name = nameInput ? nameInput.value.trim() : "";
+    const email = emailInput ? emailInput.value.trim() : "";
+    const category = document.getElementById("contact-category") ? document.getElementById("contact-category").value : "";
+    const tenderId = tenderInput ? tenderInput.value.trim() : "";
+    const phone = document.getElementById("contact-phone") ? document.getElementById("contact-phone").value.trim() : "";
+    const subject = document.getElementById("contact-subject") ? document.getElementById("contact-subject").value.trim() : "";
+    const message = document.getElementById("contact-message") ? document.getElementById("contact-message").value.trim() : "";
+
+    if (!org || !name || !email || !category || !subject || !message) {
+      showToast("Please fill in all required fields", "warning");
+      return;
     }
 
-    setTimeout(() => {
+    const submitBtn = document.getElementById("contact-submit-btn") || form.querySelector("button[type='submit']");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Submitting to Admin Helpdesk...</span>`;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/inquiries`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          organization_name: org,
+          inquiry_category: category,
+          related_tender_id: tenderId ? parseInt(tenderId, 10) : null,
+          contact_number: phone || null,
+          subject,
+          description: message
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Show success banner with generated ticket number
+        const banner = document.getElementById("contact-success-banner");
+        const headerEl = document.getElementById("success-ticket-header");
+        const msgEl = document.getElementById("success-ticket-msg");
+        const viewBtn = document.getElementById("success-view-ticket-btn");
+
+        if (headerEl) headerEl.textContent = `Inquiry Ticket ${data.ticket_number} Registered`;
+        if (msgEl) {
+          msgEl.textContent = `Your inquiry has been stored and routed to the TenderKart Central Admin. Replies and status updates will appear in your dashboard.`;
+        }
+
+        if (viewBtn) {
+          const roleLower = user ? (user.role || "").toLowerCase() : "contractor";
+          viewBtn.href = (roleLower === "admin" || roleLower === "manager") ? "admin.html?tab=helpdesk" : "dashboard.html?tab=helpdesk";
+        }
+
+        form.style.display = "none";
+        if (banner) banner.style.display = "block";
+
+        showToast(`Helpdesk inquiry ${data.ticket_number} registered successfully!`, "success");
+        form.reset();
+      } else {
+        showToast(data.message || "Failed to submit inquiry", "error");
+      }
+    } catch (err) {
+      showToast("Network connection error. Please try again.", "error");
+    } finally {
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = `
-          <span>Submit Inquiry to Helpdesk</span>
+          <span>Submit Inquiry to Admin Helpdesk</span>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         `;
       }
-      form.reset();
-      showToast(`Thank you, ${name}! Your inquiry regarding "${subject}" has been registered. Our procurement desk will contact you within 2 hours.`, "success");
-    }, 600);
+    }
   });
 }

@@ -121,6 +121,58 @@ db.serialize(() => {
     );
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_number TEXT NOT NULL UNIQUE,
+      sender_user_id INTEGER NOT NULL,
+      sender_role TEXT NOT NULL,
+      organization_name TEXT,
+      sender_name TEXT NOT NULL,
+      sender_email TEXT NOT NULL,
+      contact_number TEXT,
+      inquiry_category TEXT NOT NULL,
+      related_tender_id INTEGER,
+      subject TEXT NOT NULL,
+      description TEXT NOT NULL,
+      assigned_to TEXT DEFAULT 'admin',
+      priority TEXT DEFAULT 'Medium',
+      status TEXT DEFAULT 'New',
+      resolved_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      demo_record INTEGER DEFAULT 0,
+      FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY(related_tender_id) REFERENCES tenders(id) ON DELETE SET NULL
+    );
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inquiry_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      inquiry_id INTEGER NOT NULL,
+      sender_user_id INTEGER NOT NULL,
+      sender_role TEXT NOT NULL,
+      message_body TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      read_at TEXT,
+      FOREIGN KEY(inquiry_id) REFERENCES inquiries(id) ON DELETE CASCADE,
+      FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  // Ensure default central admin account exists
+  db.get("SELECT id FROM users WHERE role = 'admin' OR username = 'admin'", (err, row) => {
+    if (!err && !row) {
+      const adminHash = bcrypt.hashSync("Admin@1001", 10);
+      db.run(
+        `INSERT INTO users (username, user_code, name, company, department, email, password, role, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        ["admin", "ADM1001", "TenderKart Central Admin", "TenderKart Administration", "System Administration & Helpdesk", "admin@demo.tenderkart.in", adminHash, "admin"]
+      );
+    }
+  });
+
   // Seed default 5 Contractors and 6 Managers if users table is empty
   db.get("SELECT COUNT(*) AS count FROM users", (err, row) => {
     if (!err && row && row.count === 0) {

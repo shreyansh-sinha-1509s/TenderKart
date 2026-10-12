@@ -215,18 +215,74 @@ TenderKart/
 │   └── index.js               # Serverless entrypoint exporting Express app
 ├── backend/
 │   ├── server.js              # Express application server and middleware setup
-│   ├── db.js                  # SQLite connection helper with serverless /tmp auto-sync
-│   ├── seed.js                # Database seeding script with realistic urban tenders
+│   ├── db.js                  # SQLite connection helper with serverless /tmp auto-sync & helpdesk schema
+│   ├── seed.js                # Database master seeding script
+│   ├── seed_helpdesk.js       # Idempotent helpdesk tickets & two-way conversation seed script
+│   ├── test_helpdesk_acceptance.js # Comprehensive 33-step automated role & API test suite
 │   ├── tenderkart.db          # Pre-built SQLite database file
 │   ├── package.json           # Backend dependencies and scripts
 │   └── routes/
 │       ├── users.js           # Auth routes (register, login, profile validation)
 │       ├── tenders.js         # Tender CRUD and Gemini AI summarizer endpoints
 │       ├── saved.js           # Contractor watchlist persistence endpoints
+│       ├── inquiries.js       # Centralized Helpdesk tickets, conversation replies & role-guarded APIs
 │       └── admin.js           # Protected administrative statistics & governance routes
 └── images/
     └── logo.jpg               # Official TenderKart branding emblem
 ```
+
+---
+
+## 🎧 Centralized Helpdesk & Inquiry Management System
+
+TenderKart features an enterprise-grade, role-isolated **Centralized Helpdesk and Inquiry Management Architecture**:
+
+```text
+  ┌───────────────────────────┐         ┌───────────────────────────┐
+  │   Contractor Portal       │         │     Manager Portal        │
+  │   (Rajesh, Amit, etc.)    │         │   (Anil, Priya, etc.)     │
+  └─────────────┬─────────────┘         └─────────────┬─────────────┘
+                │                                     │
+                │  1. Submit Shared Helpdesk Inquiry  │
+                └──────────────────┬──────────────────┘
+                                   ▼
+                ┌─────────────────────────────────────┐
+                │    POST /api/inquiries              │
+                │    Auto-Assigned to 'admin'         │
+                └──────────────────┬──────────────────┘
+                                   ▼
+                ┌─────────────────────────────────────┐
+                │   🛡️ Central Administrator Queue    │
+                │   (admin / Admin@1001)              │
+                │   - Full Inquiries Triage           │
+                │   - Priority & Status Transition    │
+                │   - Two-Way Threaded Replies        │
+                └──────────────────┬──────────────────┘
+                                   │
+                ┌──────────────────┴──────────────────┐
+                ▼                                     ▼
+  ┌───────────────────────────┐         ┌───────────────────────────┐
+  │ Contractor "My Tickets"   │         │ Manager "My Tickets"      │
+  │ - Isolated to Owner       │         │ - Isolated to Owner       │
+  │ - Reply & Reopen Support  │         │ - Reply & Reopen Support  │
+  └───────────────────────────┘         └───────────────────────────┘
+```
+
+### Key Helpdesk Features
+- **Shared Inquiry Form (`contact.html`)**: Automatically identifies authenticated user profile, locks sender role, prefills company/department, provides 9 official inquiry classifications, supports optional tender linkage and phone number.
+- **Strict Role Isolation**: Contractors only view their own tickets. Managers only view their own tickets (ordinary managers do NOT have access to the central admin queue). Only the central `admin` user has access to the full queue, status transitions, and priority controls.
+- **Chronological Threaded Conversations**: Every ticket supports bidirectional replies. The original message and all follow-up replies are preserved in chronological order with audit timestamps.
+- **Reopen Workflow**: Senders can reopen resolved tickets if further clarification is required.
+
+### Helpdesk API Endpoints
+- `POST /api/inquiries` — Create a new inquiry (Authenticated Contractor or Manager).
+- `GET /api/inquiries/mine` — Retrieve authenticated user's own tickets and metric summary.
+- `GET /api/inquiries/:id` — View ticket details and full conversation history (Owner or Admin only; 403 Forbidden otherwise).
+- `POST /api/inquiries/:id/messages` — Dispatch follow-up reply message (Owner or Admin only).
+- `PATCH /api/inquiries/:id/reopen` — Reopen a resolved ticket (Owner or Admin only).
+- `GET /api/inquiries/admin/all` — Retrieve centralized helpdesk queue with multi-parameter filtering (Strictly `admin` role).
+- `PATCH /api/inquiries/admin/:id` — Update ticket priority and status (Strictly `admin` role).
+- `POST /api/inquiries/admin/:id/reply` — Send admin response with automatic status adjustment (Strictly `admin` role).
 
 ---
 
@@ -247,10 +303,13 @@ cd TenderKart
 cd backend
 npm install
 
-# 3. Seed the SQLite database with 12 real Indian government infrastructure tenders and default accounts
+# 3. Seed the SQLite database (Tenders, Realistic Users, Applications, and Helpdesk Tickets)
 node seed.js
 
-# 4. Start the Express server
+# 4. Run automated acceptance test suite (33 assertions verifying role security & helpdesk flows)
+node test_helpdesk_acceptance.js
+
+# 5. Start the Express server
 npm start
 # or with nodemon for live development:
 npm run dev
@@ -258,19 +317,34 @@ npm run dev
 
 Access the application in your browser:
 - **Homepage:** [http://localhost:5000/](http://localhost:5000/)
-- **Tenders Catalog:** [http://localhost:5000/tenders.html](http://localhost:5000/tenders.html)
+- **Shared Helpdesk:** [http://localhost:5000/contact.html](http://localhost:5000/contact.html)
 - **Contractor Dashboard:** [http://localhost:5000/dashboard.html](http://localhost:5000/dashboard.html)
-- **Admin Console:** [http://localhost:5000/admin.html](http://localhost:5000/admin.html)
-
----
+- **Manager & Admin Portal:** [http://localhost:5000/admin.html](http://localhost:5000/admin.html)
 
 ---
 
 ## 🔑 Realistic Demo Accounts & Testing Credentials
 
-The SQLite database is pre-seeded with 10 realistic demo contractor profiles (with distinct bidding histories, win rates, and analysis records) and 6 departmental managers:
+The SQLite database is pre-seeded with dedicated accounts across all three platform roles:
 
-### 👷 Contractor Accounts (for Testing Application Histories & Win Rates)
+### 🛡️ Central Website Administrator (Helpdesk Queue Master)
+
+| User ID / Login | Role | Name | Email | Password | Access Level |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`admin`** (`ADM1001`) | **`admin`** | Main Website Admin | `admin@demo.tenderkart.in` | `Admin@1001` | **Full Governance & Centralized Helpdesk Queue Access** |
+
+### 🏛️ Municipal & Departmental Manager Accounts (Can Submit & Track Inquiries)
+
+| User ID | Manager Name | Department | Password |
+| :--- | :--- | :--- | :--- |
+| **`MGR2001`** | Anil Joshi | Public Works Department (PWD) | `Manager@2001` |
+| **`MGR2002`** | Priya Nair | Urban Development Department | `Manager@2002` |
+| **`MGR2003`** | Rohan Shah | Municipal Infrastructure | `Manager@2003` |
+| **`MGR2004`** | Kavita Rao | Water Supply Department | `Manager@2004` |
+| **`MGR2005`** | Manoj Verma | Metro Rail Infrastructure | `Manager@2005` |
+| **`MGR2006`** | Sneha Iyer | Smart City Development | `Manager@2006` |
+
+### 👷 Contractor Accounts (Can Submit & Track Inquiries)
 
 | User ID | Contractor Name & Company | Password | Application Pattern | Win Rate |
 | :--- | :--- | :--- | :--- | :--- |
@@ -285,16 +359,19 @@ The SQLite database is pre-seeded with 10 realistic demo contractor profiles (wi
 | **`CON1009`** | Tarun Aggarwal (Aggarwal Smart Utilities) | `Contractor@1009` | **New Contractor** (2 bids: 0 Won, 0 Lost, 2 Pending) | *N/A (Pending)* |
 | **`CON1010`** | Pooja Hegde (Hegde Water Works & Pipelines) | `Contractor@1010` | **Only Pending** (3 bids: 0 Won, 0 Lost, 3 Pending) | *N/A (Pending)* |
 
-### 🏛️ Municipal & Departmental Manager Accounts
+---
 
-| User ID | Manager Name | Department | Password |
-| :--- | :--- | :--- | :--- |
-| **`MGR2001`** | Anil Joshi | Public Works Department (PWD) | `Manager@2001` |
-| **`MGR2002`** | Priya Nair | Urban Development Department | `Manager@2002` |
-| **`MGR2003`** | Rohan Shah | Municipal Infrastructure | `Manager@2003` |
-| **`MGR2004`** | Kavita Rao | Water Supply Department | `Manager@2004` |
-| **`MGR2005`** | Manoj Verma | Metro Rail Infrastructure | `Manager@2005` |
-| **`MGR2006`** | Sneha Iyer | Smart City Development | `Manager@2006` |
+### 🎫 Seeded Demo Helpdesk Tickets
+
+The database is pre-seeded with 5 realistic demo tickets spanning both contractor and manager personas:
+
+| Ticket ID | Sender Role & Name | Category | Subject | Status | Admin Reply |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`TKT-2026-001`** | **Contractor** (Rajesh Mehta) | Technical / Platform Support | Unable to save a bridge tender | **In Progress** | Recorded issue; investigating saved-tender function. |
+| **`TKT-2026-002`** | **Contractor** (Amit Kulkarni) | Tender Information / NIT Clarification | Clarification about a road project deadline | **Awaiting User Response** | Requested tender ID and document deadline. |
+| **`TKT-2026-003`** | **Manager** (Anil Joshi - PWD) | Data Correction | Incorrect water supply tender information | **In Progress** | Acknowledged report; requested source values. |
+| **`TKT-2026-004`** | **Manager** (Priya Nair - UDD) | Manager Dashboard / Tender Management | Tender status not updating correctly | **Resolved** | Fixed deadline calculation; ready for reopen if needed. |
+| **`TKT-2026-005`** | **Contractor** (Suresh Patil) | AI Tender Summary Feedback | Tender summary is missing an important requirement | **New** | *Awaiting Admin response* |
 
 ---
 

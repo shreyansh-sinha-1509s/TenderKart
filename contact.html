@@ -315,62 +315,107 @@
               <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(var(--primary-rgb), 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </div>
-              <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">Send Official Inquiry</h2>
+              <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">Centralized Admin Helpdesk</h2>
             </div>
-            <span class="badge badge-blue" style="font-size: 0.68rem; padding: 2px 8px;">2-HR SLA RESPONSE</span>
+            <span class="badge badge-blue" id="contact-role-badge" style="font-size: 0.72rem; padding: 3px 10px; text-transform: uppercase;">Authenticated Helpdesk</span>
+          </div>
+
+          <!-- Dynamic submission result card -->
+          <div id="contact-success-banner" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+              <span style="color: var(--color-success); font-size: 1.25rem;">✅</span>
+              <strong style="color: var(--color-success); font-size: 0.95rem;" id="success-ticket-header">Inquiry Ticket Registered</strong>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 10px 0;" id="success-ticket-msg">
+              Your inquiry has been stored and routed to the TenderKart Admin.
+            </p>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <a href="#" id="success-view-ticket-btn" class="btn btn-primary" style="font-size: 0.8rem; padding: 6px 14px;">
+                View Ticket in My Dashboard
+              </a>
+              <button type="button" onclick="document.getElementById('contact-success-banner').style.display='none'; document.getElementById('contact-form').style.display='flex';" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px;">
+                Submit Another Inquiry
+              </button>
+            </div>
           </div>
 
           <form id="contact-form" style="display: flex; flex-direction: column; gap: 12px;">
-            <!-- Row 1: Name and Email -->
+            <!-- Row 1: Organization & Sender Name -->
             <div class="form-grid-2">
               <div class="form-field">
-                <label for="contact-name" class="form-field-label">Company / Contractor Name</label>
-                <input type="text" id="contact-name" class="form-ctrl" placeholder="e.g. BuildCorp Infrastructure" required />
+                <label for="contact-org" class="form-field-label">Company / Organization Name</label>
+                <input type="text" id="contact-org" class="form-ctrl" placeholder="e.g. Mehta Infrastructure Works" required />
               </div>
               <div class="form-field">
-                <label for="contact-email" class="form-field-label">Official Email Address</label>
-                <input type="email" id="contact-email" class="form-ctrl" placeholder="e.g. bids@buildcorp.com" required />
+                <label for="contact-name" class="form-field-label">Sender Name</label>
+                <input type="text" id="contact-name" class="form-ctrl" placeholder="e.g. Rajesh Mehta" required />
               </div>
             </div>
 
-            <!-- Row 2: Subject & Phone -->
+            <!-- Row 2: Official Email & Detected Sender Role -->
             <div class="form-grid-2">
               <div class="form-field">
-                <label for="contact-subject" class="form-field-label">Inquiry Classification</label>
-                <select id="contact-subject" class="form-ctrl" style="cursor: pointer;">
-                  <option value="Tender Eligibility & NIT Query">Tender Eligibility & NIT Query</option>
-                  <option value="Document Checklist Clarification">Document Checklist Clarification</option>
-                  <option value="Contractor Onboarding & Verification">Contractor Onboarding & Verification</option>
-                  <option value="Municipal Department Listing">Municipal Department Listing</option>
-                  <option value="Technical Support">Technical Platform Support</option>
+                <label for="contact-email" class="form-field-label">Official Email Address</label>
+                <input type="email" id="contact-email" class="form-ctrl" placeholder="e.g. rajesh.mehta@demo.tenderkart.in" required />
+              </div>
+              <div class="form-field">
+                <label for="contact-role" class="form-field-label">Sender Role (System Verified)</label>
+                <input type="text" id="contact-role" class="form-ctrl" style="background-color: var(--bg-secondary); cursor: not-allowed; font-weight: 700;" readonly value="Contractor" />
+              </div>
+            </div>
+
+            <!-- Row 3: Inquiry Classification & Related Tender ID -->
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="contact-category" class="form-field-label">Inquiry Classification</label>
+                <select id="contact-category" class="form-ctrl" style="cursor: pointer;" required>
+                  <option value="Technical / Platform Support">Technical / Platform Support</option>
+                  <option value="Tender Information / NIT Clarification">Tender Information / NIT Clarification</option>
+                  <option value="Account & Login">Account & Login</option>
+                  <option value="Application / Bid Tracking">Application / Bid Tracking</option>
+                  <option value="AI Tender Summary Feedback">AI Tender Summary Feedback</option>
+                  <option value="Manager Dashboard / Tender Management">Manager Dashboard / Tender Management</option>
+                  <option value="Data Correction">Data Correction</option>
+                  <option value="General Inquiry">General Inquiry</option>
+                  <option value="Feedback & Suggestions">Feedback & Suggestions</option>
                 </select>
               </div>
               <div class="form-field">
+                <label for="contact-tender-id" class="form-field-label">Related Tender ID (Optional)</label>
+                <input type="number" id="contact-tender-id" class="form-ctrl" placeholder="e.g. 1, 2, or tender ID" />
+              </div>
+            </div>
+
+            <!-- Row 4: Phone & Subject -->
+            <div class="form-grid-2">
+              <div class="form-field">
                 <label for="contact-phone" class="form-field-label">Contact Number (Optional)</label>
                 <input type="tel" id="contact-phone" class="form-ctrl" placeholder="e.g. +91 98765 43210" />
+              </div>
+              <div class="form-field">
+                <label for="contact-subject" class="form-field-label">Inquiry Subject</label>
+                <input type="text" id="contact-subject" class="form-ctrl" placeholder="e.g. Unable to save a bridge tender" required />
               </div>
             </div>
 
             <!-- Message Area -->
             <div class="form-field">
               <label for="contact-message" class="form-field-label">Inquiry Details / Scope Clarification</label>
-              <textarea id="contact-message" class="form-ctrl" rows="3" placeholder="Provide tender ID, category, or specific requirements..." required style="resize: none;"></textarea>
+              <textarea id="contact-message" class="form-ctrl" rows="3" placeholder="Describe the issue, affected tender ID, or assistance required..." required style="resize: none;"></textarea>
+            </div>
+
+            <!-- Note about Admin Review & Dashboard Tracking -->
+            <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 8px 12px; font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>Your inquiry will be reviewed by the TenderKart Admin. Replies and status updates will appear in your dashboard.</span>
             </div>
 
             <!-- Submit Button & Trust Footer -->
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
-              <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <span>Submit Inquiry to Helpdesk</span>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 2px;">
+              <button type="submit" id="contact-submit-btn" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>Submit Inquiry to Admin Helpdesk</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
               </button>
-              
-              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted);">
-                <span style="display: flex; align-items: center; gap: 4px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  Encrypted Dispatch
-                </span>
-                <span>⚡ Avg. Resolution: &lt; 2 hours</span>
-              </div>
             </div>
           </form>
         </div>
@@ -648,18 +693,18 @@
           <!-- Trust Highlights Strip (Matches Home & About) -->
           <div class="contact-trust-strip">
             <div>
-              <div class="trust-stat-val">&lt; 2 Hrs</div>
-              <div class="trust-stat-lbl">Average Response</div>
+              <div class="trust-stat-val">Central Admin</div>
+              <div class="trust-stat-lbl">Direct Helpdesk</div>
             </div>
             <div style="width: 1px; height: 24px; background: var(--border-color);"></div>
             <div>
               <div class="trust-stat-val">100%</div>
-              <div class="trust-stat-lbl">Inquiries Addressed</div>
+              <div class="trust-stat-lbl">Tickets Logged</div>
             </div>
             <div style="width: 1px; height: 24px; background: var(--border-color);"></div>
             <div>
-              <div class="trust-stat-val">8 Sectors</div>
-              <div class="trust-stat-lbl">Technical Scope</div>
+              <div class="trust-stat-val">Two-Way</div>
+              <div class="trust-stat-lbl">Dashboard Replies</div>
             </div>
           </div>
 

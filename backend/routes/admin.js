@@ -264,4 +264,196 @@ router.put("/applications/:id/evaluate", checkAdmin, (req, res) => {
   );
 });
 
+// Middleware strictly for main website Admin (excludes ordinary managers)
+function checkMainAdminOnly(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return res.status(401).json({ message: "Access denied. Please login first." });
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Session expired. Please login again." });
+    const r = (decoded.role || "").toLowerCase();
+    if (r !== "admin") {
+      return res.status(403).json({ message: "Access denied. Main Administrator privileges required." });
+    }
+    req.user = decoded;
+    next();
+  });
+}
+
+// Admin Central Helpdesk Queue
+router.get("/inquiries", checkMainAdminOnly, (req, res) => {
+  const { role, category, status, priority, search } = req.query;
+
+  let baseSql = `
+    SELECT 
+      i.*,
+      t.name AS tender_name,
+      t.category AS tender_category,
+      (SELECT COUNT(*) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS message_count,
+      (SELECT MAX(created_at) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS last_activity_at
+    FROM inquiries i
+    LEFT JOIN tenders t ON i.related_tender_id = t.id
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (role) {
+    baseSql += " AND LOWER(i.sender_role) = LOWER(?)";
+    params.push(role);
+  }
+  if (category) {
+    baseSql += " AND i.inquiry_category = ?";
+    params.push(category);
+  }
+  if (status) {
+    baseSql += " AND LOWER(i.status) = LOWER(?)";
+    params.push(status);
+  }
+  if (priority) {
+    baseSql += " AND LOWER(i.priority) = LOWER(?)";
+    params.push(priority);
+  }
+  if (search) {
+    baseSql += " AND (i.ticket_number LIKE ? OR i.sender_name LIKE ? OR i.sender_email LIKE ? OR i.subject LIKE ? OR i.organization_name LIKE ?)";
+    const term = `%${search.trim()}%`;
+    params.push(term, term, term, term, term);
+  }
+
+  baseSql += " ORDER BY i.created_at DESC";
+
+  db.query(baseSql, params, (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message });
+
+    db.query(
+      `SELECT 
+        COUNT(*) AS total,
+        SUM(CASE WHEN LOWER(status) = 'new' THEN 1 ELSE 0 END) AS count_new,
+        SUM(CASE WHEN LOWER(status) = 'in progress' THEN 1 ELSE 0 END) AS count_in_progress,
+        SUM(CASE WHEN LOWER(status) = 'awaiting user response' THEN 1 ELSE 0 END) AS count_awaiting_user,
+        SUM(CASE WHEN LOWER(status) = 'resolved' THEN 1 ELSE 0 END) AS count_resolved
+       FROM inquiries`,
+      [],
+      (sumErr, sumRows) => {
+        if (sumErr) return res.status(500).json({ message: sumErr.message });
+
+        const s = sumRows[0] || {};
+        return res.json({
+          summary: {
+            totalInquiries: s.total || 0,
+            countNew: s.count_new || 0,
+            countInProgress: s.count_in_progress || 0,
+            countAwaitingUser: s.count_awaiting_user || 0,
+            countResolved: s.count_resolved || 0
+          },
+          inquiries: rows || []
+        });
+      }
+    );
+  });
+});
+
+// Admin updates priority/status
+router.patch("/inquiries/:id", checkMainAdminOnly, (req, res) => {
+  const inquiryId = req.params.id;
+  const { status, priority } = req.body;
+
+  db.query(
+    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+    [inquiryId, inquiryId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
+
+      const ticket = rows[0];
+      const newStatus = status || ticket.status;
+      const newPriority = priority || ticket.priority;
+      const resolvedAt = (newStatus === "Resolved") ? new Date().toISOString().replace("T", " ").substring(0, 19) : null;
+
+      db.query(
+        `UPDATE inquiries 
+         SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
+         WHERE id = ?`,
+        [newStatus, newPriority, resolvedAt, ticket.id],
+        (updateErr) => {
+          if (updateErr) return res.status(500).json({ message: updateErr.message });
+
+          return res.json({
+            success: true,
+            message: `Ticket ${ticket.ticket_number} updated to status "${newStatus}" and priority "${newPriority}".`,
+            ticket: {
+              ...ticket,
+              status: newStatus,
+              priority: newPriority,
+              resolved_at: resolvedAt
+            }
+          });
+        }
+      );
+    }
+  );
+});
+
+// Admin posts reply
+router.post("/inquiries/:id/reply", checkMainAdminOnly, (req, res) => {
+  const inquiryId = req.params.id;
+  const { message_body, status, priority } = req.body;
+
+  if (!message_body || !message_body.trim()) {
+    return res.status(400).json({ message: "Admin reply body cannot be empty." });
+  }
+
+  db.query(
+    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+    [inquiryId, inquiryId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
+
+      const ticket = rows[0];
+      const newStatus = status || "Awaiting User Response";
+      const newPriority = priority || ticket.priority;
+      const resolvedAt = (newStatus === "Resolved") ? new Date().toISOString().replace("T", " ").substring(0, 19) : null;
+
+      db.query(
+        `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
+         VALUES (?, ?, 'Admin', ?, datetime('now'))`,
+        [ticket.id, req.user.id, message_body.trim()],
+        (msgErr, msgRes) => {
+          if (msgErr) return res.status(500).json({ message: msgErr.message });
+
+          db.query(
+            `UPDATE inquiries
+             SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
+             WHERE id = ?`,
+            [newStatus, newPriority, resolvedAt, ticket.id],
+            (updateErr) => {
+              if (updateErr) return res.status(500).json({ message: updateErr.message });
+
+              db.query(
+                `INSERT INTO notifications (user_id, title, message)
+                 VALUES (?, ?, ?)`,
+                [
+                  ticket.sender_user_id,
+                  `Official Admin Response on Ticket ${ticket.ticket_number}`,
+                  `Central Admin: "${message_body.trim().slice(0, 90)}..."`
+                ],
+                () => {}
+              );
+
+              return res.json({
+                success: true,
+                message: "Admin response saved and dispatched to sender dashboard.",
+                message_id: msgRes.insertId,
+                status: newStatus,
+                priority: newPriority
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
 module.exports = router;
