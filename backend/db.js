@@ -97,6 +97,30 @@ db.serialize(() => {
     );
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS applications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      application_code TEXT UNIQUE,
+      contractor_id INTEGER NOT NULL,
+      tender_id INTEGER NOT NULL,
+      applied_on TEXT NOT NULL,
+      bid_amount REAL NOT NULL,
+      application_status TEXT NOT NULL DEFAULT 'Submitted',
+      outcome TEXT DEFAULT 'Pending',
+      proposal_notes TEXT,
+      missing_documents TEXT,
+      evaluation_notes TEXT,
+      evaluator_id INTEGER,
+      evaluated_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(contractor_id, tender_id),
+      FOREIGN KEY(contractor_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY(tender_id) REFERENCES tenders(id) ON DELETE CASCADE,
+      FOREIGN KEY(evaluator_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `);
+
   // Seed default 5 Contractors and 6 Managers if users table is empty
   db.get("SELECT COUNT(*) AS count FROM users", (err, row) => {
     if (!err && row && row.count === 0) {
@@ -482,7 +506,195 @@ db.serialize(() => {
       });
     }
   });
+
+  // Seed realistic demo applications if applications table is empty
+  db.get("SELECT COUNT(*) AS count FROM applications", (err, row) => {
+    if (!err && row && row.count === 0) {
+      seedDemoApplications();
+    }
+  });
 });
+
+function seedDemoApplications() {
+  db.all("SELECT id, user_code FROM users", (uErr, users) => {
+    if (uErr || !users || users.length === 0) return;
+    db.all("SELECT id, name, category, budget FROM tenders", (tErr, tenders) => {
+      if (tErr || !tenders || tenders.length === 0) return;
+
+      const userMap = {};
+      users.forEach(u => {
+        if (u.user_code) userMap[u.user_code] = u.id;
+      });
+
+      const findTender = (phrase) => tenders.find(t => t.name.toLowerCase().includes(phrase.toLowerCase())) || tenders[0];
+
+      const tJabalpur = findTender("Jabalpur");
+      const tBrahmaputra = findTender("Brahmaputra");
+      const tDelhiKatra = findTender("Delhi-Amritsar-Katra");
+      const tMumbaiGoa = findTender("Mumbai-Goa");
+      const tThane = findTender("Thane");
+      const tChandrawal = findTender("Chandrawal");
+      const tJalJeevan = findTender("Jal Jeevan");
+      const tUltadanga = findTender("Ultadanga");
+      const tSecretariat = findTender("Secretariat");
+
+      const mgr1Id = userMap["MGR2001"] || null;
+      const mgr4Id = userMap["MGR2004"] || mgr1Id;
+
+      const demoApps = [
+        // CON1001 (Rajesh Mehta): 5 Applications (1 Won, 1 Not Awarded, 2 Pending, 1 Withdrawn)
+        {
+          code: "APP-1001",
+          user_code: "CON1001",
+          tender_id: tJabalpur.id,
+          applied_on: "2026-08-14",
+          bid_amount: 8840000000,
+          status: "Won",
+          outcome: "Won",
+          proposal: "Comprehensive EPC execution plan with in-house hot-mix plants and soil-testing labs deployed within 15km corridor.",
+          missing_docs: "[]",
+          notes: "Qualified on all technical criteria. Financial bid was highly competitive (0.9% under estimate) with full plant machinery ownership certified.",
+          evaluator_id: mgr1Id,
+          evaluated_at: "2026-09-28 11:30:00"
+        },
+        {
+          code: "APP-1002",
+          user_code: "CON1001",
+          tender_id: tBrahmaputra.id,
+          applied_on: "2026-08-20",
+          bid_amount: 26800000000,
+          status: "Not Awarded",
+          outcome: "Not Awarded",
+          proposal: "Joint-venture consortium submission with specialized deep river caisson subcontractors.",
+          missing_docs: JSON.stringify(["Hydraulic Rig & Marine Barge Ownership Documents"]),
+          notes: "Bid amount exceeded the sanctioned budget outlay by 8.0%. Critical marine barge and heavy hydraulic piling rig ownership certificate was missing from Technical Envelope B.",
+          evaluator_id: mgr1Id,
+          evaluated_at: "2026-09-22 14:15:00"
+        },
+        {
+          code: "APP-1003",
+          user_code: "CON1001",
+          tender_id: tDelhiKatra.id,
+          applied_on: "2026-09-10",
+          bid_amount: 14100000000,
+          status: "Under Review",
+          outcome: "Pending",
+          proposal: "Slip-form concrete paving methodology with automated laser leveling and high-capacity batching plants.",
+          missing_docs: "[]",
+          notes: "Technical bids opened; compliance verification currently underway with regional NHAI office.",
+          evaluator_id: mgr1Id,
+          evaluated_at: "2026-10-02 16:00:00"
+        },
+        {
+          code: "APP-1004",
+          user_code: "CON1001",
+          tender_id: tMumbaiGoa.id,
+          applied_on: "2026-09-25",
+          bid_amount: 6720000000,
+          status: "Submitted",
+          outcome: "Pending",
+          proposal: "Specialized rock nailing and ghat slope stabilization engineering proposal with dedicated drainage culverts.",
+          missing_docs: "[]",
+          notes: null,
+          evaluator_id: null,
+          evaluated_at: null
+        },
+        {
+          code: "APP-1005",
+          user_code: "CON1001",
+          tender_id: tThane.id,
+          applied_on: "2026-08-25",
+          bid_amount: 12400000000,
+          status: "Withdrawn",
+          outcome: "Withdrawn",
+          proposal: "Voluntary withdrawal due to resource allocation prioritization toward NH-44 execution.",
+          missing_docs: "[]",
+          notes: "Contractor requested formal withdrawal prior to financial bid opening.",
+          evaluator_id: mgr1Id,
+          evaluated_at: "2026-09-05 10:00:00"
+        },
+
+        // CON1002 (Amit Kulkarni): 2 Applications (1 Won, 1 Pending)
+        {
+          code: "APP-1006",
+          user_code: "CON1002",
+          tender_id: tChandrawal.id,
+          applied_on: "2026-09-02",
+          bid_amount: 5750000000,
+          status: "Under Review",
+          outcome: "Pending",
+          proposal: "Dual media rapid sand filtration and automated ozonation plant installation.",
+          missing_docs: "[]",
+          notes: "Technical qualifications verified; awaiting commercial bid opening.",
+          evaluator_id: mgr4Id,
+          evaluated_at: "2026-09-29 12:00:00"
+        },
+        {
+          code: "APP-1007",
+          user_code: "CON1002",
+          tender_id: tJalJeevan.id,
+          applied_on: "2026-08-28",
+          bid_amount: 4550000000,
+          status: "Won",
+          outcome: "Won",
+          proposal: "Multi-village DI pipeline laying and automated SCADA pump house integration.",
+          missing_docs: "[]",
+          notes: "Excellent water transmission network experience; competitive financial bid within sanctioned outlay.",
+          evaluator_id: mgr4Id,
+          evaluated_at: "2026-09-18 15:00:00"
+        },
+
+        // CON1003 (Suresh Patil): 1 Application (Not Awarded)
+        {
+          code: "APP-1008",
+          user_code: "CON1003",
+          tender_id: tUltadanga.id,
+          applied_on: "2026-09-15",
+          bid_amount: 3400000000,
+          status: "Not Awarded",
+          outcome: "Not Awarded",
+          proposal: "Composite steel girder flyover launching during planned railway power blocks.",
+          missing_docs: JSON.stringify(["Railway Safety & RDSO Certified Fabrication Yard Approval"]),
+          notes: "RDSO-certified girder fabrication yard clearance was not submitted.",
+          evaluator_id: mgr1Id,
+          evaluated_at: "2026-09-30 14:00:00"
+        },
+
+        // CON1004 (Neeraj Sharma): 1 Application (Pending)
+        {
+          code: "APP-1009",
+          user_code: "CON1004",
+          tender_id: tSecretariat.id,
+          applied_on: "2026-09-22",
+          bid_amount: 9650000000,
+          status: "Under Review",
+          outcome: "Pending",
+          proposal: "GRIHA 4-star certified green building construction with prefabricated structural components.",
+          missing_docs: "[]",
+          notes: "Awaiting environmental structural clearance review.",
+          evaluator_id: mgr1Id,
+          evaluated_at: "2026-10-04 11:00:00"
+        }
+        // CON1005 (Vikram Desai): 0 Applications (Preserved for demonstrating the clean empty state)
+      ];
+
+      demoApps.forEach(a => {
+        const cId = userMap[a.user_code];
+        if (cId && a.tender_id) {
+          db.run(
+            `INSERT OR IGNORE INTO applications (
+              application_code, contractor_id, tender_id, applied_on, bid_amount,
+              application_status, outcome, proposal_notes, missing_documents,
+              evaluation_notes, evaluator_id, evaluated_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            [a.code, cId, a.tender_id, a.applied_on, a.bid_amount, a.status, a.outcome, a.proposal, a.missing_docs, a.notes, a.evaluator_id, a.evaluated_at]
+          );
+        }
+      });
+      console.log("Seeded realistic demo applications successfully.");
+    });
+  });
+}
 
 // MySQL-compatible query shim wrapping standard sqlite3 callbacks
 const connection = {

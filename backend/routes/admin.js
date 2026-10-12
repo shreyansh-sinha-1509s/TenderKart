@@ -171,4 +171,97 @@ router.delete("/tenders/:id", checkAdmin, (req, res) => {
   });
 });
 
+// 6. Get All Applications for Manager Review
+router.get("/applications", checkAdmin, (req, res) => {
+  const query = `
+    SELECT 
+      a.id,
+      a.application_code,
+      a.contractor_id,
+      a.tender_id,
+      a.applied_on,
+      a.bid_amount,
+      a.application_status,
+      a.outcome,
+      a.proposal_notes,
+      a.missing_documents,
+      a.evaluation_notes,
+      a.evaluator_id,
+      a.evaluated_at,
+      a.created_at,
+      u.name AS contractor_name,
+      u.company AS contractor_company,
+      u.user_code AS contractor_code,
+      u.email AS contractor_email,
+      t.name AS tender_name,
+      t.category AS tender_category,
+      t.department AS tender_department,
+      t.budget AS tender_budget,
+      t.deadline AS tender_deadline
+    FROM applications a
+    JOIN users u ON a.contractor_id = u.id
+    JOIN tenders t ON a.tender_id = t.id
+    ORDER BY a.applied_on DESC, a.id DESC
+  `;
+
+  db.query(query, [], (err, results) => {
+    if (err) return res.status(500).json({ message: err.message });
+    const apps = results.map(row => {
+      try {
+        row.missing_documents = JSON.parse(row.missing_documents || "[]");
+      } catch (e) {
+        row.missing_documents = row.missing_documents ? [row.missing_documents] : [];
+      }
+      return row;
+    });
+    return res.json(apps);
+  });
+});
+
+// 7. Update Application Evaluation (Manager Feedback & Outcome)
+router.put("/applications/:id/evaluate", checkAdmin, (req, res) => {
+  const { application_status, outcome, evaluation_notes, missing_documents } = req.body;
+
+  const validStatuses = ["Submitted", "Under Review", "Won", "Not Awarded", "Withdrawn"];
+  if (application_status && !validStatuses.includes(application_status)) {
+    return res.status(400).json({ message: "Invalid application status." });
+  }
+
+  const missingDocsStr = Array.isArray(missing_documents)
+    ? JSON.stringify(missing_documents)
+    : (typeof missing_documents === "string" && missing_documents.trim() ? JSON.stringify(missing_documents.split(",").map(s => s.trim()).filter(Boolean)) : JSON.stringify([]));
+
+  db.query(
+    `UPDATE applications 
+     SET application_status = ?, outcome = ?, evaluation_notes = ?, missing_documents = ?, 
+         evaluator_id = ?, evaluated_at = datetime('now'), updated_at = datetime('now')
+     WHERE id = ?`,
+    [
+      application_status || "Under Review",
+      outcome || "Pending",
+      evaluation_notes || null,
+      missingDocsStr,
+      req.user.id,
+      req.params.id
+    ],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: err.message });
+      if (result.affectedRows === 0) return res.status(404).json({ message: "Application not found" });
+
+      // Notify contractor about evaluation update
+      db.query("SELECT contractor_id, application_code FROM applications WHERE id = ?", [req.params.id], (sErr, sRes) => {
+        if (!sErr && sRes && sRes.length > 0) {
+          db.query(
+            `INSERT INTO notifications (user_id, title, message, created_at)
+             VALUES (?, 'Application Status Updated', ?, datetime('now'))`,
+            [sRes[0].contractor_id, `Your application ${sRes[0].application_code} status has been updated to "${application_status}".`]
+          );
+        }
+      });
+
+      return res.json({ message: "Application evaluation updated successfully." });
+    }
+  );
+});
+
 module.exports = router;

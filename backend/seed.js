@@ -153,10 +153,63 @@ db.query("DELETE FROM users", [], (err) => {
         if (inserted === usersToSeed.length) {
           console.log(`✅ Successfully seeded all ${usersToSeed.length} accounts (5 Contractors + 6 Managers)!`);
           
-          // Verify total tender count is preserved
-          db.query("SELECT COUNT(*) AS tenderCount FROM tenders", [], (tErr, tRows) => {
-            console.log(`📊 Verified Tenders in Database: ${tRows[0].tenderCount} records preserved.`);
-            process.exit(0);
+          // Seed realistic applications
+          db.query("SELECT id, user_code FROM users", [], (uErr, userRows) => {
+            db.query("SELECT id, name FROM tenders", [], (tErr, tenderRows) => {
+              const uMap = {};
+              userRows.forEach(u => { if (u.user_code) uMap[u.user_code] = u.id; });
+              const findT = (q) => tenderRows.find(t => t.name.toLowerCase().includes(q.toLowerCase())) || tenderRows[0];
+
+              const tJabalpur = findT("Jabalpur");
+              const tBrahmaputra = findT("Brahmaputra");
+              const tDelhiKatra = findT("Delhi-Amritsar-Katra");
+              const tMumbaiGoa = findT("Mumbai-Goa");
+              const tThane = findT("Thane");
+              const tChandrawal = findT("Chandrawal");
+              const tJalJeevan = findT("Jal Jeevan");
+              const tUltadanga = findT("Ultadanga");
+              const tSecretariat = findT("Secretariat");
+
+              const mgr1 = uMap["MGR2001"] || null;
+              const mgr4 = uMap["MGR2004"] || mgr1;
+
+              const apps = [
+                { code: "APP-1001", uCode: "CON1001", tId: tJabalpur.id, date: "2026-08-14", bid: 8840000000, status: "Won", outcome: "Won", proposal: "Comprehensive EPC execution plan with in-house hot-mix plants and soil-testing labs.", missing: "[]", notes: "Qualified on all technical criteria. Financial bid was highly competitive (0.9% under estimate) with full plant machinery ownership certified.", evalId: mgr1, evalDate: "2026-09-28 11:30:00" },
+                { code: "APP-1002", uCode: "CON1001", tId: tBrahmaputra.id, date: "2026-08-20", bid: 26800000000, status: "Not Awarded", outcome: "Not Awarded", proposal: "Joint-venture consortium submission with specialized deep river caisson subcontractors.", missing: JSON.stringify(["Hydraulic Rig & Marine Barge Ownership Documents"]), notes: "Bid amount exceeded the sanctioned budget outlay by 8.0%. Critical marine barge and heavy hydraulic piling rig ownership certificate was missing from Technical Envelope B.", evalId: mgr1, evalDate: "2026-09-22 14:15:00" },
+                { code: "APP-1003", uCode: "CON1001", tId: tDelhiKatra.id, date: "2026-09-10", bid: 14100000000, status: "Under Review", outcome: "Pending", proposal: "Slip-form concrete paving methodology with automated laser leveling and high-capacity batching plants.", missing: "[]", notes: "Technical bids opened; compliance verification currently underway with regional NHAI office.", evalId: mgr1, evalDate: "2026-10-02 16:00:00" },
+                { code: "APP-1004", uCode: "CON1001", tId: tMumbaiGoa.id, date: "2026-09-25", bid: 6720000000, status: "Submitted", outcome: "Pending", proposal: "Specialized rock nailing and ghat slope stabilization engineering proposal.", missing: "[]", notes: null, evalId: null, evalDate: null },
+                { code: "APP-1005", uCode: "CON1001", tId: tThane.id, date: "2026-08-25", bid: 12400000000, status: "Withdrawn", outcome: "Withdrawn", proposal: "Voluntary withdrawal due to resource allocation prioritization toward NH-44 execution.", missing: "[]", notes: "Contractor requested formal withdrawal prior to financial bid opening.", evalId: mgr1, evalDate: "2026-09-05 10:00:00" },
+                { code: "APP-1006", uCode: "CON1002", tId: tChandrawal.id, date: "2026-09-02", bid: 5750000000, status: "Under Review", outcome: "Pending", proposal: "Dual media rapid sand filtration and automated ozonation plant installation.", missing: "[]", notes: "Technical qualifications verified; awaiting commercial bid opening.", evalId: mgr4, evalDate: "2026-09-29 12:00:00" },
+                { code: "APP-1007", uCode: "CON1002", tId: tJalJeevan.id, date: "2026-08-28", bid: 4550000000, status: "Won", outcome: "Won", proposal: "Multi-village DI pipeline laying and automated SCADA pump house integration.", missing: "[]", notes: "Excellent water transmission network experience; competitive financial bid within sanctioned outlay.", evalId: mgr4, evalDate: "2026-09-18 15:00:00" },
+                { code: "APP-1008", uCode: "CON1003", tId: tUltadanga.id, date: "2026-09-15", bid: 3400000000, status: "Not Awarded", outcome: "Not Awarded", proposal: "Composite steel girder flyover launching during planned railway power blocks.", missing: JSON.stringify(["Railway Safety & RDSO Certified Fabrication Yard Approval"]), notes: "RDSO-certified girder fabrication yard clearance was not submitted.", evalId: mgr1, evalDate: "2026-09-30 14:00:00" },
+                { code: "APP-1009", uCode: "CON1004", tId: tSecretariat.id, date: "2026-09-22", bid: 9650000000, status: "Under Review", outcome: "Pending", proposal: "GRIHA 4-star certified green building construction with prefabricated structural components.", missing: "[]", notes: "Awaiting environmental structural clearance review.", evalId: mgr1, evalDate: "2026-10-04 11:00:00" }
+              ];
+
+              db.query("DELETE FROM applications", [], () => {
+                let appIns = 0;
+                apps.forEach(a => {
+                  const cId = uMap[a.uCode];
+                  db.query(
+                    `INSERT INTO applications (
+                      application_code, contractor_id, tender_id, applied_on, bid_amount,
+                      application_status, outcome, proposal_notes, missing_documents,
+                      evaluation_notes, evaluator_id, evaluated_at, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+                    [a.code, cId, a.tId, a.date, a.bid, a.status, a.outcome, a.proposal, a.missing, a.notes, a.evalId, a.evalDate],
+                    () => {
+                      appIns++;
+                      if (appIns === apps.length) {
+                        console.log(`✅ Successfully seeded ${apps.length} realistic application records!`);
+                        db.query("SELECT COUNT(*) AS tenderCount FROM tenders", [], (tErr, tRows) => {
+                          console.log(`📊 Verified Tenders in Database: ${tRows[0].tenderCount} records preserved.`);
+                          process.exit(0);
+                        });
+                      }
+                    }
+                  );
+                });
+              });
+            });
           });
         }
       }

@@ -3,21 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TenderKart - Browse Urban Infrastructure Opportunities</title>
+  <title>TenderKart - Find Tenders Near Your Area</title>
   <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Desktop layout split */
-    #tenders-split-layout {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 2rem;
+    /* Hero Search Bar layout */
+    .search-hero-box {
+      padding: 2.25rem;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.04) 100%);
+      border: 1px solid rgba(var(--primary-rgb), 0.15);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
     }
-    
-    @media (max-width: 900px) {
-      #tenders-split-layout {
+
+    #primary-search-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1.1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      #primary-search-row {
         grid-template-columns: 1fr;
       }
+    }
+
+    .location-chip {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 5px 14px;
+      border-radius: 9999px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.8rem;
+      transition: var(--transition-smooth);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .location-chip:hover {
+      background: rgba(var(--primary-rgb), 0.1);
+      color: var(--color-primary);
+      border-color: rgba(var(--primary-rgb), 0.35);
+      transform: translateY(-1px);
+    }
+
+    .adv-chevron-icon {
+      transition: transform 0.25s ease;
+    }
+
+    .adv-chevron-icon.open {
+      transform: rotate(180deg);
     }
   </style>
 </head>
@@ -26,35 +68,110 @@
   <!-- Sticky Navbar -->
   <div id="navbar-placeholder"></div>
 
-  <!-- Catalog Section -->
-  <main style="flex: 1; padding: 3rem 0;">
+  <!-- Main Catalog Content -->
+  <main style="flex: 1; padding: 2.5rem 0 4rem 0;">
     <div class="container" style="display: flex; flex-direction: column; gap: 2rem;">
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <h1 style="font-size: 2.5rem; font-weight: 850; color: var(--text-primary); letter-spacing: -1px; line-height: 1.2;">Bidding Catalog</h1>
-        <p style="font-size: 1.05rem; color: var(--text-secondary); margin-top: 4px;" id="results-count">Analyzing database opportunities...</p>
-      </div>
 
-      <!-- Split Layout -->
-      <div id="tenders-split-layout">
-        <!-- Sidebar filters -->
-        <aside style="display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 100px; height: fit-content;">
-          <div class="card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-              <h3 style="font-size: 1.05rem; font-weight: 800;">Filters</h3>
-              <button id="reset-filters" style="background: none; border: none; color: var(--color-primary); font-weight: 600; font-size: 0.8rem; cursor: pointer;">Clear All</button>
+      <!-- Location-Focused Search Box -->
+      <section class="search-hero-box">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: inline-flex; align-items: center; gap: 6px; width: fit-content;" class="badge badge-blue">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>Location-Aware Discovery</span>
+          </div>
+          <h1 style="font-size: 2.25rem; font-weight: 850; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2;">
+            Find Tenders Near Your Area
+          </h1>
+          <p style="font-size: 1.05rem; color: var(--text-secondary); max-width: 680px;">
+            Discover infrastructure opportunities relevant to your location.
+          </p>
+        </div>
+
+        <form id="search-form" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Primary Search Row: Location Input + Keyword Input + Search Button -->
+          <div id="primary-search-row">
+            
+            <!-- Prominent Location Input -->
+            <div style="position: relative; display: flex; align-items: center;">
+              <span style="position: absolute; left: 16px; color: var(--color-primary); display: flex; align-items: center; pointer-events: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              </span>
+              <input 
+                type="text" 
+                id="filter-location" 
+                class="form-input" 
+                list="location-datalist"
+                placeholder="Enter city, district, or state (e.g., Mira-Bhayandar, Mumbai, Maharashtra)" 
+                style="padding-left: 44px; height: 50px; font-size: 0.95rem; border-radius: 12px;"
+              />
+              <datalist id="location-datalist">
+                <option value="Mumbai, Maharashtra">
+                <option value="Thane, Maharashtra">
+                <option value="Ratnagiri, Maharashtra">
+                <option value="New Delhi, Delhi">
+                <option value="Chandrawal, Central Delhi">
+                <option value="Bhopal, Madhya Pradesh">
+                <option value="Jabalpur, Madhya Pradesh">
+                <option value="Ludhiana, Punjab">
+                <option value="Rewari, Haryana">
+                <option value="Prayagraj, Uttar Pradesh">
+                <option value="Kolkata, West Bengal">
+                <option value="Dhubri, Assam">
+              </datalist>
             </div>
 
-            <form id="search-form" style="display: flex; flex-direction: column; gap: 16px;">
-              <!-- Keyword -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="search-input" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Search Tenders</label>
-                <input type="text" id="search-input" class="form-input" placeholder="e.g. Highway, Metro, Solar" />
-              </div>
+            <!-- Optional Keyword Input -->
+            <div style="position: relative; display: flex; align-items: center;">
+              <span style="position: absolute; left: 16px; color: var(--text-muted); display: flex; align-items: center; pointer-events: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input 
+                type="text" 
+                id="search-input" 
+                class="form-input" 
+                placeholder="Search by tender name or project type" 
+                style="padding-left: 44px; height: 50px; font-size: 0.95rem; border-radius: 12px;"
+              />
+            </div>
 
+            <!-- Primary Search Button -->
+            <button type="submit" id="btn-search-tenders" class="btn btn-primary" style="height: 50px; padding: 0 28px; border: none; font-size: 0.95rem; font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <span>Search Tenders</span>
+            </button>
+          </div>
+
+          <!-- Quick Location Suggestions Chips -->
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.85rem;">
+            <span style="color: var(--text-muted); font-weight: 600;">Popular Areas:</span>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('Mumbai')">📍 Mumbai</button>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('Maharashtra')">📍 Maharashtra</button>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('Delhi')">📍 Delhi / NCR</button>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('Madhya Pradesh')">📍 Madhya Pradesh</button>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('Punjab')">📍 Punjab</button>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('Uttar Pradesh')">📍 Uttar Pradesh</button>
+            <button type="button" class="location-chip" onclick="applyQuickLocation('West Bengal')">📍 West Bengal</button>
+          </div>
+
+          <!-- Collapsible Advanced Filters Header -->
+          <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <button type="button" id="toggle-advanced-filters" style="background: none; border: none; color: var(--color-primary); font-weight: 700; font-size: 0.9rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 4px 0;">
+              <svg id="adv-chevron" class="adv-chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              <span>Advanced Filters (Category, Authority, Budget, Deadline)</span>
+            </button>
+            <button type="button" id="reset-filters" style="background: none; border: none; color: var(--text-muted); font-weight: 600; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
+              Reset All Filters
+            </button>
+          </div>
+
+          <!-- Collapsible Panel for Advanced Filters -->
+          <div id="advanced-filters-panel" style="display: none; padding-top: 8px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; background-color: var(--bg-secondary); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+              
               <!-- Category -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label for="filter-category" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Category</label>
-                <select id="filter-category" class="form-input" style="cursor: pointer;">
+                <select id="filter-category" class="form-input" style="cursor: pointer; height: 42px;">
                   <option value="">All Categories</option>
                   <option value="Roads">Roads & Highways</option>
                   <option value="Bridges">Bridges & Flyovers</option>
@@ -65,48 +182,46 @@
                 </select>
               </div>
 
-              <!-- Location -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="filter-location" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Geographic Region</label>
-                <input type="text" id="filter-location" class="form-input" placeholder="e.g. Maharashtra, Delhi" />
-              </div>
-
-              <!-- Department -->
+              <!-- Procuring Authority -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label for="filter-department" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Procuring Authority</label>
-                <input type="text" id="filter-department" class="form-input" placeholder="e.g. MMRDA, NHAI" />
+                <input type="text" id="filter-department" class="form-input" placeholder="e.g. NHAI, MMRDA, DJB" style="height: 42px;" />
               </div>
 
-              <!-- Budget Range -->
+              <!-- Budget Min/Max -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Outlay Budget (INR)</label>
                 <div style="display: flex; gap: 8px;">
-                  <input type="number" id="filter-minBudget" class="form-input" placeholder="Min" style="padding: 0.5rem;" />
-                  <input type="number" id="filter-maxBudget" class="form-input" placeholder="Max" style="padding: 0.5rem;" />
+                  <input type="number" id="filter-minBudget" class="form-input" placeholder="Min" style="height: 42px; padding: 0.5rem;" />
+                  <input type="number" id="filter-maxBudget" class="form-input" placeholder="Max" style="height: 42px; padding: 0.5rem;" />
                 </div>
               </div>
 
               <!-- Deadline -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label for="filter-deadline" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Deadline Before</label>
-                <input type="date" id="filter-deadline" class="form-input" />
+                <label for="filter-deadline" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Filing Deadline Before</label>
+                <input type="date" id="filter-deadline" class="form-input" style="height: 42px;" />
               </div>
 
-              <button type="submit" class="btn btn-primary" style="border: none; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <span>Apply Filters</span>
-              </button>
-            </form>
+            </div>
           </div>
-        </aside>
 
-        <!-- Grid Results -->
-        <section>
-          <div class="grid-2" id="tenders-container" style="gap: 1.5rem;">
-            <!-- Dynamic tender cards render here -->
-          </div>
-        </section>
+        </form>
+      </section>
+
+      <!-- Status Count Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-top: 4px; flex-wrap: wrap; gap: 8px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-primary);" id="results-heading">Active Infrastructure Opportunities</h2>
+        <p style="font-size: 0.95rem; color: var(--text-secondary);" id="results-count">Analyzing database opportunities...</p>
       </div>
+
+      <!-- Grid Results -->
+      <section>
+        <div class="grid-2" id="tenders-container" style="gap: 1.5rem;">
+          <!-- Dynamic tender cards render here -->
+        </div>
+      </section>
+
     </div>
   </main>
 

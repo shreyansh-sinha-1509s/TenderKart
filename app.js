@@ -930,6 +930,10 @@ async function initTendersPage() {
     const searchInp = document.getElementById("search-input");
     if (searchInp) searchInp.value = urlParams.get("search");
   }
+  if (urlParams.get("location")) {
+    const locInp = document.getElementById("filter-location");
+    if (locInp) locInp.value = urlParams.get("location");
+  }
 
   // Load Saved Bids Ids to show proper bookmark stars
   const userJson = localStorage.getItem("user");
@@ -945,10 +949,7 @@ async function initTendersPage() {
     }
   }
 
-  // Initial Fetch
-  await searchAndFilterTenders();
-
-  // Attach search listeners
+  // Attach search form submit
   const form = document.getElementById("search-form");
   if (form) {
     form.addEventListener("submit", (e) => {
@@ -957,20 +958,68 @@ async function initTendersPage() {
     });
   }
 
+  // Collapsible Advanced Filters toggle
+  const toggleAdv = document.getElementById("toggle-advanced-filters");
+  if (toggleAdv) {
+    toggleAdv.onclick = () => {
+      const panel = document.getElementById("advanced-filters-panel");
+      const chevron = document.getElementById("adv-chevron");
+      if (panel) {
+        const isOpen = panel.style.display === "block";
+        panel.style.display = isOpen ? "none" : "block";
+        if (chevron) {
+          chevron.classList.toggle("open", !isOpen);
+        }
+      }
+    };
+  }
+
+  // Reset Filters button
   const resetBtn = document.getElementById("reset-filters");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
-      document.getElementById("search-input").value = "";
-      document.getElementById("filter-category").value = "";
-      document.getElementById("filter-location").value = "";
-      document.getElementById("filter-department").value = "";
-      document.getElementById("filter-minBudget").value = "";
-      document.getElementById("filter-maxBudget").value = "";
-      document.getElementById("filter-deadline").value = "";
+      if (document.getElementById("filter-location")) document.getElementById("filter-location").value = "";
+      if (document.getElementById("search-input")) document.getElementById("search-input").value = "";
+      if (document.getElementById("filter-category")) document.getElementById("filter-category").value = "";
+      if (document.getElementById("filter-department")) document.getElementById("filter-department").value = "";
+      if (document.getElementById("filter-minBudget")) document.getElementById("filter-minBudget").value = "";
+      if (document.getElementById("filter-maxBudget")) document.getElementById("filter-maxBudget").value = "";
+      if (document.getElementById("filter-deadline")) document.getElementById("filter-deadline").value = "";
       searchAndFilterTenders();
     });
   }
+
+  // Initial Fetch of all opportunities
+  await searchAndFilterTenders();
 }
+
+window.applyQuickLocation = (loc) => {
+  const locInp = document.getElementById("filter-location");
+  if (locInp) {
+    locInp.value = loc;
+  }
+  searchAndFilterTenders();
+};
+
+window.focusLocationInput = () => {
+  const inp = document.getElementById("filter-location");
+  if (inp) {
+    inp.value = "";
+    inp.focus();
+    inp.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+};
+
+window.viewAllTenders = () => {
+  if (document.getElementById("filter-location")) document.getElementById("filter-location").value = "";
+  if (document.getElementById("search-input")) document.getElementById("search-input").value = "";
+  if (document.getElementById("filter-category")) document.getElementById("filter-category").value = "";
+  if (document.getElementById("filter-department")) document.getElementById("filter-department").value = "";
+  if (document.getElementById("filter-minBudget")) document.getElementById("filter-minBudget").value = "";
+  if (document.getElementById("filter-maxBudget")) document.getElementById("filter-maxBudget").value = "";
+  if (document.getElementById("filter-deadline")) document.getElementById("filter-deadline").value = "";
+  searchAndFilterTenders();
+};
 
 async function searchAndFilterTenders() {
   const container = document.getElementById("tenders-container");
@@ -993,10 +1042,10 @@ async function searchAndFilterTenders() {
     </div>
   `).join("");
 
-  const search = document.getElementById("search-input")?.value || "";
+  const search = document.getElementById("search-input")?.value.trim() || "";
   const category = document.getElementById("filter-category")?.value || "";
-  const location = document.getElementById("filter-location")?.value || "";
-  const department = document.getElementById("filter-department")?.value || "";
+  const location = document.getElementById("filter-location")?.value.trim() || "";
+  const department = document.getElementById("filter-department")?.value.trim() || "";
   const minBudget = document.getElementById("filter-minBudget")?.value || "";
   const maxBudget = document.getElementById("filter-maxBudget")?.value || "";
   const deadline = document.getElementById("filter-deadline")?.value || "";
@@ -1020,16 +1069,36 @@ async function searchAndFilterTenders() {
     }
 
     const countBox = document.getElementById("results-count");
-    if (countBox) {
-      countBox.innerHTML = `Found <strong>${data.length}</strong> active urban tenders matching your parameters`;
+    const headingBox = document.getElementById("results-heading");
+    
+    if (location) {
+      if (headingBox) headingBox.textContent = `Tenders in "${location}"`;
+      if (countBox) countBox.innerHTML = `Found <strong>${data.length}</strong> opportunities matching your location search`;
+    } else {
+      if (headingBox) headingBox.textContent = "Active Infrastructure Opportunities";
+      if (countBox) countBox.innerHTML = `Showing <strong>${data.length}</strong> active urban tenders across India`;
     }
 
     if (data.length === 0) {
       container.innerHTML = `
-        <div style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 4rem 2rem; background-color: var(--bg-card); border: 2px dashed var(--border-color); border-radius: 12px; margin-top: 2rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-alert text-muted"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-          <h3>No opportunities found</h3>
-          <p>Try clearing your active filters or searching for another keyword.</p>
+        <div class="card" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 4rem 2rem; border: 2px dashed var(--border-color); border-radius: 16px; background-color: var(--bg-card); margin-top: 1rem;">
+          <div style="height: 64px; width: 64px; border-radius: 50%; background-color: rgba(var(--primary-rgb), 0.08); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.75rem;">
+            📍
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; max-width: 540px;">
+            <h3 style="font-size: 1.4rem; font-weight: 850; color: var(--text-primary);">No Current Tenders Available in This Area</h3>
+            <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5;">We couldn't find any tenders matching your selected location right now. Try another nearby city or district, or check again later when new opportunities are added.</p>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center;">
+            <button onclick="focusLocationInput()" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>Change Location</span>
+            </button>
+            <button onclick="viewAllTenders()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <span>View All Tenders</span>
+            </button>
+          </div>
         </div>
       `;
       return;
@@ -1074,7 +1143,7 @@ async function searchAndFilterTenders() {
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
               <div>
                 <span style="display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">LOCATION</span>
-                <span style="display: block; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;" title="${t.location}">${t.location.split(',')[0]}</span>
+                <span style="display: block; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;" title="${t.location}">${t.location}</span>
               </div>
             </div>
           </div>
@@ -1193,13 +1262,133 @@ async function initTenderDetailsPage() {
       `).join("");
     }
 
+    currentTenderDetails = t;
+
     // Checking saved status to show bookmark button state
     checkSaveButtonState(tenderId);
+
+    // Checking tracking / applied status
+    checkTrackButtonState(tenderId);
 
   } catch (err) {
     showToast("Error connecting to server", "error");
   }
 }
+
+let currentTenderDetails = null;
+
+async function checkTrackButtonState(tenderId) {
+  const btn = document.getElementById("details-track-btn");
+  if (!btn) return;
+  const userJson = localStorage.getItem("user");
+  if (!userJson) return;
+  const user = JSON.parse(userJson);
+  const role = (user.role || "").toLowerCase();
+  if (role === "manager" || role === "admin") {
+    btn.style.display = "none";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/my`, { headers: getAuthHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      const existing = (data.applications || []).find(a => a.tender_id === parseInt(tenderId));
+      if (existing) {
+        btn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+          <span>Tracked (${existing.application_status})</span>
+        `;
+        btn.className = "btn btn-outline";
+        btn.style.borderColor = "var(--color-primary)";
+        btn.style.color = "var(--color-primary)";
+        btn.title = "View this application in your Contractor Dashboard";
+        btn.onclick = () => {
+          window.location.href = "dashboard.html";
+        };
+      }
+    }
+  } catch (e) {
+    console.warn("Could not check application status", e);
+  }
+}
+
+window.openTrackAppModal = () => {
+  const userJson = localStorage.getItem("user");
+  if (!userJson) {
+    showToast("Please login as a contractor to track tender applications", "warning");
+    setTimeout(() => { window.location.href = "login.html"; }, 1500);
+    return;
+  }
+
+  const modal = document.getElementById("track-app-modal");
+  if (!modal || !currentTenderDetails) return;
+
+  const titleEl = document.getElementById("modal-tender-title");
+  if (titleEl) titleEl.textContent = currentTenderDetails.name;
+
+  const budgetRefEl = document.getElementById("modal-tender-budget-ref");
+  if (budgetRefEl) budgetRefEl.textContent = `Estimated Budget Outlay: ${formatBudget(currentTenderDetails.budget)}`;
+
+  const dateInp = document.getElementById("track-applied-date");
+  if (dateInp) dateInp.value = new Date().toISOString().split("T")[0];
+
+  modal.style.display = "block";
+};
+
+window.closeTrackAppModal = () => {
+  const modal = document.getElementById("track-app-modal");
+  if (modal) modal.style.display = "none";
+};
+
+window.handleTrackAppSubmit = async (e) => {
+  e.preventDefault();
+  if (!currentTenderDetails) return;
+
+  const bidAmount = document.getElementById("track-bid-amount")?.value;
+  const appliedOn = document.getElementById("track-applied-date")?.value;
+  const proposalNotes = document.getElementById("track-proposal-notes")?.value;
+
+  const submitBtn = document.getElementById("btn-submit-track-app");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Recording...";
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/applications`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        tender_id: currentTenderDetails.id,
+        bid_amount: bidAmount,
+        applied_on: appliedOn,
+        proposal_notes: proposalNotes
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      showToast("Application recorded successfully!", "success");
+      closeTrackAppModal();
+      setTimeout(() => {
+        window.location.href = "dashboard.html";
+      }, 1000);
+    } else {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Record Application";
+      }
+      showToast(data.message || "Could not record application", "error");
+    }
+  } catch (err) {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Record Application";
+    }
+    showToast("Server error recording application", "error");
+  }
+};
 
 async function checkSaveButtonState(tenderId) {
   const btn = document.getElementById("details-save-btn");
@@ -1321,6 +1510,8 @@ async function generateAISummary() {
 }
 
 /* ---------------- CONTRACTOR DASHBOARD ---------------- */
+let currentAnalysisAppId = null;
+
 async function initDashboardPage() {
   const userJson = localStorage.getItem("user");
   const user = JSON.parse(userJson);
@@ -1328,120 +1519,541 @@ async function initDashboardPage() {
   const displayName = user.name || user.username;
   const subText = user.company ? `${user.company} • ${user.email}` : `${user.email} • Contractor Workspace`;
 
-  document.getElementById("profile-name").textContent = displayName;
-  document.getElementById("profile-email").textContent = subText;
+  const nameEl = document.getElementById("profile-name");
+  if (nameEl) nameEl.textContent = displayName;
 
-  // Tabs navigation
+  const emailEl = document.getElementById("profile-email");
+  if (emailEl) emailEl.textContent = subText;
+
+  const codeEl = document.getElementById("profile-code");
+  if (codeEl) codeEl.textContent = user.user_code || "CON1001";
+
+  // Tabs navigation (Applications, Saved, Notifications)
   window.switchTab = (tabName) => {
-    // Hide all contents
-    document.getElementById("tab-saved").style.display = "none";
-    document.getElementById("tab-notifications").style.display = "none";
-    
-    // De-activate sidebar btns
-    document.getElementById("btn-saved").classList.remove("badge-blue");
-    document.getElementById("btn-notifications").classList.remove("badge-blue");
-    document.getElementById("btn-saved").style.backgroundColor = "transparent";
-    document.getElementById("btn-notifications").style.backgroundColor = "transparent";
-    document.getElementById("btn-saved").style.color = "var(--text-secondary)";
-    document.getElementById("btn-notifications").style.color = "var(--text-secondary)";
+    const tabs = ["applications", "saved", "notifications"];
+    tabs.forEach(t => {
+      const panel = document.getElementById(`tab-${t}`);
+      const btn = document.getElementById(`btn-${t}`);
+      if (panel) panel.style.display = "none";
+      if (btn) {
+        btn.style.backgroundColor = "transparent";
+        btn.style.color = "var(--text-secondary)";
+        btn.classList.remove("active");
+      }
+    });
 
-    // Show active
-    document.getElementById(`tab-${tabName}`).style.display = "block";
+    const activePanel = document.getElementById(`tab-${tabName}`);
     const activeBtn = document.getElementById(`btn-${tabName}`);
-    activeBtn.style.backgroundColor = "var(--color-primary)";
-    activeBtn.style.color = "#FFFFFF";
+    if (activePanel) activePanel.style.display = "block";
+    if (activeBtn) {
+      activeBtn.style.backgroundColor = "var(--color-primary)";
+      activeBtn.style.color = "#FFFFFF";
+      activeBtn.classList.add("active");
+    }
   };
 
-  switchTab("saved");
+  switchTab("applications");
   await fetchDashboardData();
 }
 
 async function fetchDashboardData() {
-  const token = localStorage.getItem("token");
   const headers = getAuthHeaders();
 
   try {
-    // 1. Fetch Saved Tenders
-    const savedRes = await fetch(`${API_BASE}/saved`, { headers });
-    const savedTenders = await savedRes.json();
-    
-    document.getElementById("saved-count").textContent = savedTenders.length;
-    const listContainer = document.getElementById("saved-list");
-    
-    if (savedTenders.length === 0) {
-      listContainer.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4rem 1.5rem; gap: 12px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border-color);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-          <p>You haven't bookmarked any opportunities yet.</p>
-        </div>
-      `;
+    // 1. Fetch Contractor Applications Overview
+    const appsRes = await fetch(`${API_BASE}/applications/my`, { headers });
+    if (appsRes.ok) {
+      const appsData = await appsRes.json();
+      renderContractorApplications(appsData);
     } else {
-      listContainer.innerHTML = savedTenders.map(t => {
-        const status = getTenderStatus(t.deadline);
-        return `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); gap: 16px; flex-wrap: wrap;">
-            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <span class="badge badge-blue" style="width: fit-content;">${t.category}</span>
-                <span class="badge ${status.class}" style="width: fit-content;">${status.label}</span>
-              </div>
-              <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">${t.name}</h4>
-              <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                <span style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3a6 6 0 0 0 6-6V8a6 6 0 0 0-6-6"/></svg> ${formatBudget(t.budget)}</span>
-                <span style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Deadline: ${t.deadline}</span>
-              </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <a href="tenderDetails.html?id=${t.id}" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
-                <span>View Details</span>
-                <span>&rarr;</span>
-              </a>
-              <button onclick="handleDashboardUnsave(${t.id})" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 6px; color: var(--color-danger); background-color: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1); transition: var(--transition-smooth);" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
-            </div>
-          </div>
-        `;
-      }).join("");
+      console.warn("Could not fetch contractor applications");
     }
 
-    // 2. Fetch Notifications
-    const notifRes = await fetch(`${API_BASE}/users/notifications`, { headers });
-    const notifications = await notifRes.json();
-    
-    const unread = notifications.filter(n => !n.read).length;
-    document.getElementById("notif-count").textContent = unread;
-    const notifContainer = document.getElementById("notifications-list");
-
-    if (notifications.length === 0) {
-      notifContainer.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4rem 1.5rem; gap: 12px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border-color);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <p>You have no notifications yet.</p>
-        </div>
-      `;
-    } else {
-      notifContainer.innerHTML = notifications.map(n => {
-        const titleWeight = n.read ? "600" : "850";
-        const unreadTag = n.read ? "" : `<span style="font-size: 0.65rem; font-weight: 700; color: #FFFFFF; background-color: var(--color-primary); padding: 2px 6px; borderRadius: 4px; text-transform: uppercase;">New</span>`;
-        return `
-          <div onclick="handleReadNotification(${n.id}, ${n.read})" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 20px; background-color: ${n.read ? 'var(--bg-secondary)' : 'rgba(var(--primary-rgb), 0.02)'}; border-radius: 12px; border: 1px solid ${n.read ? 'var(--border-color)' : 'rgba(var(--primary-rgb), 0.15)'}; transition: var(--transition-smooth); cursor: ${n.read ? 'default' : 'pointer'};">
-            <div style="display: flex; gap: 12px; align-items: flex-start;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${n.read ? 'var(--text-muted)' : 'var(--color-primary)'}" stroke-width="2" style="margin-top: 2px; flex-shrink: 0;" class="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
-              <div>
-                <h4 style="font-size: 0.95rem; font-weight: ${titleWeight}; color: var(--text-primary);">${n.title}</h4>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.45;">${n.message}</p>
-                <span style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 8px;">Date: ${n.created_at}</span>
-              </div>
+    // 2. Fetch Saved Tenders
+    const savedRes = await fetch(`${API_BASE}/saved`, { headers });
+    if (savedRes.ok) {
+      const savedTenders = await savedRes.json();
+      
+      const savedCountEl = document.getElementById("saved-count");
+      if (savedCountEl) savedCountEl.textContent = savedTenders.length;
+      
+      const listContainer = document.getElementById("saved-list");
+      if (listContainer) {
+        if (savedTenders.length === 0) {
+          listContainer.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4rem 1.5rem; gap: 12px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border-color);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+              <p>You haven't bookmarked any opportunities yet.</p>
             </div>
-            ${unreadTag}
-          </div>
-        `;
-      }).join("");
+          `;
+        } else {
+          listContainer.innerHTML = savedTenders.map(t => {
+            const status = getTenderStatus(t.deadline);
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); gap: 16px; flex-wrap: wrap;">
+                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span class="badge badge-blue" style="width: fit-content;">${t.category}</span>
+                    <span class="badge ${status.class}" style="width: fit-content;">${status.label}</span>
+                  </div>
+                  <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);">${t.name}</h4>
+                  <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3a6 6 0 0 0 6-6V8a6 6 0 0 0-6-6"/></svg> ${formatBudget(t.budget)}</span>
+                    <span style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-muted);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Deadline: ${t.deadline}</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <a href="tenderDetails.html?id=${t.id}" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                    <span>View Details</span>
+                    <span>&rarr;</span>
+                  </a>
+                  <button onclick="handleDashboardUnsave(${t.id})" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 6px; color: var(--color-danger); background-color: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1); transition: var(--transition-smooth);" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+      }
+    }
+
+    // 3. Fetch Notifications
+    const notifRes = await fetch(`${API_BASE}/users/notifications`, { headers });
+    if (notifRes.ok) {
+      const notifications = await notifRes.json();
+      const unread = notifications.filter(n => !n.read).length;
+      const notifCountEl = document.getElementById("notif-count");
+      if (notifCountEl) notifCountEl.textContent = unread;
+      
+      const notifContainer = document.getElementById("notifications-list");
+      if (notifContainer) {
+        if (notifications.length === 0) {
+          notifContainer.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 4rem 1.5rem; gap: 12px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px dashed var(--border-color);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <p>You have no notifications yet.</p>
+            </div>
+          `;
+        } else {
+          notifContainer.innerHTML = notifications.map(n => {
+            const titleWeight = n.read ? "600" : "850";
+            const unreadTag = n.read ? "" : `<span style="font-size: 0.65rem; font-weight: 700; color: #FFFFFF; background-color: var(--color-primary); padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">New</span>`;
+            return `
+              <div onclick="handleReadNotification(${n.id}, ${n.read})" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 20px; background-color: ${n.read ? 'var(--bg-secondary)' : 'rgba(var(--primary-rgb), 0.02)'}; border-radius: 12px; border: 1px solid ${n.read ? 'var(--border-color)' : 'rgba(var(--primary-rgb), 0.15)'}; transition: var(--transition-smooth); cursor: ${n.read ? 'default' : 'pointer'};">
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${n.read ? 'var(--text-muted)' : 'var(--color-primary)'}" stroke-width="2" style="margin-top: 2px; flex-shrink: 0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+                  <div>
+                    <h4 style="font-size: 0.95rem; font-weight: ${titleWeight}; color: var(--text-primary);">${n.title}</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.45;">${n.message}</p>
+                    <span style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 8px;">Date: ${n.created_at}</span>
+                  </div>
+                </div>
+                ${unreadTag}
+              </div>
+            `;
+          }).join("");
+        }
+      }
     }
 
   } catch (err) {
     showToast("Error updating workspace data", "error");
   }
 }
+
+function renderContractorApplications(data) {
+  // 1. Update 5 Summary Cards
+  const totalAppsEl = document.getElementById("stat-total-apps");
+  if (totalAppsEl) totalAppsEl.textContent = data.totalApplications;
+
+  const wonAppsEl = document.getElementById("stat-won-apps");
+  if (wonAppsEl) wonAppsEl.textContent = data.won;
+
+  const notAwardedAppsEl = document.getElementById("stat-notawarded-apps");
+  if (notAwardedAppsEl) notAwardedAppsEl.textContent = data.notAwarded;
+
+  const pendingAppsEl = document.getElementById("stat-pending-apps");
+  if (pendingAppsEl) pendingAppsEl.textContent = data.pending;
+
+  const withdrawnAppsEl = document.getElementById("stat-withdrawn-apps");
+  if (withdrawnAppsEl) withdrawnAppsEl.textContent = data.withdrawn;
+
+  const appsCountBadge = document.getElementById("apps-count");
+  if (appsCountBadge) appsCountBadge.textContent = data.totalApplications;
+
+  // 2. Overall Contractor Performance Summary & Win Rate Bar
+  const perfContainer = document.getElementById("performance-summary-container");
+  if (perfContainer) {
+    const decidedCount = data.decidedApplications || (data.won + data.notAwarded);
+    let winRateHtml = "";
+
+    if (data.winRate !== null) {
+      winRateHtml = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="height: 48px; width: 48px; border-radius: 12px; background: rgba(16, 185, 129, 0.12); color: var(--color-success); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; font-weight: 800;">
+              🏆
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.35rem; font-weight: 850; color: var(--text-primary);">${data.winRate}%</span>
+                <span class="badge badge-green" style="font-size: 0.72rem;">Decided Win Rate</span>
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                ${data.won} Won out of ${decidedCount} decided applications (${data.notAwarded} not awarded). Pending &amp; withdrawn excluded.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); background: var(--bg-card); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <span>Formula:</span>
+            <code>Wins ÷ (Wins + Not Awarded) × 100</code>
+          </div>
+        </div>
+      `;
+    } else {
+      winRateHtml = `
+        <div style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.85rem;">
+          <span style="font-size: 1.2rem;">ℹ️</span>
+          <span><strong>Not enough completed outcomes to calculate win rate.</strong> Pending and withdrawn applications are excluded from the win-rate calculation.</span>
+        </div>
+      `;
+    }
+
+    // Category breakdown
+    let catHtml = "";
+    if (data.categories && data.categories.length > 0) {
+      catHtml = `
+        <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Performance by Category</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            ${data.categories.map(c => `
+              <div style="display: inline-flex; align-items: center; gap: 6px; background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 8px; font-size: 0.78rem;">
+                <span style="font-weight: 700; color: var(--text-primary);">${c.category}:</span>
+                <span style="color: var(--color-success); font-weight: 600;">${c.won} won</span>
+                <span style="color: var(--text-muted);">/ ${c.total} bids</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    perfContainer.innerHTML = winRateHtml + catHtml;
+  }
+
+  // 3. Application History Table & Empty State
+  const tableWrapper = document.getElementById("apps-table-wrapper");
+  const emptyState = document.getElementById("applications-empty-state");
+  const tbody = document.getElementById("applications-table-body");
+
+  if (!data.applications || data.applications.length === 0) {
+    if (tableWrapper) tableWrapper.style.display = "none";
+    if (emptyState) emptyState.style.display = "flex";
+  } else {
+    if (tableWrapper) tableWrapper.style.display = "block";
+    if (emptyState) emptyState.style.display = "none";
+
+    if (tbody) {
+      tbody.innerHTML = data.applications.map(app => {
+        // Status Badge formatting
+        let statusBadge = "";
+        const statusUpper = (app.application_status || "").toUpperCase();
+        if (statusUpper === "WON") {
+          statusBadge = `<span class="badge badge-green">Won</span>`;
+        } else if (statusUpper === "NOT AWARDED") {
+          statusBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
+        } else if (statusUpper === "UNDER REVIEW") {
+          statusBadge = `<span class="badge badge-blue">Under Review</span>`;
+        } else if (statusUpper === "WITHDRAWN") {
+          statusBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
+        } else {
+          statusBadge = `<span class="badge badge-blue">Submitted</span>`;
+        }
+
+        const bidDisplay = app.bid_amount ? formatBudget(app.bid_amount) : '<span style="color: var(--text-muted);">Not Recorded</span>';
+        const isWithdrawable = (app.application_status === "Submitted" || app.application_status === "Under Review") && app.outcome === "Pending";
+
+        return `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 14px 16px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 0.82rem;">
+              ${app.application_code || ("APP-" + app.id)}
+            </td>
+            <td style="padding: 14px 16px;">
+              <a href="tenderDetails.html?id=${app.tender_id}" style="color: var(--text-primary); font-weight: 700; text-decoration: none; hover: underline;" class="hover-primary">
+                ${app.tender_name}
+              </a>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+                ${app.tender_category} • ${app.tender_department || ""}
+              </div>
+            </td>
+            <td style="padding: 14px 16px; font-size: 0.82rem; color: var(--text-secondary);">
+              ${app.tender_location || "N/A"}
+            </td>
+            <td style="padding: 14px 16px; font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap;">
+              ${app.applied_on}
+            </td>
+            <td style="padding: 14px 16px; font-weight: 700; color: var(--text-primary); white-space: nowrap;">
+              ${bidDisplay}
+            </td>
+            <td style="padding: 14px 16px; white-space: nowrap;">
+              ${statusBadge}
+            </td>
+            <td style="padding: 14px 16px; white-space: nowrap;">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" onclick="openAnalysisModal(${app.id})" class="btn btn-primary" style="font-size: 0.75rem; padding: 5px 11px; display: inline-flex; align-items: center; gap: 4px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                  <span>View Analysis</span>
+                </button>
+                <a href="tenderDetails.html?id=${app.tender_id}" class="btn btn-outline" style="font-size: 0.75rem; padding: 5px 9px;">
+                  Details
+                </a>
+                ${isWithdrawable ? `
+                  <button type="button" onclick="withdrawApplication(${app.id})" class="btn btn-outline" style="font-size: 0.72rem; padding: 5px 8px; color: var(--color-danger); border-color: rgba(239, 68, 68, 0.2);" title="Withdraw this application">
+                    Withdraw
+                  </button>
+                ` : ""}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+  }
+}
+
+/* ---------------- TENDER PERFORMANCE INSIGHTS MODAL ---------------- */
+window.openAnalysisModal = async (appId) => {
+  currentAnalysisAppId = appId;
+  const modal = document.getElementById("analysis-modal");
+  if (!modal) return;
+
+  const summarySection = document.getElementById("analysis-summary-section");
+  const findingsList = document.getElementById("analysis-findings-list");
+  const subtitleEl = document.getElementById("analysis-modal-subtitle");
+  
+  if (subtitleEl) subtitleEl.textContent = `Analyzing Application #${appId}...`;
+  if (summarySection) {
+    summarySection.innerHTML = `
+      <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+        Loading tender evaluation record...
+      </div>
+    `;
+  }
+  if (findingsList) findingsList.innerHTML = "";
+
+  modal.style.display = "block";
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/${appId}`, { headers: getAuthHeaders() });
+    if (!res.ok) {
+      showToast("Could not load application analysis", "error");
+      modal.style.display = "none";
+      return;
+    }
+
+    const data = await res.json();
+    const app = data.application;
+    const analysis = data.analysis;
+
+    if (subtitleEl) {
+      subtitleEl.textContent = `${app.application_code || ("APP-" + app.id)} • Submitted ${app.applied_on}`;
+    }
+
+    // Render Section A: Application Summary
+    let outcomeBadge = "";
+    if (app.outcome === "Won") {
+      outcomeBadge = `<span class="badge badge-green">Won (Awarded)</span>`;
+    } else if (app.outcome === "Not Awarded") {
+      outcomeBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
+    } else if (app.outcome === "Withdrawn") {
+      outcomeBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
+    } else {
+      outcomeBadge = `<span class="badge badge-blue">Pending Review</span>`;
+    }
+
+    const missingDocsText = app.missing_documents && app.missing_documents.length > 0
+      ? `<span style="color: var(--color-danger); font-weight: 600;">${app.missing_documents.join(", ")}</span>`
+      : `<span style="color: var(--color-success); font-weight: 600;">None recorded (Full compliance packet submitted)</span>`;
+
+    const feedbackText = app.feedback_notes
+      ? `<p style="font-size: 0.86rem; color: var(--text-primary); line-height: 1.5; background: var(--bg-card); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 4px;">${app.feedback_notes}</p>`
+      : `<p style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; margin-top: 4px;">No evaluator notes recorded yet.</p>`;
+
+    if (summarySection) {
+      summarySection.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span class="badge badge-blue" style="font-size: 0.72rem;">${app.tender_category}</span>
+            <h4 style="font-size: 1.15rem; font-weight: 850; color: var(--text-primary); margin-top: 4px;">${app.tender_name}</h4>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">${app.tender_department} • ${app.tender_location}</span>
+          </div>
+          <div>
+            ${outcomeBadge}
+          </div>
+        </div>
+
+        <div class="grid-3" style="gap: 12px; margin-top: 8px; background-color: var(--bg-card); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-color);">
+          <div>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Your Recorded Bid</span>
+            <strong style="font-size: 0.95rem; color: var(--text-primary);">${app.bid_amount ? formatBudget(app.bid_amount) : "Not recorded"}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Tender Outlay Budget</span>
+            <strong style="font-size: 0.95rem; color: var(--text-primary);">${formatBudget(app.tender_budget)}</strong>
+          </div>
+          <div>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Current Review Status</span>
+            <strong style="font-size: 0.95rem; color: var(--color-primary);">${app.application_status}</strong>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Recorded Compliance Deficiencies / Missing Documents</span>
+          <div style="font-size: 0.85rem;">${missingDocsText}</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Official Evaluation Feedback</span>
+          ${feedbackText}
+        </div>
+      `;
+    }
+
+    // Render Section B: Factual Findings
+    if (findingsList) {
+      if (!analysis.findings || analysis.findings.length === 0) {
+        findingsList.innerHTML = `
+          <div style="padding: 1.5rem; text-align: center; background-color: var(--bg-secondary); border-radius: 10px; border: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.88rem;">
+            <span>ℹ️ Not enough information to identify the reason for this outcome.</span>
+          </div>
+        `;
+      } else {
+        findingsList.innerHTML = analysis.findings.map(f => {
+          let typeColor = "var(--color-primary)";
+          let typeBg = "rgba(var(--primary-rgb), 0.08)";
+          let typeIcon = "📌";
+
+          if (f.type === "documentation") {
+            typeColor = "var(--color-danger)";
+            typeBg = "rgba(239, 68, 68, 0.08)";
+            typeIcon = "📄";
+          } else if (f.type === "financial") {
+            typeColor = "var(--color-warning)";
+            typeBg = "rgba(245, 158, 11, 0.08)";
+            typeIcon = "💰";
+          } else if (f.type === "feedback") {
+            typeColor = "var(--color-success)";
+            typeBg = "rgba(16, 185, 129, 0.08)";
+            typeIcon = "📝";
+          }
+
+          return `
+            <div style="border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-card); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem;">${typeIcon}</span>
+                <span style="font-size: 0.75rem; font-weight: 700; color: ${typeColor}; background: ${typeBg}; padding: 2px 8px; border-radius: 6px; text-transform: uppercase;">
+                  ${f.type} observation
+                </span>
+              </div>
+              <div style="font-size: 0.88rem; color: var(--text-primary); line-height: 1.45;">
+                <strong>Observation:</strong> ${f.observation}
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45; background: var(--bg-secondary); padding: 8px 12px; border-radius: 8px; border-left: 3px solid ${typeColor};">
+                <strong>Why it matters:</strong> ${f.why_it_matters}
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-primary); line-height: 1.45;">
+                <strong>Recommended action:</strong> ${f.recommended_action}
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // Load persisted checklist state
+    loadChecklistState(appId);
+
+  } catch (err) {
+    showToast("Error loading insights analysis", "error");
+    modal.style.display = "none";
+  }
+};
+
+window.closeAnalysisModal = () => {
+  const modal = document.getElementById("analysis-modal");
+  if (modal) modal.style.display = "none";
+};
+
+// Checklist Persistence helpers
+function loadChecklistState(appId) {
+  const savedGlobal = localStorage.getItem("tenderkart_bid_checklist");
+  const savedApp = appId ? localStorage.getItem(`tenderkart_checklist_${appId}`) : null;
+  const raw = savedApp || savedGlobal;
+
+  const msgEl = document.getElementById("checklist-saved-msg");
+  if (msgEl) msgEl.style.display = "none";
+
+  if (!raw) {
+    for (let i = 1; i <= 7; i++) {
+      const el = document.getElementById(`chk-${i}`);
+      if (el) el.checked = false;
+    }
+    return;
+  }
+
+  try {
+    const states = JSON.parse(raw);
+    for (let i = 1; i <= 7; i++) {
+      const el = document.getElementById(`chk-${i}`);
+      if (el) el.checked = !!states[`chk-${i}`];
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+window.persistChecklistState = () => {
+  const states = {};
+  for (let i = 1; i <= 7; i++) {
+    const el = document.getElementById(`chk-${i}`);
+    if (el) states[`chk-${i}`] = el.checked;
+  }
+  const str = JSON.stringify(states);
+  localStorage.setItem("tenderkart_bid_checklist", str);
+  if (currentAnalysisAppId) {
+    localStorage.setItem(`tenderkart_checklist_${currentAnalysisAppId}`, str);
+  }
+};
+
+window.saveChecklistProgress = () => {
+  persistChecklistState();
+  const msgEl = document.getElementById("checklist-saved-msg");
+  if (msgEl) msgEl.style.display = "block";
+  showToast("Checklist progress saved for your next tender preparation!", "success");
+};
+
+window.withdrawApplication = async (appId) => {
+  if (!window.confirm("Are you sure you want to withdraw this tender application? This will record the application as Withdrawn.")) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/applications/${appId}/withdraw`, {
+      method: "PUT",
+      headers: getAuthHeaders()
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      showToast(data.message || "Application withdrawn successfully", "info");
+      await fetchDashboardData();
+    } else {
+      const err = await res.json();
+      showToast(err.message || "Could not withdraw application", "error");
+    }
+  } catch (e) {
+    showToast("Server error during application withdrawal", "error");
+  }
+};
 
 async function handleDashboardUnsave(tenderId) {
   try {
@@ -1475,6 +2087,7 @@ async function handleReadNotification(id, readStatus) {
 
 /* ---------------- ADMIN WORKSPACE ---------------- */
 let adminTendersList = [];
+let adminApplicationsList = [];
 
 async function initAdminPage() {
   // Add tender listener
@@ -1557,35 +2170,210 @@ async function initAdminPage() {
     });
   }
 
-  // Switch tabs
+  // Switch tabs (Stats, Add, Tenders, Users, Apps)
   window.switchAdminTab = (tabName) => {
-    document.getElementById("admin-tab-stats").style.display = "none";
-    document.getElementById("admin-tab-add").style.display = "none";
-    document.getElementById("admin-tab-tenders").style.display = "none";
-    document.getElementById("admin-tab-users").style.display = "none";
+    const tabs = ["stats", "add", "tenders", "users", "apps"];
+    tabs.forEach(t => {
+      const panel = document.getElementById(`admin-tab-${t}`);
+      const btn = document.getElementById(`btn-admin-${t}`);
+      if (panel) panel.style.display = "none";
+      if (btn) {
+        btn.style.backgroundColor = "transparent";
+        btn.style.color = "var(--text-secondary)";
+      }
+    });
 
-    document.getElementById("btn-admin-stats").style.backgroundColor = "transparent";
-    document.getElementById("btn-admin-add").style.backgroundColor = "transparent";
-    document.getElementById("btn-admin-tenders").style.backgroundColor = "transparent";
-    document.getElementById("btn-admin-users").style.backgroundColor = "transparent";
-    
-    document.getElementById("btn-admin-stats").style.color = "var(--text-secondary)";
-    document.getElementById("btn-admin-add").style.color = "var(--text-secondary)";
-    document.getElementById("btn-admin-tenders").style.color = "var(--text-secondary)";
-    document.getElementById("btn-admin-users").style.color = "var(--text-secondary)";
+    const activePanel = document.getElementById(`admin-tab-${tabName}`);
+    const activeBtn = document.getElementById(`btn-admin-${tabName}`);
+    if (activePanel) activePanel.style.display = "block";
+    if (activeBtn) {
+      activeBtn.style.backgroundColor = "var(--color-primary)";
+      activeBtn.style.color = "#FFFFFF";
+    }
 
-    document.getElementById(`admin-tab-${tabName}`).style.display = "block";
-    const btn = document.getElementById(`btn-admin-${tabName}`);
-    btn.style.backgroundColor = "var(--color-primary)";
-    btn.style.color = "#FFFFFF";
+    if (tabName === "apps") {
+      fetchAdminApplications();
+    }
   };
 
   switchAdminTab("stats");
   await fetchAdminWorkspace();
 }
 
+async function fetchAdminApplications() {
+  const headers = getAuthHeaders();
+  try {
+    const res = await fetch(`${API_BASE}/admin/applications`, { headers });
+    if (!res.ok) return;
+
+    adminApplicationsList = await res.json();
+
+    const badge = document.getElementById("admin-apps-badge");
+    if (badge) badge.textContent = `${adminApplicationsList.length} Applications`;
+
+    const tbody = document.getElementById("admin-apps-table");
+    if (!tbody) return;
+
+    if (adminApplicationsList.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+            No applications recorded yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = adminApplicationsList.map(app => {
+      let statusBadge = "";
+      const statusUpper = (app.application_status || "").toUpperCase();
+      if (statusUpper === "WON") {
+        statusBadge = `<span class="badge badge-green">Won</span>`;
+      } else if (statusUpper === "NOT AWARDED") {
+        statusBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
+      } else if (statusUpper === "UNDER REVIEW") {
+        statusBadge = `<span class="badge badge-blue">Under Review</span>`;
+      } else if (statusUpper === "WITHDRAWN") {
+        statusBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
+      } else {
+        statusBadge = `<span class="badge badge-blue">Submitted</span>`;
+      }
+
+      let outcomeBadge = "";
+      if (app.outcome === "Won") {
+        outcomeBadge = `<span class="badge badge-green">Won</span>`;
+      } else if (app.outcome === "Not Awarded") {
+        outcomeBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
+      } else if (app.outcome === "Withdrawn") {
+        outcomeBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
+      } else {
+        outcomeBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--color-primary); border: 1px solid var(--border-color);">Pending</span>`;
+      }
+
+      return `
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 14px 18px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 0.82rem;">
+            ${app.application_code || ("APP-" + app.id)}
+          </td>
+          <td style="padding: 14px 18px;">
+            <strong style="color: var(--text-primary);">${app.contractor_name}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${app.contractor_company || app.contractor_code}</div>
+          </td>
+          <td style="padding: 14px 18px;">
+            <strong style="color: var(--text-primary); font-size: 0.88rem;">${app.tender_name}</strong>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${app.tender_category} • ${app.tender_location}</div>
+          </td>
+          <td style="padding: 14px 18px; font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap;">
+            ${app.applied_on}
+          </td>
+          <td style="padding: 14px 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap;">
+            ${app.bid_amount ? formatBudget(app.bid_amount) : '<span style="color: var(--text-muted);">N/A</span>'}
+          </td>
+          <td style="padding: 14px 18px; white-space: nowrap;">
+            ${statusBadge}
+          </td>
+          <td style="padding: 14px 18px; white-space: nowrap;">
+            ${outcomeBadge}
+          </td>
+          <td style="padding: 14px 18px; white-space: nowrap;">
+            <button type="button" onclick="openAdminEvalModal(${app.id})" class="btn btn-outline" style="font-size: 0.78rem; padding: 5px 12px; display: inline-flex; align-items: center; gap: 4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span>Evaluate</span>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.warn("Error fetching admin applications:", err);
+  }
+}
+
+window.openAdminEvalModal = (appId) => {
+  const app = adminApplicationsList.find(a => a.id === appId);
+  if (!app) return;
+
+  const overlay = document.getElementById("eval-overlay");
+  if (!overlay) return;
+
+  document.getElementById("eval-app-id").value = app.id;
+  document.getElementById("eval-app-contractor").textContent = `${app.contractor_name} (${app.contractor_company || app.contractor_code})`;
+  document.getElementById("eval-app-bid").textContent = `Bid: ${app.bid_amount ? formatBudget(app.bid_amount) : 'Not specified'}`;
+  document.getElementById("eval-app-tender").textContent = `Tender: ${app.tender_name} (${app.tender_category})`;
+
+  const statusSel = document.getElementById("eval-status-select");
+  if (statusSel) statusSel.value = app.application_status || "Under Review";
+
+  const outcomeSel = document.getElementById("eval-outcome-select");
+  if (outcomeSel) outcomeSel.value = app.outcome || "Pending";
+
+  const missingDocsEl = document.getElementById("eval-missing-docs");
+  if (missingDocsEl) {
+    missingDocsEl.value = Array.isArray(app.missing_documents) ? app.missing_documents.join(", ") : (app.missing_documents || "");
+  }
+
+  const notesEl = document.getElementById("eval-notes");
+  if (notesEl) notesEl.value = app.feedback_notes || "";
+
+  overlay.style.display = "block";
+};
+
+window.closeAdminEvalOverlay = () => {
+  const overlay = document.getElementById("eval-overlay");
+  if (overlay) overlay.style.display = "none";
+};
+
+window.syncOutcomeSelect = () => {
+  const statusSel = document.getElementById("eval-status-select");
+  const outcomeSel = document.getElementById("eval-outcome-select");
+  if (!statusSel || !outcomeSel) return;
+
+  const st = statusSel.value;
+  if (st === "Won") outcomeSel.value = "Won";
+  else if (st === "Not Awarded") outcomeSel.value = "Not Awarded";
+  else if (st === "Withdrawn") outcomeSel.value = "Withdrawn";
+  else outcomeSel.value = "Pending";
+};
+
+window.handleAdminEvalSubmit = async (e) => {
+  e.preventDefault();
+  const appId = document.getElementById("eval-app-id").value;
+  const status = document.getElementById("eval-status-select").value;
+  const outcome = document.getElementById("eval-outcome-select").value;
+  const missingDocsRaw = document.getElementById("eval-missing-docs").value.trim();
+  const feedback_notes = document.getElementById("eval-notes").value.trim();
+
+  const missing_documents = missingDocsRaw ? missingDocsRaw.split(",").map(d => d.trim()).filter(Boolean) : [];
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/applications/${appId}/evaluate`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        status,
+        outcome,
+        feedback_notes,
+        missing_documents
+      })
+    });
+
+    if (res.ok) {
+      showToast("Application evaluation recorded successfully!", "success");
+      closeAdminEvalOverlay();
+      await fetchAdminApplications();
+      await fetchAdminWorkspace();
+    } else {
+      const err = await res.json();
+      showToast(err.message || "Failed to save evaluation", "error");
+    }
+  } catch (err) {
+    showToast("Server error recording evaluation", "error");
+  }
+};
+
 async function fetchAdminWorkspace() {
-  const token = localStorage.getItem("token");
   const headers = getAuthHeaders();
 
   try {
@@ -1633,7 +2421,10 @@ async function fetchAdminWorkspace() {
       }
     }
 
-    // 2. Fetch Tenders list for table
+    // 2. Fetch Applications for Admin badge
+    await fetchAdminApplications();
+
+    // 3. Fetch Tenders list for table
     const tendersRes = await fetch(`${API_BASE}/tenders`);
     if (tendersRes.ok) {
       adminTendersList = await tendersRes.json();
@@ -1657,7 +2448,7 @@ async function fetchAdminWorkspace() {
       }
     }
 
-    // 3. Fetch User registry accounts (Contractors and Managers)
+    // 4. Fetch User registry accounts (Contractors and Managers)
     const usersRes = await fetch(`${API_BASE}/admin/users`, { headers });
     if (usersRes.ok) {
       const usersData = await usersRes.json();

@@ -41,6 +41,77 @@
       background-color: var(--bg-secondary);
       color: var(--text-primary);
     }
+
+    .tab-btn.active {
+      background-color: rgba(var(--primary-rgb), 0.08);
+      color: var(--color-primary);
+      border-color: rgba(var(--primary-rgb), 0.2);
+    }
+
+    /* Modal Overlay */
+    .dashboard-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(5px);
+      z-index: 2000;
+      display: none;
+      overflow-y: auto;
+      padding: 2rem 1rem;
+    }
+
+    .dashboard-modal-content {
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      max-width: 780px;
+      width: 100%;
+      margin: 0 auto;
+      border-radius: 20px;
+      padding: 2.25rem;
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Table styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      padding: 12px 16px;
+      background-color: var(--bg-secondary);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.88rem;
+    }
+
+    /* Summary cards responsive stacking */
+    .apps-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 900px) {
+      .apps-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 500px) {
+      .apps-summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body style="min-height: 100vh; display: flex; flex-direction: column;">
@@ -52,13 +123,22 @@
   <main style="flex: 1; padding: 3rem 0;">
     <div class="container" style="display: flex; flex-direction: column; gap: 2rem;">
       <!-- Profile Header banner -->
-      <div class="card" style="padding: 2rem; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.03) 100%); display: flex; align-items: center; gap: 24px; flex-wrap: wrap; border: 1px solid rgba(var(--primary-rgb), 0.1);">
+      <div class="card" style="padding: 2rem; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.04) 100%); display: flex; align-items: center; gap: 24px; flex-wrap: wrap; border: 1px solid rgba(var(--primary-rgb), 0.15);">
         <div style="height: 64px; width: 64px; border-radius: 16px; background-color: var(--color-primary); color: #FFFFFF; font-size: 1.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);">
           💼
         </div>
         <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
-          <h2 id="profile-name" style="font-size: 1.5rem; font-weight: 850; color: var(--text-primary);">Contractor Company</h2>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <h2 id="profile-name" style="font-size: 1.5rem; font-weight: 850; color: var(--text-primary);">Contractor Company</h2>
+            <span class="badge badge-blue" id="profile-code">CON1001</span>
+          </div>
           <p id="profile-email" style="font-size: 0.85rem; color: var(--text-secondary);">bids@company.com</p>
+        </div>
+        <div>
+          <a href="tenders.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; padding: 10px 18px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <span>Browse Opportunities</span>
+          </a>
         </div>
       </div>
 
@@ -67,40 +147,237 @@
         <!-- Sidebar Navigation -->
         <aside style="display: flex; flex-direction: column; gap: 1rem; height: fit-content;">
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="switchTab('applications')" class="tab-btn active" id="btn-applications">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>My Applications</span>
+              <span class="badge badge-blue" style="margin-left: auto;" id="apps-count">0</span>
+            </button>
             <button onclick="switchTab('saved')" class="tab-btn" id="btn-saved">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
               <span>Saved Tenders</span>
               <span class="badge badge-blue" style="margin-left: auto;" id="saved-count">0</span>
             </button>
             <button onclick="switchTab('notifications')" class="tab-btn" id="btn-notifications">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               <span>Notifications</span>
               <span class="badge badge-orange" style="margin-left: auto;" id="notif-count">0</span>
             </button>
           </div>
         </aside>
 
-        <!-- Main workspace items panels -->
+        <!-- Main workspace panels -->
         <section style="display: flex; flex-direction: column; gap: 1.5rem;">
-          <!-- Panel 1: Saved Tenders list -->
-          <div id="tab-saved" class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 20px;">
+          
+          <!-- Panel 1: My Tender Applications -->
+          <div id="tab-applications" class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+              <div>
+                <h3 style="font-size: 1.35rem; font-weight: 850; color: var(--text-primary);">My Tender Applications</h3>
+                <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 2px;">
+                  Overview of submitted bid applications, status tracking, and performance insights.
+                </p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <a href="tenders.html" class="btn btn-outline" style="font-size: 0.82rem; padding: 6px 14px;">
+                  + Track New Bid
+                </a>
+              </div>
+            </div>
+
+            <!-- Summary Cards (5 Status Cards) -->
+            <div class="apps-summary-grid" id="apps-summary-cards">
+              <!-- Total Applications -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-card);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Applications</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--text-primary); margin-top: 6px;" id="stat-total-apps">0</h3>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Recorded Bids</span>
+              </div>
+              <!-- Won -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.03);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-success); text-transform: uppercase;">Won</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-success); margin-top: 6px;" id="stat-won-apps">0</h3>
+                <span style="font-size: 0.75rem; color: var(--color-success);">Awarded</span>
+              </div>
+              <!-- Not Awarded -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.03);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-danger); text-transform: uppercase;">Not Awarded</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-danger); margin-top: 6px;" id="stat-notawarded-apps">0</h3>
+                <span style="font-size: 0.75rem; color: var(--color-danger);">Unsuccessful</span>
+              </div>
+              <!-- Pending -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(var(--primary-rgb), 0.25); background: rgba(var(--primary-rgb), 0.03);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase;">Pending</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-primary); margin-top: 6px;" id="stat-pending-apps">0</h3>
+                <span style="font-size: 0.75rem; color: var(--color-primary);">In Review</span>
+              </div>
+              <!-- Withdrawn -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-card);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Withdrawn</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--text-muted); margin-top: 6px;" id="stat-withdrawn-apps">0</h3>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Contractor Cancelled</span>
+              </div>
+            </div>
+
+            <!-- Overall Performance Summary & Win Rate Bar -->
+            <div id="performance-summary-container" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 10px;">
+              <!-- Dynamic win rate & category breakdown -->
+            </div>
+
+            <!-- Application History Table -->
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">Application History</h4>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Sorted by most recent</span>
+              </div>
+
+              <div style="overflow-x: auto; width: 100%; border-radius: 12px; border: 1px solid var(--border-color);" id="apps-table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>App ID</th>
+                      <th>Tender Title</th>
+                      <th>Location</th>
+                      <th>Applied On</th>
+                      <th>Bid Amount</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="applications-table-body">
+                    <!-- Dynamic applications rows -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Empty state container -->
+              <div id="applications-empty-state" style="display: none; padding: 3rem 1.5rem; text-align: center; border: 2px dashed var(--border-color); border-radius: 14px; background-color: var(--bg-secondary); flex-direction: column; align-items: center; gap: 12px;">
+                <div style="height: 52px; width: 52px; border-radius: 50%; background-color: rgba(var(--primary-rgb), 0.08); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                  📋
+                </div>
+                <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary);">No Tender Applications Yet</h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); max-width: 460px; line-height: 1.5;">
+                  You haven't applied for any tenders yet. Browse available opportunities and start tracking your applications here.
+                </p>
+                <a href="tenders.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; margin-top: 6px;">
+                  <span>Browse Tenders</span>
+                </a>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Panel 2: Saved Tenders list -->
+          <div id="tab-saved" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 20px;">
             <h3 style="font-size: 1.2rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">Saved Bids Tracking List</h3>
             <div style="display: flex; flex-direction: column; gap: 16px;" id="saved-list">
               <!-- Dynamic bookmarks list -->
             </div>
           </div>
 
-          <!-- Panel 2: Notifications log -->
-          <div id="tab-notifications" class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 20px; display: none;">
+          <!-- Panel 3: Notifications log -->
+          <div id="tab-notifications" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 20px;">
             <h3 style="font-size: 1.2rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">System Alerts & Logs</h3>
             <div style="display: flex; flex-direction: column; gap: 16px;" id="notifications-list">
               <!-- Dynamic notifications log -->
             </div>
           </div>
+
         </section>
       </div>
     </div>
   </main>
+
+  <!-- Tender Performance Insights Modal (View Analysis) -->
+  <div id="analysis-modal" class="dashboard-modal-overlay">
+    <div class="dashboard-modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">📊</span>
+          <div>
+            <h3 style="font-size: 1.25rem; font-weight: 850; color: var(--text-primary);">Tender Performance Insights</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted);" id="analysis-modal-subtitle">Learn from Previous Bids</p>
+          </div>
+        </div>
+        <button onclick="closeAnalysisModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Section A: Application Summary -->
+      <div id="analysis-summary-section" style="background-color: var(--bg-secondary); border-radius: 12px; padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px;">
+        <!-- Dynamic Summary Fields -->
+      </div>
+
+      <!-- Section B: Possible Improvement Areas (Factual Observations) -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+          <span>🎯</span>
+          <span>Factual Evaluation & Improvement Areas</span>
+        </h4>
+        <div id="analysis-findings-list" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Dynamic factual findings -->
+        </div>
+      </div>
+
+      <!-- Section C: Prepare for Next Tender Checklist -->
+      <div style="background-color: var(--bg-secondary); border-radius: 14px; padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <h4 style="font-size: 1rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+            <span>📋</span>
+            <span>Prepare for the Next Tender: Submission Checklist</span>
+          </h4>
+          <button type="button" onclick="saveChecklistProgress()" class="btn btn-primary" style="font-size: 0.78rem; padding: 4px 12px;">
+            Use Checklist for Next Tender
+          </button>
+        </div>
+        
+        <p style="font-size: 0.82rem; color: var(--text-secondary);">
+          Review each compliance gate before finalizing your next bid submission:
+        </p>
+
+        <div id="tender-checklist-items" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-1" onchange="persistChecklistState()" />
+            <span>1. Read the complete tender document and technical volume.</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-2" onchange="persistChecklistState()" />
+            <span>2. Confirm eligibility and qualification requirements (turnover, licenses, past works).</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-3" onchange="persistChecklistState()" />
+            <span>3. Prepare all required documents (EMD guarantee, GST, Machinery holdings).</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-4" onchange="persistChecklistState()" />
+            <span>4. Review the project scope and technical engineering specifications.</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-5" onchange="persistChecklistState()" />
+            <span>5. Estimate project costs, unit materials rates, and execution timeline carefully.</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-6" onchange="persistChecklistState()" />
+            <span>6. Check the submission deadline and plan portal upload at least 48h in advance.</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="chk-7" onchange="persistChecklistState()" />
+            <span>7. Verify all information, seal covers, and digital signatures before final submission.</span>
+          </label>
+        </div>
+        <p id="checklist-saved-msg" style="font-size: 0.75rem; color: var(--color-success); font-weight: 600; display: none;">
+          ✓ Checklist progress saved for your next tender preparation!
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 14px;">
+        <button onclick="closeAnalysisModal()" class="btn btn-secondary" style="font-size: 0.88rem; padding: 8px 20px;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Footer placeholder -->
   <div id="footer-placeholder"></div>

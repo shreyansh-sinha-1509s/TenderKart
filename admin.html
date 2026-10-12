@@ -110,6 +110,9 @@
             <button onclick="switchAdminTab('tenders')" class="admin-tab-btn" id="btn-admin-tenders">
               📋 <span>Manage Opportunities</span>
             </button>
+            <button onclick="switchAdminTab('apps')" class="admin-tab-btn" id="btn-admin-apps">
+              📑 <span>Application Reviews</span>
+            </button>
             <button onclick="switchAdminTab('users')" class="admin-tab-btn" id="btn-admin-users">
               👥 <span>Contractor Registry</span>
             </button>
@@ -270,6 +273,37 @@
             </div>
           </div>
 
+          <!-- Panel 5: Applications Reviews table -->
+          <div id="admin-tab-apps" class="card" style="padding: 2rem; display: none; overflow-x: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 24px; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <h3 style="font-size: 1.25rem; font-weight: 850; color: var(--text-primary);">Application Reviews & Evaluation</h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 2px;">Review bids submitted by contractors, update progress status, and record evaluation feedback.</p>
+              </div>
+              <span class="badge badge-blue" id="admin-apps-badge">0 Applications</span>
+            </div>
+            
+            <div style="overflow-x: auto; width: 100%;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>App ID</th>
+                    <th>Contractor & Firm</th>
+                    <th>Tender Project Title</th>
+                    <th>Applied On</th>
+                    <th>Bid Amount</th>
+                    <th>Review Status</th>
+                    <th>Outcome</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-apps-table">
+                  <!-- Dynamic application rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </section>
       </div>
     </div>
@@ -348,6 +382,79 @@
           <button type="submit" class="btn btn-primary" style="border: none; padding: 10px 25px;">Save Changes</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Evaluate Application Modal Overlay -->
+  <div id="eval-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px); z-index: 2000; display: none; overflow-y: auto; padding: 2rem 1rem;">
+    <div style="background-color: var(--bg-primary); border: 1px solid var(--border-color); max-width: 650px; width: 100%; margin: 2rem auto; border-radius: 18px; padding: 2.25rem; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 20px;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+        <div>
+          <h3 style="font-size: 1.25rem; font-weight: 850; color: var(--text-primary);">Evaluate Contractor Application</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted);" id="eval-modal-subtitle">Review application and record evaluation feedback</p>
+        </div>
+        <button onclick="closeAdminEvalOverlay()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="admin-eval-form" onsubmit="handleAdminEvalSubmit(event)" style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" id="eval-app-id" />
+
+        <div style="background-color: var(--bg-secondary); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-color); font-size: 0.85rem; display: flex; flex-direction: column; gap: 4px;">
+          <span style="color: var(--text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase;">Application Details</span>
+          <div style="display: flex; justify-content: space-between; gap: 8px;">
+            <strong id="eval-app-contractor" style="color: var(--text-primary);">Contractor Name</strong>
+            <span id="eval-app-bid" style="color: var(--color-primary); font-weight: 700;">Bid: INR --</span>
+          </div>
+          <span id="eval-app-tender" style="font-size: 0.8rem; color: var(--text-secondary);">Tender: --</span>
+        </div>
+
+        <div class="grid-2" style="gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="eval-status-select" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Application Status</label>
+            <select id="eval-status-select" class="form-input" style="height: 42px;" required onchange="syncOutcomeSelect()">
+              <option value="Under Review">Under Review</option>
+              <option value="Won">Won</option>
+              <option value="Not Awarded">Not Awarded</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Withdrawn">Withdrawn</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="eval-outcome-select" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Final Decision Outcome</label>
+            <select id="eval-outcome-select" class="form-input" style="height: 42px;" required>
+              <option value="Pending">Pending Decision</option>
+              <option value="Won">Won (Awarded Contract)</option>
+              <option value="Not Awarded">Not Awarded (Unsuccessful)</option>
+              <option value="Withdrawn">Withdrawn</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="eval-missing-docs" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Missing Documents / Compliance Deficiencies (Optional)</label>
+          <input type="text" id="eval-missing-docs" class="form-input" placeholder="e.g. Hydraulic Rig Barge Certificate, Bank Solvency Letter" style="height: 42px;" />
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Separate multiple document names with commas.</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="eval-notes" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Factual Evaluator Feedback & Notes</label>
+          <textarea id="eval-notes" class="form-input" rows="4" placeholder="Provide factual procurement committee evaluation comments..." style="resize: vertical;"></textarea>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Visible to the contractor in their Tender Performance Insights view.</span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 6px;">
+          <button type="button" onclick="closeAdminEvalOverlay()" class="btn btn-secondary" style="padding: 10px 18px;">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px; border: none; font-weight: 700;">
+            Save Evaluation
+          </button>
+        </div>
+      </form>
+
     </div>
   </div>
 

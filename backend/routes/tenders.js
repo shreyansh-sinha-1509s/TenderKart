@@ -20,9 +20,49 @@ router.get("/", (req, res) => {
     params.push(category);
   }
 
-  if (location) {
-    query += " AND location LIKE ?";
-    params.push(`%${location}%`);
+  if (location && typeof location === "string" && location.trim().length > 0) {
+    const rawLoc = location.trim();
+    const lower = rawLoc.toLowerCase();
+
+    // Regional and state variations / abbreviations normalization
+    const stateAbbr = {
+      "mh": "Maharashtra",
+      "maharashtra": "Maharashtra",
+      "dl": "Delhi",
+      "delhi": "Delhi",
+      "new delhi": "Delhi",
+      "central delhi": "Delhi",
+      "ncr": "Delhi",
+      "up": "Uttar Pradesh",
+      "uttar pradesh": "Uttar Pradesh",
+      "mp": "Madhya Pradesh",
+      "madhya pradesh": "Madhya Pradesh",
+      "wb": "West Bengal",
+      "west bengal": "West Bengal",
+      "pb": "Punjab",
+      "punjab": "Punjab",
+      "hr": "Haryana",
+      "haryana": "Haryana",
+      "as": "Assam",
+      "assam": "Assam"
+    };
+
+    const resolvedState = stateAbbr[lower];
+
+    if (resolvedState) {
+      query += " AND (location LIKE ? OR location LIKE ?)";
+      params.push(`%${rawLoc}%`, `%${resolvedState}%`);
+    } else {
+      const tokens = rawLoc.split(/[,/]+/).map(t => t.trim()).filter(Boolean);
+      if (tokens.length > 1) {
+        const orClauses = tokens.map(() => "location LIKE ?").join(" OR ");
+        query += ` AND (${orClauses})`;
+        tokens.forEach(t => params.push(`%${t}%`));
+      } else {
+        query += " AND location LIKE ?";
+        params.push(`%${rawLoc}%`);
+      }
+    }
   }
 
   if (department) {
