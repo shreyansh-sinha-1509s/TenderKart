@@ -264,14 +264,37 @@ Access the application in your browser:
 
 ---
 
-## 🔑 Default Credentials
+---
 
-To test role-based features without registering a new account, use the following pre-seeded credentials:
+## 🔑 Realistic Demo Accounts & Testing Credentials
 
-| Role | Username | Password | Access Capabilities |
+The SQLite database is pre-seeded with 10 realistic demo contractor profiles (with distinct bidding histories, win rates, and analysis records) and 6 departmental managers:
+
+### 👷 Contractor Accounts (for Testing Application Histories & Win Rates)
+
+| User ID | Contractor Name & Company | Password | Application Pattern | Win Rate |
+| :--- | :--- | :--- | :--- | :--- |
+| **`CON1001`** | Rajesh Mehta (Mehta Infrastructure Works) | `Contractor@1001` | **High Activity** (10 bids: 4 Won, 3 Lost, 2 Pending, 1 Withdrawn) | **57.1%** |
+| **`CON1002`** | Amit Kulkarni (Kulkarni Civil Projects) | `Contractor@1002` | **Moderate Performance** (7 bids: 2 Won, 3 Lost, 2 Pending) | **40.0%** |
+| **`CON1003`** | Suresh Patil (Patil Road & Bridge Contractors) | `Contractor@1003` | **Specialized Contractor** (5 bids: 2 Won, 2 Lost, 1 Pending) | **50.0%** |
+| **`CON1004`** | Neeraj Sharma (Sharma Urban Construction) | `Contractor@1004` | **Improving Contractor** (6 bids: 1 Won, 3 Lost, 2 Pending) | **25.0%** |
+| **`CON1005`** | Vikram Desai (Desai Infrastructure Solutions) | `Contractor@1005` | **Zero History** (0 applications — tests empty state) | *N/A (Empty)* |
+| **`CON1006`** | Arvind Patel (Patel Earthmovers & Infra) | `Contractor@1006` | **Strong Performance** (8 bids: 4 Won, 2 Lost, 2 Pending) | **66.7%** |
+| **`CON1007`** | Deepak Verma (Verma Metro & Tunneling) | `Contractor@1007` | **Inconsistent / Complex** (5 bids: 1 Won, 3 Lost, 1 Pending) | **25.0%** |
+| **`CON1008`** | Ananya Sen (Sen Urban Engineering) | `Contractor@1008` | **Moderate Performance** (7 bids: 2 Won, 3 Lost, 2 Pending) | **40.0%** |
+| **`CON1009`** | Tarun Aggarwal (Aggarwal Smart Utilities) | `Contractor@1009` | **New Contractor** (2 bids: 0 Won, 0 Lost, 2 Pending) | *N/A (Pending)* |
+| **`CON1010`** | Pooja Hegde (Hegde Water Works & Pipelines) | `Contractor@1010` | **Only Pending** (3 bids: 0 Won, 0 Lost, 3 Pending) | *N/A (Pending)* |
+
+### 🏛️ Municipal & Departmental Manager Accounts
+
+| User ID | Manager Name | Department | Password |
 | :--- | :--- | :--- | :--- |
-| **Administrator** | `admin` | `admin123` | Publish tenders, delete tenders, view macro budget stats, view audit logs |
-| **Contractor** | `contractor` | `contractor123` | Bookmark tenders, track watchlist, access contractor dashboard |
+| **`MGR2001`** | Anil Joshi | Public Works Department (PWD) | `Manager@2001` |
+| **`MGR2002`** | Priya Nair | Urban Development Department | `Manager@2002` |
+| **`MGR2003`** | Rohan Shah | Municipal Infrastructure | `Manager@2003` |
+| **`MGR2004`** | Kavita Rao | Water Supply Department | `Manager@2004` |
+| **`MGR2005`** | Manoj Verma | Metro Rail Infrastructure | `Manager@2005` |
+| **`MGR2006`** | Sneha Iyer | Smart City Development | `Manager@2006` |
 
 ---
 

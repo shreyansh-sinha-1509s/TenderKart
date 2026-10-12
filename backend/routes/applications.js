@@ -347,9 +347,12 @@ router.post("/", checkContractorAuth, (req, res) => {
     return res.status(400).json({ message: "Tender ID is required." });
   }
 
-  const parsedBid = parseFloat(bid_amount);
-  if (isNaN(parsedBid) || parsedBid <= 0) {
-    return res.status(400).json({ message: "Please provide a valid bid amount in INR." });
+  let parsedBid = null;
+  if (bid_amount !== undefined && bid_amount !== null && String(bid_amount).trim() !== "") {
+    parsedBid = parseFloat(bid_amount);
+    if (isNaN(parsedBid) || parsedBid <= 0) {
+      return res.status(400).json({ message: "Please provide a valid bid amount in INR." });
+    }
   }
 
   const submissionDate = applied_on && applied_on.trim() 

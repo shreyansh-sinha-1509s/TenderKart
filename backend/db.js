@@ -104,7 +104,7 @@ db.serialize(() => {
       contractor_id INTEGER NOT NULL,
       tender_id INTEGER NOT NULL,
       applied_on TEXT NOT NULL,
-      bid_amount REAL NOT NULL,
+      bid_amount REAL,
       application_status TEXT NOT NULL DEFAULT 'Submitted',
       outcome TEXT DEFAULT 'Pending',
       proposal_notes TEXT,
