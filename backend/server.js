@@ -15,6 +15,7 @@ app.use("/api/saved", require("./routes/saved"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/applications", require("./routes/applications"));
 app.use("/api/inquiries", require("./routes/inquiries"));
+app.use("/api/analytics", require("./routes/analytics"));
 
 // Serve static frontend files from the root directory
 app.use(express.static(path.join(__dirname, "..")));

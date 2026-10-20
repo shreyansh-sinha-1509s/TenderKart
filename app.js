@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initAdminPage();
   } else if (page === "contact.html") {
     initContactPage();
+  } else if (page === "analytics.html") {
+    initAnalyticsPage();
   }
 });
 
@@ -185,9 +187,10 @@ function renderNavbar() {
         </a>
 
         <!-- Links -->
-        <div style="display: flex; align-items: center; gap: 32px;" id="desktop-nav-links">
+        <div style="display: flex; align-items: center; gap: 28px;" id="desktop-nav-links">
           <a href="index.html" class="nav-link" id="link-home">Home</a>
           <a href="tenders.html" class="nav-link" id="link-tenders">Browse Tenders</a>
+          <a href="analytics.html" class="nav-link" id="link-analytics">Analytics &amp; Intelligence</a>
           <a href="about.html" class="nav-link" id="link-about">About</a>
           <a href="contact.html" class="nav-link" id="link-contact">Contact</a>
         </div>
@@ -210,6 +213,7 @@ function renderNavbar() {
       <div id="mobile-menu-drawer" style="display: none; flex-direction: column; width: 100%; border-top: 1px solid var(--border-color); background-color: var(--bg-secondary); padding: 1.5rem; gap: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: var(--transition-smooth);">
         <a href="index.html" style="font-size: 1rem; font-weight: 600; color: var(--text-primary); padding: 8px 0; border-bottom: 1px solid var(--border-color);">Home</a>
         <a href="tenders.html" style="font-size: 1rem; font-weight: 600; color: var(--text-primary); padding: 8px 0; border-bottom: 1px solid var(--border-color);">Browse Tenders</a>
+        <a href="analytics.html" style="font-size: 1rem; font-weight: 600; color: var(--text-primary); padding: 8px 0; border-bottom: 1px solid var(--border-color);">Analytics &amp; Intelligence</a>
         <a href="about.html" style="font-size: 1rem; font-weight: 600; color: var(--text-primary); padding: 8px 0; border-bottom: 1px solid var(--border-color);">About</a>
         <a href="contact.html" style="font-size: 1rem; font-weight: 600; color: var(--text-primary); padding: 8px 0; border-bottom: 1px solid var(--border-color);">Contact</a>
         <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 12px; margin-top: 8px; border-top: 1px dashed var(--border-color);">
@@ -226,6 +230,7 @@ function renderNavbar() {
   const activePath = currentPage();
   const homeLink = document.getElementById("link-home");
   const tendersLink = document.getElementById("link-tenders");
+  const analyticsLink = document.getElementById("link-analytics");
   const aboutLink = document.getElementById("link-about");
   const contactLink = document.getElementById("link-contact");
 
@@ -233,6 +238,8 @@ function renderNavbar() {
     if (homeLink) homeLink.style.cssText = "color: var(--color-primary); font-weight: 700;";
   } else if (activePath === "tenders.html" || activePath === "tenderDetails.html") {
     if (tendersLink) tendersLink.style.cssText = "color: var(--color-primary); font-weight: 700;";
+  } else if (activePath === "analytics.html") {
+    if (analyticsLink) analyticsLink.style.cssText = "color: var(--color-primary); font-weight: 700;";
   } else if (activePath === "about.html") {
     if (aboutLink) aboutLink.style.cssText = "color: var(--color-primary); font-weight: 700;";
   } else if (activePath === "contact.html") {
@@ -273,8 +280,8 @@ function renderFooter() {
           <h4 style="font-size: 0.8rem; font-weight: 800; color: #F1F5F9; text-transform: uppercase; letter-spacing: 1px;">Product</h4>
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
             <li><a href="tenders.html" class="footer-link">Browse Tenders</a></li>
-            <li><a href="tenders.html" class="footer-link">Search & Filter</a></li>
-            <li><a href="tenders.html" class="footer-link">Tender Intelligence</a></li>
+            <li><a href="analytics.html" class="footer-link">Analytics &amp; Intelligence</a></li>
+            <li><a href="tenders.html" class="footer-link">Search &amp; Filter</a></li>
             <li><a href="dashboard.html" class="footer-link">Dashboard</a></li>
           </ul>
         </div>
@@ -294,6 +301,7 @@ function renderFooter() {
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
             <li><a href="index.html" class="footer-link">← Home</a></li>
             <li><a href="tenders.html" class="footer-link">Browse Tenders</a></li>
+            <li><a href="analytics.html" class="footer-link">Analytics &amp; Intelligence</a></li>
             <li><a href="about.html" class="footer-link">About Us</a></li>
             <li><a href="contact.html" class="footer-link">Contact Us</a></li>
           </ul>
@@ -1068,6 +1076,21 @@ async function searchAndFilterTenders() {
       return;
     }
 
+    // Log telemetry for search operations
+    if (location || search) {
+      logAnalyticsEvent("tender_search", {
+        location: location || null,
+        search_keyword: search || null,
+        category: category || null,
+        metadata: { results_count: data.length }
+      });
+    } else if (category) {
+      logAnalyticsEvent("category_filter", {
+        category: category,
+        metadata: { source: "filter_bar" }
+      });
+    }
+
     const countBox = document.getElementById("results-count");
     const headingBox = document.getElementById("results-heading");
     
@@ -1222,6 +1245,14 @@ async function initTenderDetailsPage() {
     }
 
     const t = await res.json();
+
+    // Log tender_view interaction event
+    logAnalyticsEvent("tender_view", {
+      tender_id: t.id,
+      category: t.category,
+      location: t.location,
+      metadata: { name: t.name }
+    });
 
     // Renders data directly to elements
     document.getElementById("tender-name").textContent = t.name;
@@ -3478,3 +3509,816 @@ function initContactPage() {
     }
   });
 }
+
+/* ============================================================= */
+/* UNIFIED ANALYTICS & INTELLIGENCE MODULE LOGIC                 */
+/* ============================================================= */
+
+function getOrCreateSessionId() {
+  let sid = sessionStorage.getItem("tk_session_id");
+  if (!sid) {
+    sid = "sess_" + Math.random().toString(36).substring(2, 11);
+    sessionStorage.setItem("tk_session_id", sid);
+  }
+  return sid;
+}
+
+async function logAnalyticsEvent(eventType, payload = {}) {
+  try {
+    const body = {
+      event_type: eventType,
+      tender_id: payload.tender_id || null,
+      category: payload.category || null,
+      location: payload.location || null,
+      search_keyword: payload.search_keyword || null,
+      metadata: payload.metadata || null,
+      session_id: getOrCreateSessionId()
+    };
+    await fetch(`${API_BASE}/analytics/events`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body)
+    });
+  } catch (err) {
+    console.debug("Telemetry dispatch non-blocking log:", err.message);
+  }
+}
+
+// Chart instances store to enable proper re-render / destroy on theme switch or tab change
+const analyticsCharts = {};
+
+function initAnalyticsPage() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get("tab") || "overview";
+  switchAnalyticsTab(initialTab);
+
+  // Pre-load active persona if contractor logged in
+  const userJson = localStorage.getItem("user");
+  if (userJson) {
+    try {
+      const u = JSON.parse(userJson);
+      if (u.role === "contractor" && u.user_code) {
+        const selector = document.getElementById("select-demo-contractor");
+        if (selector) selector.value = u.user_code;
+      }
+    } catch (e) {}
+  }
+}
+
+function switchAnalyticsTab(tabName) {
+  const validTabs = ["overview", "insights", "mining", "performance"];
+  if (!validTabs.includes(tabName)) tabName = "overview";
+
+  // Update tabs UI
+  validTabs.forEach(t => {
+    const btn = document.getElementById(`tab-btn-${t}`);
+    const pane = document.getElementById(`tab-${t}`);
+    if (btn) btn.classList.toggle("active", t === tabName);
+    if (pane) pane.classList.toggle("active", t === tabName);
+  });
+
+  // History state update without reload
+  const url = new URL(window.location);
+  url.searchParams.set("tab", tabName);
+  window.history.replaceState({}, "", url);
+
+  // Lazy load tab data
+  if (tabName === "overview") {
+    loadOverviewAnalytics();
+  } else if (tabName === "insights") {
+    loadTenderInsights();
+  } else if (tabName === "mining") {
+    loadDataMining();
+  } else if (tabName === "performance") {
+    const selector = document.getElementById("select-demo-contractor");
+    const code = selector ? selector.value : "CON1001";
+    loadMyPerformance(code);
+  }
+}
+
+// -------------------------------------------------------------
+// 1. OVERVIEW — WEB ANALYTICS
+// -------------------------------------------------------------
+async function loadOverviewAnalytics() {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/overview`);
+    if (!res.ok) throw new Error("Failed to load overview analytics");
+    const data = await res.json();
+
+    // Populate counters
+    const s = data.summary || {};
+    const elTotal = document.getElementById("ov-total-events");
+    const elViews = document.getElementById("ov-tender-views");
+    const elSearches = document.getElementById("ov-searches-count");
+    const elSaves = document.getElementById("ov-saves-count");
+    const elApps = document.getElementById("ov-apps-count");
+
+    if (elTotal) elTotal.textContent = s.total_events || 0;
+    if (elViews) elViews.textContent = s.tender_views || 0;
+    if (elSearches) elSearches.textContent = s.searches_count || 0;
+    if (elSaves) elSaves.textContent = s.saves_count || 0;
+    if (elApps) elApps.textContent = s.applications_count || 0;
+
+    // 14-Day Activity Trends Line Chart
+    renderActivityTrendsChart(data.activity_trends || []);
+
+    // Popular Categories Horizontal Bar Chart
+    renderPopularCategoriesChart(data.popular_categories || []);
+
+    // Top Searched Locations
+    const locList = document.getElementById("ov-locations-list");
+    if (locList) {
+      if (!data.popular_locations || data.popular_locations.length === 0) {
+        locList.innerHTML = `<div style="padding: 1rem; color: var(--text-muted); text-align: center;">No location search events logged yet.</div>`;
+      } else {
+        const maxLocCount = Math.max(...data.popular_locations.map(l => l.count), 1);
+        locList.innerHTML = data.popular_locations.map(l => {
+          const pct = Math.round((l.count / maxLocCount) * 100);
+          return `
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                <span style="font-weight: 600; color: var(--text-primary);">📍 ${l.location}</span>
+                <span style="color: var(--text-muted); font-weight: 700;">${l.count} searches</span>
+              </div>
+              <div style="height: 6px; width: 100%; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
+                <div style="height: 100%; width: ${pct}%; background: var(--color-primary); border-radius: 4px;"></div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // Most Viewed Tenders Table
+    const viewedTbody = document.getElementById("ov-most-viewed-tbody");
+    if (viewedTbody) {
+      if (!data.most_viewed_tenders || data.most_viewed_tenders.length === 0) {
+        viewedTbody.innerHTML = `<tr><td colspan="4" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No tender views recorded yet.</td></tr>`;
+      } else {
+        viewedTbody.innerHTML = data.most_viewed_tenders.map(t => `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 10px 4px;">
+              <a href="tenderDetails.html?id=${t.id}" style="font-weight: 600; color: var(--color-primary); text-decoration: none;">
+                ${t.name}
+              </a>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${t.location}</div>
+            </td>
+            <td style="padding: 10px 8px;">
+              <span class="badge badge-blue" style="font-size: 0.75rem;">${t.category}</span>
+            </td>
+            <td style="padding: 10px 8px; font-weight: 700;">₹${t.budget_crores} Cr</td>
+            <td style="padding: 10px 8px; text-align: right; font-weight: 800; color: var(--color-primary);">${t.views_count}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // Live Audit Telemetry Feed
+    const auditTbody = document.getElementById("ov-audit-feed-tbody");
+    if (auditTbody) {
+      if (!data.recent_activity_feed || data.recent_activity_feed.length === 0) {
+        auditTbody.innerHTML = `<tr><td colspan="5" style="padding: 1rem; text-align: center; color: var(--text-muted);">No live events available.</td></tr>`;
+      } else {
+        auditTbody.innerHTML = data.recent_activity_feed.map(ev => {
+          let badgeClass = "badge-muted";
+          let typeLabel = ev.event_type;
+          if (ev.event_type === "tender_view") { badgeClass = "badge-blue"; typeLabel = "View Tender"; }
+          else if (ev.event_type === "tender_search") { badgeClass = "badge-green"; typeLabel = "Search"; }
+          else if (ev.event_type === "category_filter") { badgeClass = "badge-orange"; typeLabel = "Filter Vertical"; }
+          else if (ev.event_type === "tender_save") { badgeClass = "badge-blue"; typeLabel = "Watchlist Save"; }
+
+          const detail = ev.tender_name || ev.search_keyword || ev.category || "Platform Interaction";
+          const userText = ev.user_name ? `${ev.user_name} (${ev.user_role})` : "Anonymous Visitor";
+
+          return `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 8px;"><span class="badge ${badgeClass}" style="font-size: 0.75rem;">${typeLabel}</span></td>
+              <td style="padding: 8px; color: var(--text-primary); font-weight: 500;">${detail}</td>
+              <td style="padding: 8px; color: var(--text-muted); font-size: 0.8rem;">${ev.location || "Pan-India"}</td>
+              <td style="padding: 8px; color: var(--text-secondary); font-size: 0.8rem;">${userText}</td>
+              <td style="padding: 8px; text-align: right; color: var(--text-muted); font-size: 0.78rem;">${ev.created_at}</td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+  } catch (err) {
+    console.error("Error rendering overview analytics:", err);
+  }
+}
+
+function renderActivityTrendsChart(trends) {
+  const ctx = document.getElementById("chart-activity-trends");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  if (analyticsCharts.activityTrends) {
+    analyticsCharts.activityTrends.destroy();
+  }
+
+  const isDark = document.body.classList.contains("dark-theme");
+  const textColor = isDark ? "#94A3B8" : "#475569";
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
+  const labels = trends.map(t => t.event_date.substring(5)); // 'MM-DD'
+  const views = trends.map(t => t.views);
+  const searches = trends.map(t => t.searches);
+  const saves = trends.map(t => t.saves);
+
+  analyticsCharts.activityTrends = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels.length ? labels : ["Day 1", "Day 2", "Day 3"],
+      datasets: [
+        {
+          label: "Tender Views",
+          data: views.length ? views : [4, 8, 12],
+          borderColor: "#2563EB",
+          backgroundColor: "rgba(37, 99, 235, 0.12)",
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2.5
+        },
+        {
+          label: "Searches",
+          data: searches.length ? searches : [2, 5, 7],
+          borderColor: "#10B981",
+          backgroundColor: "transparent",
+          tension: 0.35,
+          borderWidth: 2,
+          borderDash: [4, 4]
+        },
+        {
+          label: "Watchlist Saves",
+          data: saves.length ? saves : [1, 2, 4],
+          borderColor: "#F59E0B",
+          backgroundColor: "transparent",
+          tension: 0.35,
+          borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+          labels: { color: textColor, font: { size: 11, family: "Inter" } }
+        }
+      },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderPopularCategoriesChart(categories) {
+  const ctx = document.getElementById("chart-popular-categories");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  if (analyticsCharts.popularCategories) {
+    analyticsCharts.popularCategories.destroy();
+  }
+
+  const isDark = document.body.classList.contains("dark-theme");
+  const textColor = isDark ? "#94A3B8" : "#475569";
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
+  const labels = categories.map(c => c.category);
+  const counts = categories.map(c => c.count);
+
+  analyticsCharts.popularCategories = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels.length ? labels : ["Roads", "Bridges", "Water Supply", "Buildings", "Metro Projects", "Smart City"],
+      datasets: [{
+        label: "Interactions",
+        data: counts.length ? counts : [45, 38, 26, 22, 19, 14],
+        backgroundColor: [
+          "#2563EB", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#06B6D4"
+        ],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true },
+        y: { ticks: { color: textColor }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// 2. TENDER INSIGHTS
+// -------------------------------------------------------------
+async function loadTenderInsights() {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/insights`);
+    if (!res.ok) throw new Error("Failed to load tender insights");
+    const data = await res.json();
+
+    const s = data.summary || {};
+    const elTenders = document.getElementById("ins-total-tenders");
+    const elBudget = document.getElementById("ins-total-budget");
+    const elAvg = document.getElementById("ins-avg-budget");
+    const elOpen = document.getElementById("ins-open-count");
+    const elClosing = document.getElementById("ins-closing-count");
+
+    if (elTenders) elTenders.textContent = s.total_tenders || 0;
+    if (elBudget) elBudget.textContent = `₹${s.total_budget_crores?.toLocaleString() || 0} Cr`;
+    if (elAvg) elAvg.textContent = `₹${s.avg_budget_crores || 0} Cr`;
+    if (elOpen) elOpen.textContent = s.status_breakdown?.open || 0;
+    if (elClosing) elClosing.textContent = s.status_breakdown?.closing_soon || 0;
+
+    // Render Doughnut Chart
+    renderCategoryDonutChart(data.category_distribution || []);
+
+    // Render Budget Brackets Bar Chart
+    renderBudgetBracketsChart(data.budget_distribution || {});
+
+    // Render Locations Table
+    const locTbody = document.getElementById("ins-locations-tbody");
+    if (locTbody) {
+      locTbody.innerHTML = (data.location_distribution || []).map(l => `
+        <tr style="border-bottom: 1px solid var(--border-color);">
+          <td style="padding: 8px; font-weight: 600; color: var(--text-primary);">📍 ${l.location}</td>
+          <td style="padding: 8px; text-align: center;"><span class="badge badge-blue">${l.count}</span></td>
+          <td style="padding: 8px; text-align: right; font-weight: 700; color: var(--color-primary);">₹${l.total_budget_crores} Cr</td>
+        </tr>
+      `).join("");
+    }
+
+    // Render Upcoming Deadlines List
+    const deadList = document.getElementById("ins-deadlines-list");
+    if (deadList) {
+      deadList.innerHTML = (data.upcoming_deadlines || []).map(t => {
+        let badgeStyle = "badge-green";
+        let countdownText = `${t.diffDays} days left`;
+        if (t.diffDays <= 3) { badgeStyle = "badge-orange"; countdownText = `⚡ ${t.diffDays} days left`; }
+        if (t.diffDays <= 0) { badgeStyle = "badge-muted"; countdownText = "Closing today"; }
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color);">
+            <div style="display: flex; flex-direction: column; gap: 2px; max-width: 70%;">
+              <a href="tenderDetails.html?id=${t.id}" style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary); text-decoration: none;">
+                ${t.name}
+              </a>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">${t.category} • ₹${t.budget_crores} Cr</span>
+            </div>
+            <span class="badge ${badgeStyle}" style="font-size: 0.75rem;">${countdownText}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+  } catch (err) {
+    console.error("Error loading tender insights:", err);
+  }
+}
+
+function renderCategoryDonutChart(distribution) {
+  const ctx = document.getElementById("chart-category-donut");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  if (analyticsCharts.categoryDonut) {
+    analyticsCharts.categoryDonut.destroy();
+  }
+
+  const isDark = document.body.classList.contains("dark-theme");
+  const textColor = isDark ? "#94A3B8" : "#475569";
+
+  const labels = distribution.map(d => d.category);
+  const dataVals = distribution.map(d => d.total_budget_crores);
+
+  analyticsCharts.categoryDonut = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: dataVals,
+        backgroundColor: [
+          "#2563EB", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#06B6D4"
+        ],
+        borderWidth: 2,
+        borderColor: isDark ? "#111827" : "#FFFFFF"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "right",
+          labels: { color: textColor, font: { size: 11, family: "Inter" } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return ` ${ctx.label}: ₹${ctx.parsed.toLocaleString()} Cr`;
+            }
+          }
+        }
+      },
+      cutout: "65%"
+    }
+  });
+}
+
+function renderBudgetBracketsChart(brackets) {
+  const ctx = document.getElementById("chart-budget-brackets");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  if (analyticsCharts.budgetBrackets) {
+    analyticsCharts.budgetBrackets.destroy();
+  }
+
+  const isDark = document.body.classList.contains("dark-theme");
+  const textColor = isDark ? "#94A3B8" : "#475569";
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
+  analyticsCharts.budgetBrackets = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["< ₹50 Cr", "₹50 - ₹200 Cr", "₹200 - ₹500 Cr", "> ₹500 Cr (Mega Projects)"],
+      datasets: [{
+        label: "Number of Tenders",
+        data: [
+          brackets.under_50cr || 0,
+          brackets.cr_50_to_200 || 0,
+          brackets.cr_200_to_500 || 0,
+          brackets.above_500cr || 0
+        ],
+        backgroundColor: ["#60A5FA", "#3B82F6", "#2563EB", "#1D4ED8"],
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// 3. DATA MINING (K-MEANS & APRIORI)
+// -------------------------------------------------------------
+async function loadDataMining() {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/data-mining/kmeans`);
+    if (!res.ok) throw new Error("Failed to load K-Means data");
+    const kdata = await res.json();
+
+    // Populate algorithm metrics
+    const elK = document.getElementById("km-k-val");
+    const elInertia = document.getElementById("km-inertia");
+    const elSil = document.getElementById("km-silhouette");
+    const elTotal = document.getElementById("km-total-contractors");
+
+    if (elK) elK.textContent = kdata.parameters?.k || 3;
+    if (elInertia) elInertia.textContent = kdata.metrics?.inertia_wcss || "--";
+    if (elSil) elSil.textContent = kdata.metrics?.silhouette_score || "--";
+    if (elTotal) elTotal.textContent = kdata.metrics?.total_contractors_analyzed || 10;
+
+    // Populate Cluster Cards
+    const clustContainer = document.getElementById("km-clusters-container");
+    if (clustContainer) {
+      clustContainer.innerHTML = (kdata.cluster_summaries || []).map(c => `
+        <div style="background: var(--bg-card); border: 2px solid ${c.color}; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-sm);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: ${c.color}22; color: ${c.color}; font-weight: 800;">Cluster ${c.cluster_id}</span>
+            <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted);">${c.member_count} Contractors</span>
+          </div>
+          <div>
+            <h4 style="font-size: 1.15rem; font-weight: 850; color: var(--text-primary); margin: 0 0 4px 0;">${c.name}</h4>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; margin: 0;">${c.description}</p>
+          </div>
+          <div style="background: var(--bg-secondary); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Mean Bids Submitted:</span>
+              <strong style="color: var(--text-primary);">${c.centroids?.avg_applications || 0}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Mean Win Rate:</span>
+              <strong style="color: var(--color-success);">${c.centroids?.avg_win_rate_pct || 0}%</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Avg Bid Outlay:</span>
+              <strong style="color: var(--text-primary);">₹${c.centroids?.avg_bid_crores || 0} Cr</strong>
+            </div>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            <strong>Profiles:</strong> ${(c.members || []).map(m => m.contractor_name).join(", ") || "None"}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Populate Detailed Membership Table
+    const memTbody = document.getElementById("km-contractors-tbody");
+    if (memTbody) {
+      memTbody.innerHTML = (kdata.contractor_assignments || []).map(ca => {
+        let badgeStyle = "cluster-badge-0";
+        if (ca.cluster === 1) badgeStyle = "cluster-badge-1";
+        if (ca.cluster === 2) badgeStyle = "cluster-badge-2";
+
+        return `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 10px 8px; font-weight: 700; color: var(--color-primary);">${ca.user_code}</td>
+            <td style="padding: 10px 8px; font-weight: 600; color: var(--text-primary);">${ca.contractor_name}</td>
+            <td style="padding: 10px 8px; color: var(--text-secondary);">${ca.company}</td>
+            <td style="padding: 10px 8px; text-align: center; font-weight: 700;">${ca.applications_count}</td>
+            <td style="padding: 10px 8px; text-align: center; color: #10B981; font-weight: 700;">${ca.confirmed_wins}</td>
+            <td style="padding: 10px 8px; text-align: center; font-weight: 800;">${ca.win_rate}%</td>
+            <td style="padding: 10px 8px; text-align: right; font-weight: 700;">₹${ca.avg_bid_crores}</td>
+            <td style="padding: 10px 8px; text-align: center;">
+              <span class="badge ${badgeStyle}" style="font-weight: 800;">Cluster ${ca.cluster}</span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // Render K-Means Scatter Chart (Applications vs Win Rate)
+    renderKMeansScatterChart(kdata.contractor_assignments || []);
+
+    // Load Apriori Association Rules
+    loadAprioriRules();
+
+  } catch (err) {
+    console.error("Error loading K-Means clustering:", err);
+  }
+}
+
+function renderKMeansScatterChart(contractors) {
+  const ctx = document.getElementById("chart-kmeans-scatter");
+  if (!ctx || typeof Chart === "undefined") return;
+
+  if (analyticsCharts.kmeansScatter) {
+    analyticsCharts.kmeansScatter.destroy();
+  }
+
+  const isDark = document.body.classList.contains("dark-theme");
+  const textColor = isDark ? "#94A3B8" : "#475569";
+  const gridColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+
+  const clusterColors = ["#3B82F6", "#10B981", "#F59E0B"];
+  const clusterNames = [
+    "Cluster 0: Transport Specialists",
+    "Cluster 1: Prime Leaders",
+    "Cluster 2: Emerging Bidders"
+  ];
+
+  const datasets = [0, 1, 2].map(cid => {
+    const points = contractors.filter(c => c.cluster === cid).map(c => ({
+      x: c.applications_count,
+      y: c.win_rate,
+      name: c.contractor_name,
+      company: c.company,
+      code: c.user_code
+    }));
+
+    return {
+      label: clusterNames[cid] || `Cluster ${cid}`,
+      data: points,
+      backgroundColor: clusterColors[cid],
+      borderColor: clusterColors[cid],
+      pointRadius: 8,
+      pointHoverRadius: 11
+    };
+  });
+
+  analyticsCharts.kmeansScatter = new Chart(ctx, {
+    type: "scatter",
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+          labels: { color: textColor, font: { size: 11, family: "Inter" } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const p = ctx.raw;
+              return ` ${p.code}: ${p.name} (${p.company}) | Bids: ${p.x}, Win Rate: ${p.y}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: "Total Applications Submitted", color: textColor, font: { weight: "bold" } },
+          ticks: { color: textColor },
+          grid: { color: gridColor },
+          beginAtZero: true
+        },
+        y: {
+          title: { display: true, text: "Competitive Win Rate (%)", color: textColor, font: { weight: "bold" } },
+          ticks: { color: textColor },
+          grid: { color: gridColor },
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+}
+
+async function rerunLiveKMeans() {
+  const btn = document.getElementById("btn-rerun-kmeans");
+  const spinner = document.getElementById("kmeans-spinner-icon");
+  const btnText = document.getElementById("kmeans-btn-text");
+  const statusEl = document.getElementById("kmeans-last-run-status");
+
+  if (btn) btn.disabled = true;
+  if (spinner) spinner.classList.add("spin");
+  if (btnText) btnText.textContent = "Executing Python Algorithm...";
+
+  try {
+    const res = await fetch(`${API_BASE}/analytics/data-mining/run-kmeans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ k: 3 })
+    });
+    if (!res.ok) throw new Error("Server K-Means execution failed");
+    showToast("Python K-Means clustering recomputed successfully!", "success");
+    if (statusEl) statusEl.textContent = `Last run: ${new Date().toLocaleTimeString()} (k=3)`;
+    await loadDataMining();
+  } catch (err) {
+    showToast("Failed to run K-Means: " + err.message, "error");
+  } finally {
+    if (btn) btn.disabled = false;
+    if (spinner) spinner.classList.remove("spin");
+    if (btnText) btnText.textContent = "Execute Python K-Means";
+  }
+}
+
+async function loadAprioriRules() {
+  try {
+    const res = await fetch(`${API_BASE}/analytics/data-mining/apriori`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const tbody = document.getElementById("apriori-rules-tbody");
+    if (tbody) {
+      if (!data.rules || data.rules.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding: 1rem; text-align: center; color: var(--text-muted);">No frequent itemsets discovered at current support threshold.</td></tr>`;
+      } else {
+        tbody.innerHTML = data.rules.map(r => `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 10px 8px; font-weight: 700; color: var(--color-primary);">${r.antecedent}</td>
+            <td style="padding: 10px 4px; color: var(--text-muted);">&rarr;</td>
+            <td style="padding: 10px 8px; font-weight: 700; color: #10B981;">${r.consequent}</td>
+            <td style="padding: 10px 8px; text-align: center; font-weight: 600;">${r.support_pct}%</td>
+            <td style="padding: 10px 8px; text-align: center; font-weight: 600;">${r.confidence_pct}%</td>
+            <td style="padding: 10px 8px; text-align: center;"><span class="badge badge-green" style="font-weight: 800;">${r.lift}x</span></td>
+            <td style="padding: 10px 8px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">${r.interpretation}</td>
+          </tr>
+        `).join("");
+      }
+    }
+  } catch (e) {
+    console.debug("Could not load Apriori rules:", e);
+  }
+}
+
+// -------------------------------------------------------------
+// 4. MY PERFORMANCE
+// -------------------------------------------------------------
+async function loadMyPerformance(contractorCode) {
+  try {
+    const q = contractorCode ? `?contractor_code=${encodeURIComponent(contractorCode)}` : "";
+    const res = await fetch(`${API_BASE}/analytics/my-performance${q}`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Could not retrieve performance records");
+    const data = await res.json();
+
+    // Fill Contractor Info Header
+    const c = data.contractor || {};
+    const elName = document.getElementById("perf-contractor-name");
+    const elCode = document.getElementById("perf-contractor-code");
+    const elCompany = document.getElementById("perf-contractor-company");
+
+    if (elName) elName.textContent = c.name || "Contractor Profile";
+    if (elCode) elCode.textContent = c.user_code || "CON1001";
+    if (elCompany) elCompany.textContent = c.company || "Infrastructure Enterprise";
+
+    // Fill Metrics
+    const m = data.metrics || {};
+    const elTotal = document.getElementById("perf-total-bids");
+    const elDecided = document.getElementById("perf-decided-bids");
+    const elRate = document.getElementById("perf-win-rate");
+    const elPending = document.getElementById("perf-pending-bids");
+
+    if (elTotal) elTotal.textContent = m.total_applications || 0;
+    if (elDecided) elDecided.textContent = `${m.decided_bids || 0} (${m.confirmed_wins || 0}W / ${m.confirmed_losses || 0}L)`;
+    if (elRate) elRate.textContent = `${m.win_rate || 0}%`;
+    if (elPending) elPending.textContent = m.pending_applications || 0;
+
+    // Fill Suggestions
+    const suggContainer = document.getElementById("perf-suggestions-container");
+    if (suggContainer) {
+      if (!data.evidence_suggestions || data.evidence_suggestions.length === 0) {
+        suggContainer.innerHTML = `<div style="padding: 1rem; color: var(--text-muted); text-align: center;">No feedback suggestions yet. Submit bids to generate evidence-based guidance.</div>`;
+      } else {
+        suggContainer.innerHTML = data.evidence_suggestions.map(s => {
+          let bClass = "badge-blue";
+          if (s.type === "success") bClass = "badge-green";
+          if (s.type === "warning") bClass = "badge-orange";
+
+          return `
+            <div style="background: var(--bg-secondary); border-radius: 10px; padding: 14px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge ${bClass}">${s.title}</span>
+              </div>
+              <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">${s.text}</p>
+            </div>
+          `;
+        }).join("");
+      }
+    }
+
+    // Fill Category Breakdown Table
+    const catTbody = document.getElementById("perf-category-tbody");
+    if (catTbody) {
+      if (!data.category_breakdown || data.category_breakdown.length === 0) {
+        catTbody.innerHTML = `<tr><td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No category bid history recorded.</td></tr>`;
+      } else {
+        catTbody.innerHTML = data.category_breakdown.map(cb => `
+          <tr style="border-bottom: 1px solid var(--border-color);">
+            <td style="padding: 8px; font-weight: 700; color: var(--text-primary);">${cb.category}</td>
+            <td style="padding: 8px; text-align: center;">${cb.total}</td>
+            <td style="padding: 8px; text-align: center; color: #10B981; font-weight: 700;">${cb.won}</td>
+            <td style="padding: 8px; text-align: center; color: #EF4444;">${cb.lost}</td>
+            <td style="padding: 8px; text-align: center; color: #F59E0B;">${cb.pending}</td>
+            <td style="padding: 8px; text-align: right; font-weight: 800; color: var(--color-primary);">${cb.win_rate}%</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    // Fill Tracked Applications Table
+    const appsTbody = document.getElementById("perf-apps-tbody");
+    if (appsTbody) {
+      if (!data.recent_applications || data.recent_applications.length === 0) {
+        appsTbody.innerHTML = `<tr><td colspan="6" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No applications submitted yet.</td></tr>`;
+      } else {
+        appsTbody.innerHTML = data.recent_applications.map(a => {
+          let outcomeBadge = "badge-muted";
+          if (a.outcome === "Won") outcomeBadge = "badge-green";
+          if (a.outcome === "Lost" || a.outcome === "Not Awarded") outcomeBadge = "badge-danger";
+          if (a.outcome === "Pending") outcomeBadge = "badge-orange";
+
+          return `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+              <td style="padding: 10px 8px; font-weight: 600; color: var(--text-primary);">
+                ${a.tender_name}
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${a.code} • Applied ${a.applied_on}</div>
+              </td>
+              <td style="padding: 10px 8px;"><span class="badge badge-blue" style="font-size: 0.75rem;">${a.category}</span></td>
+              <td style="padding: 10px 8px; font-weight: 700;">₹${a.bid_crores} Cr</td>
+              <td style="padding: 10px 8px; text-align: center;"><span class="badge badge-muted" style="font-size: 0.75rem;">${a.status}</span></td>
+              <td style="padding: 10px 8px; text-align: center;"><span class="badge ${outcomeBadge}" style="font-size: 0.75rem;">${a.outcome}</span></td>
+              <td style="padding: 10px 8px; font-size: 0.8rem; color: var(--text-secondary); max-width: 300px; line-height: 1.4;">
+                ${a.evaluation || "<em>Awaiting administrative evaluation notes.</em>"}
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
+    }
+
+  } catch (err) {
+    console.error("Error loading contractor performance:", err);
+  }
+}
+
+// Global window bindings for inline HTML handlers
+window.switchAnalyticsTab = switchAnalyticsTab;
+window.switchDemoContractor = (code) => loadMyPerformance(code);
+window.rerunLiveKMeans = rerunLiveKMeans;
+window.scrollToPowerBI = () => {
+  const el = document.getElementById("powerbi-section");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+

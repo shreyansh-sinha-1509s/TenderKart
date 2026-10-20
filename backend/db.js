@@ -161,6 +161,25 @@ db.serialize(() => {
     );
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      user_id INTEGER,
+      tender_id INTEGER,
+      category TEXT,
+      location TEXT,
+      search_keyword TEXT,
+      metadata TEXT,
+      session_id TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY(tender_id) REFERENCES tenders(id) ON DELETE SET NULL
+    );
+  `);
+  db.run("CREATE INDEX IF NOT EXISTS idx_events_type ON analytics_events(event_type);", () => {});
+  db.run("CREATE INDEX IF NOT EXISTS idx_events_created ON analytics_events(created_at);", () => {});
+
   // Ensure default central admin account exists
   db.get("SELECT id FROM users WHERE role = 'admin' OR username = 'admin'", (err, row) => {
     if (!err && !row) {
@@ -774,7 +793,9 @@ const connection = {
         if (cb) cb(null, rows);
       });
     }
-  }
+  },
+  rawDb: db
 };
 
 module.exports = connection;
+

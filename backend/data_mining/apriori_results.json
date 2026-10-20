@@ -1,0 +1,60 @@
+{
+  "status": "success",
+  "algorithm": "Apriori Frequent Itemset & Association Rule Mining",
+  "parameters": {
+    "min_support": 0.2,
+    "min_confidence": 0.5,
+    "total_baskets_analyzed": 9
+  },
+  "item_support": {
+    "Roads": 0.333,
+    "Bridges": 0.333,
+    "Buildings": 0.444,
+    "Water Supply": 0.222,
+    "Metro Projects": 0.222,
+    "Smart City": 0.222
+  },
+  "rules_count": 4,
+  "rules": [
+    {
+      "antecedent": "Metro Projects",
+      "consequent": "Bridges",
+      "support": 0.222,
+      "confidence": 1.0,
+      "lift": 3.0,
+      "support_pct": 22.2,
+      "confidence_pct": 100.0,
+      "interpretation": "Contractors actively bidding on Metro Projects projects show a 100.0% probability of also bidding on Bridges tenders. With a Lift of 3.0, this cross-category affinity is 3.0x higher than random chance, demonstrating equipment and civil engineering synergies."
+    },
+    {
+      "antecedent": "Bridges",
+      "consequent": "Metro Projects",
+      "support": 0.222,
+      "confidence": 0.667,
+      "lift": 3.0,
+      "support_pct": 22.2,
+      "confidence_pct": 66.7,
+      "interpretation": "Contractors actively bidding on Bridges projects show a 66.7% probability of also bidding on Metro Projects tenders. With a Lift of 3.0, this cross-category affinity is 3.0x higher than random chance, demonstrating equipment and civil engineering synergies."
+    },
+    {
+      "antecedent": "Bridges",
+      "consequent": "Roads",
+      "support": 0.222,
+      "confidence": 0.667,
+      "lift": 2.0,
+      "support_pct": 22.2,
+      "confidence_pct": 66.7,
+      "interpretation": "Contractors actively bidding on Bridges projects show a 66.7% probability of also bidding on Roads tenders. With a Lift of 2.0, this cross-category affinity is 2.0x higher than random chance, demonstrating equipment and civil engineering synergies."
+    },
+    {
+      "antecedent": "Roads",
+      "consequent": "Bridges",
+      "support": 0.222,
+      "confidence": 0.667,
+      "lift": 2.0,
+      "support_pct": 22.2,
+      "confidence_pct": 66.7,
+      "interpretation": "Contractors actively bidding on Roads projects show a 66.7% probability of also bidding on Bridges tenders. With a Lift of 2.0, this cross-category affinity is 2.0x higher than random chance, demonstrating equipment and civil engineering synergies."
+    }
+  ]
+}

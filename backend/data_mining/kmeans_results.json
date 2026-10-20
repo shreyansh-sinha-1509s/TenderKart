@@ -1,0 +1,323 @@
+{
+  "status": "success",
+  "algorithm": "K-Means Clustering",
+  "library": "scikit-learn v1.8.0",
+  "parameters": {
+    "k": 3,
+    "init": "k-means++",
+    "max_iter": 300,
+    "random_state": 42,
+    "scaling": "Z-score Standardization (StandardScaler)"
+  },
+  "metrics": {
+    "total_contractors_analyzed": 10,
+    "inertia_wcss": 14.431,
+    "silhouette_score": 0.362,
+    "features_used": [
+      "applications_count",
+      "confirmed_wins",
+      "win_rate",
+      "categories_explored",
+      "tenders_saved",
+      "avg_bid_crores"
+    ]
+  },
+  "cluster_summaries": [
+    {
+      "cluster_id": 0,
+      "name": "Specialized Transport & Niche Contractors",
+      "description": "Focused bidding in 1\u20132 core verticals (e.g., Roads & Bridges). Moderate win rates with disciplined scope specialization.",
+      "color": "#3B82F6",
+      "risk_profile": "Domain Specialist - High Sector Proficiency",
+      "member_count": 5,
+      "centroids": {
+        "avg_applications": 6.0,
+        "avg_wins": 1.6,
+        "avg_win_rate_pct": 36.0,
+        "avg_categories": 1.8,
+        "avg_tenders_saved": 0.0,
+        "avg_bid_crores": 625.3
+      },
+      "members": [
+        {
+          "user_code": "CON1003",
+          "contractor_name": "Suresh Patil",
+          "company": "Patil Road & Bridge Contractors",
+          "applications_count": 5,
+          "confirmed_wins": 2,
+          "win_rate": 50.0,
+          "avg_bid_crores": 317.0
+        },
+        {
+          "user_code": "CON1002",
+          "contractor_name": "Amit Kulkarni",
+          "company": "Kulkarni Civil Projects",
+          "applications_count": 7,
+          "confirmed_wins": 2,
+          "win_rate": 40.0,
+          "avg_bid_crores": 465.43
+        },
+        {
+          "user_code": "CON1004",
+          "contractor_name": "Neeraj Sharma",
+          "company": "Sharma Urban Construction",
+          "applications_count": 6,
+          "confirmed_wins": 1,
+          "win_rate": 25.0,
+          "avg_bid_crores": 602.17
+        },
+        {
+          "user_code": "CON1007",
+          "contractor_name": "Deepak Verma",
+          "company": "Verma Metro & Tunneling",
+          "applications_count": 5,
+          "confirmed_wins": 1,
+          "win_rate": 25.0,
+          "avg_bid_crores": 1270.0
+        },
+        {
+          "user_code": "CON1008",
+          "contractor_name": "Ananya Sen",
+          "company": "Sen Urban Engineering",
+          "applications_count": 7,
+          "confirmed_wins": 2,
+          "win_rate": 40.0,
+          "avg_bid_crores": 471.67
+        }
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "name": "Tier-1 Prime Infrastructure Leaders",
+      "description": "High submission frequency, multi-crore capital appetite, strong competitive win rate across diversified municipal sectors.",
+      "color": "#10B981",
+      "risk_profile": "Low Execution Risk - Strong Track Record",
+      "member_count": 2,
+      "centroids": {
+        "avg_applications": 9.0,
+        "avg_wins": 4.0,
+        "avg_win_rate_pct": 61.9,
+        "avg_categories": 2.5,
+        "avg_tenders_saved": 0.0,
+        "avg_bid_crores": 901.1
+      },
+      "members": [
+        {
+          "user_code": "CON1001",
+          "contractor_name": "Rajesh Mehta",
+          "company": "Mehta Infrastructure Works",
+          "applications_count": 10,
+          "confirmed_wins": 4,
+          "win_rate": 57.1,
+          "avg_bid_crores": 991.67
+        },
+        {
+          "user_code": "CON1006",
+          "contractor_name": "Arvind Patel",
+          "company": "Patel Earthmovers & Infra",
+          "applications_count": 8,
+          "confirmed_wins": 4,
+          "win_rate": 66.7,
+          "avg_bid_crores": 810.63
+        }
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "name": "Emerging & Selective Regional Bidders",
+      "description": "Low to moderate bid frequency, high exploratory watchlist activity, emerging win rates or awaiting pending outcomes.",
+      "color": "#F59E0B",
+      "risk_profile": "Developing Capacity - Potential for Targeted Growth",
+      "member_count": 3,
+      "centroids": {
+        "avg_applications": 1.7,
+        "avg_wins": 0.0,
+        "avg_win_rate_pct": 0.0,
+        "avg_categories": 0.7,
+        "avg_tenders_saved": 0.0,
+        "avg_bid_crores": 257.0
+      },
+      "members": [
+        {
+          "user_code": "CON1005",
+          "contractor_name": "Vikram Desai",
+          "company": "Desai Infrastructure Solutions",
+          "applications_count": 0,
+          "confirmed_wins": 0,
+          "win_rate": 0.0,
+          "avg_bid_crores": 0.0
+        },
+        {
+          "user_code": "CON1009",
+          "contractor_name": "Tarun Aggarwal",
+          "company": "Aggarwal Smart Utilities",
+          "applications_count": 2,
+          "confirmed_wins": 0,
+          "win_rate": 0.0,
+          "avg_bid_crores": 211.0
+        },
+        {
+          "user_code": "CON1010",
+          "contractor_name": "Pooja Hegde",
+          "company": "Hegde Water Works & Pipelines",
+          "applications_count": 3,
+          "confirmed_wins": 0,
+          "win_rate": 0.0,
+          "avg_bid_crores": 560.0
+        }
+      ]
+    }
+  ],
+  "contractor_assignments": [
+    {
+      "user_id": 7,
+      "user_code": "CON1003",
+      "contractor_name": "Suresh Patil",
+      "company": "Patil Road & Bridge Contractors",
+      "applications_count": 5,
+      "confirmed_wins": 2,
+      "confirmed_losses": 2,
+      "pending_applications": 1,
+      "win_rate": 50.0,
+      "categories_explored": 2,
+      "tenders_saved": 0,
+      "avg_bid_crores": 317.0,
+      "cluster": 0
+    },
+    {
+      "user_id": 8,
+      "user_code": "CON1005",
+      "contractor_name": "Vikram Desai",
+      "company": "Desai Infrastructure Solutions",
+      "applications_count": 0,
+      "confirmed_wins": 0,
+      "confirmed_losses": 0,
+      "pending_applications": 0,
+      "win_rate": 0.0,
+      "categories_explored": 0,
+      "tenders_saved": 0,
+      "avg_bid_crores": 0.0,
+      "cluster": 2
+    },
+    {
+      "user_id": 15,
+      "user_code": "CON1002",
+      "contractor_name": "Amit Kulkarni",
+      "company": "Kulkarni Civil Projects",
+      "applications_count": 7,
+      "confirmed_wins": 2,
+      "confirmed_losses": 3,
+      "pending_applications": 2,
+      "win_rate": 40.0,
+      "categories_explored": 2,
+      "tenders_saved": 0,
+      "avg_bid_crores": 465.43,
+      "cluster": 0
+    },
+    {
+      "user_id": 16,
+      "user_code": "CON1004",
+      "contractor_name": "Neeraj Sharma",
+      "company": "Sharma Urban Construction",
+      "applications_count": 6,
+      "confirmed_wins": 1,
+      "confirmed_losses": 3,
+      "pending_applications": 2,
+      "win_rate": 25.0,
+      "categories_explored": 1,
+      "tenders_saved": 0,
+      "avg_bid_crores": 602.17,
+      "cluster": 0
+    },
+    {
+      "user_id": 17,
+      "user_code": "CON1001",
+      "contractor_name": "Rajesh Mehta",
+      "company": "Mehta Infrastructure Works",
+      "applications_count": 10,
+      "confirmed_wins": 4,
+      "confirmed_losses": 3,
+      "pending_applications": 2,
+      "win_rate": 57.1,
+      "categories_explored": 4,
+      "tenders_saved": 0,
+      "avg_bid_crores": 991.67,
+      "cluster": 1
+    },
+    {
+      "user_id": 18,
+      "user_code": "CON1006",
+      "contractor_name": "Arvind Patel",
+      "company": "Patel Earthmovers & Infra",
+      "applications_count": 8,
+      "confirmed_wins": 4,
+      "confirmed_losses": 2,
+      "pending_applications": 2,
+      "win_rate": 66.7,
+      "categories_explored": 1,
+      "tenders_saved": 0,
+      "avg_bid_crores": 810.63,
+      "cluster": 1
+    },
+    {
+      "user_id": 19,
+      "user_code": "CON1007",
+      "contractor_name": "Deepak Verma",
+      "company": "Verma Metro & Tunneling",
+      "applications_count": 5,
+      "confirmed_wins": 1,
+      "confirmed_losses": 3,
+      "pending_applications": 1,
+      "win_rate": 25.0,
+      "categories_explored": 2,
+      "tenders_saved": 0,
+      "avg_bid_crores": 1270.0,
+      "cluster": 0
+    },
+    {
+      "user_id": 20,
+      "user_code": "CON1008",
+      "contractor_name": "Ananya Sen",
+      "company": "Sen Urban Engineering",
+      "applications_count": 7,
+      "confirmed_wins": 2,
+      "confirmed_losses": 3,
+      "pending_applications": 2,
+      "win_rate": 40.0,
+      "categories_explored": 2,
+      "tenders_saved": 0,
+      "avg_bid_crores": 471.67,
+      "cluster": 0
+    },
+    {
+      "user_id": 21,
+      "user_code": "CON1009",
+      "contractor_name": "Tarun Aggarwal",
+      "company": "Aggarwal Smart Utilities",
+      "applications_count": 2,
+      "confirmed_wins": 0,
+      "confirmed_losses": 0,
+      "pending_applications": 2,
+      "win_rate": 0.0,
+      "categories_explored": 1,
+      "tenders_saved": 0,
+      "avg_bid_crores": 211.0,
+      "cluster": 2
+    },
+    {
+      "user_id": 22,
+      "user_code": "CON1010",
+      "contractor_name": "Pooja Hegde",
+      "company": "Hegde Water Works & Pipelines",
+      "applications_count": 3,
+      "confirmed_wins": 0,
+      "confirmed_losses": 0,
+      "pending_applications": 3,
+      "win_rate": 0.0,
+      "categories_explored": 1,
+      "tenders_saved": 0,
+      "avg_bid_crores": 560.0,
+      "cluster": 2
+    }
+  ]
+}
