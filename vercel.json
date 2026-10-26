@@ -1,5 +1,15 @@
 {
   "version": 2,
+  "redirects": [
+    {
+      "source": "/analytics.html",
+      "destination": "/"
+    },
+    {
+      "source": "/analytics",
+      "destination": "/"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

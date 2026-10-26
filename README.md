@@ -213,7 +213,6 @@ TenderKart/
 ├── package.json               # Root manifest for full-stack Vercel deployment
 ├── api/
 │   └── index.js               # Serverless entrypoint exporting Express app
-├── analytics.html             # Unified Analytics & Intelligence module (Overview, Insights, Mining, Performance)
 ├── backend/
 │   ├── server.js              # Express application server and middleware setup
 │   ├── db.js                  # SQLite connection helper with serverless /tmp auto-sync & telemetry schema
@@ -295,76 +294,6 @@ TenderKart features an enterprise-grade, role-isolated **Centralized Helpdesk an
 
 ---
 
-## 📊 Unified Module: Analytics & Intelligence
-
-TenderKart integrates exactly **ONE cohesive top-level module** named **Analytics & Intelligence** (`analytics.html`), housing 4 interconnected analytical dimensions powered by real-time SQLite database instrumentation, interactive Chart.js visualizations, and unsupervised machine learning in Python:
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                     🏛️ ANALYTICS & INTELLIGENCE MODULE                          │
-├───────────────────┬───────────────────┬───────────────────┬─────────────────────┤
-│ 1. Overview       │ 2. Tender Insights│ 3. Data Mining    │ 4. My Performance   │
-│ - Telemetry Events│ - Outlay by Sector│ - Python K-Means  │ - Private Win Rate  │
-│ - 14-Day Trends   │ - City Corridors  │ - Apriori Rules   │ - Evaluator Feedback│
-│ - Search Heatmaps │ - Closing Soonest │ - Cluster Scatter │ - Decision Pipeline │
-└───────────────────┴───────────────────┴───────────────────┴─────────────────────┘
-                                  │
-                                  ▼
-      ┌────────────────────────────────────────────────────────┐
-      │   Section 13: Power BI Kimball Star Schema Data Export │
-      │   - 1-Click CSV Downloads (Tenders, Events, Bids)      │
-      │   - DAX Measures & Step-by-Step Power BI Tutorial      │
-      └────────────────────────────────────────────────────────┘
-```
-
-### 1. Section A: Overview — Web Analytics Telemetry
-- **Database-Driven Events**: Client-side interactions (`tender_view`, `tender_search`, `category_filter`, `tender_save`, `application_record`) are recorded asynchronously via `POST /api/analytics/events`.
-- **Telemetry Charts**: 14-day multi-series activity line chart and horizontal bar chart of most explored tender categories.
-- **Live Audit Stream**: Real-time sanitized event stream (excluding private passwords, auth tokens, or sensitive messages).
-
-### 2. Section B: Tender Insights
-- **Macro Infrastructure Analytics**: Category donut chart with total capital outlay in ₹ Crores, budget brackets (< 50 Cr, 50-200 Cr, 200-500 Cr, > 500 Cr), and nearest filing deadlines countdown.
-- **Top Municipal Corridors**: Tender counts and total project value across major Indian metropolitan hubs (Mumbai, Bengaluru, Pune, Delhi NCR, Bhopal, etc.).
-
-### 3. Section C: Data Mining (Python scikit-learn & pandas)
-- **K-Means Clustering Engine (`backend/data_mining/kmeans_clustering.py`)**:
-  - Connects to SQLite and extracts 6 numerical behavioral dimensions: `applications_count`, `confirmed_wins`, `win_rate`, `categories_explored`, `tenders_saved`, `avg_bid_crores`.
-  - Normalizes features using Z-score standardization (`StandardScaler`).
-  - Clusters contractor bidding personas into $k=3$ distinct clusters:
-    - **Cluster 0**: *Specialized Transport & Niche Contractors* (Focused bidding on civil roads/bridges, medium win rate).
-    - **Cluster 1**: *Tier-1 Prime Infrastructure Leaders* (High submission volume, multi-crore capital scale, strong 60%+ win rate).
-    - **Cluster 2**: *Emerging & Selective Regional Bidders* (Low bid frequency, high exploratory watchlist saves, developing capacity).
-  - Evaluates inertia (WCSS) and silhouette score ($> 0.4$).
-- **Association Rule Mining (Apriori Concept / `apriori_mining.py`)**:
-  - Evaluates transaction baskets across infrastructure verticals.
-  - Computes Support, Confidence, and Lift metrics (e.g., `{Metro Projects} => {Bridges}` Lift: 3.0x, `{Roads} => {Bridges}` Lift: 2.0x).
-
-### 4. Section D: My Performance
-- **Role-Aware Personal Analytics**: Authenticated contractors access their private bid conversion rate, calculated strictly on decided outcomes:
-  $$\text{Win Rate} = \frac{\text{Confirmed Wins}}{\text{Confirmed Wins} + \text{Confirmed Losses}} \times 100$$
-- **Evaluator Audit Guidance**: Real feedback suggestions extracted from manager evaluation logs to help contractors optimize pricing accuracy and technical compliance.
-- **Academic Demo Persona Switcher**: Switch between demo contractor personas (`CON1001` - `CON1010`) to inspect varying win rates and empty state behaviors.
-
-### 5. Section 13: Power BI Kimball Star Schema & CSV Export
-- Provides 4 direct, clean CSV dataset downloads:
-  - 📥 `tenders_dataset.csv` (`dim_tenders`)
-  - 📥 `events_dataset.csv` (`fact_events`)
-  - 📥 `applications_dataset.csv` (`fact_applications`)
-  - 📥 `contractors_dataset.csv` (`dim_contractors`)
-- Complete Kimball Star Schema architectural diagram, data dictionary, and DAX tutorial for Power BI Desktop ingestion.
-
-### 6. Analytics API Endpoints
-- `POST /api/analytics/events` — Real-time non-blocking interaction telemetry logging.
-- `GET /api/analytics/overview` — Web analytics event metrics, trends, and top locations.
-- `GET /api/analytics/insights` — Tender distributions, budget brackets, and nearest deadlines.
-- `GET /api/analytics/data-mining/kmeans` — Scikit-learn K-Means model centroids, inertia, and contractor clusters.
-- `POST /api/analytics/data-mining/run-kmeans` — Trigger live Python K-Means re-execution on demand.
-- `GET /api/analytics/data-mining/apriori` — Association rules, support, confidence, and lift.
-- `GET /api/analytics/my-performance` — Contractor personal performance metrics and evaluator suggestions.
-- `GET /api/analytics/export/csv/:dataset` — Power BI CSV dataset export (`tenders`, `events`, `applications`, `contractors`).
-
----
-
 ## 🧪 Local Setup & Verification
 
 ### Prerequisites
@@ -401,7 +330,6 @@ npm run dev
 
 Access the application in your browser:
 - **Homepage:** [http://localhost:5000/](http://localhost:5000/)
-- **Analytics & Intelligence Module:** [http://localhost:5000/analytics.html](http://localhost:5000/analytics.html)
 - **Browse Tenders:** [http://localhost:5000/tenders.html](http://localhost:5000/tenders.html)
 - **Shared Helpdesk:** [http://localhost:5000/contact.html](http://localhost:5000/contact.html)
 - **Contractor Dashboard:** [http://localhost:5000/dashboard.html](http://localhost:5000/dashboard.html)
