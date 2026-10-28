@@ -6,8 +6,6 @@ async function main() {
   await require("./seed_demo_enrichment");
   const seedHelpdesk = require("./seed_helpdesk");
   await seedHelpdesk();
-  const { seedAnalyticsEvents } = require("./seed_analytics");
-  await seedAnalyticsEvents();
 }
 
 if (require.main === module) {

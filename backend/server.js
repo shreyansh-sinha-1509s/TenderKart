@@ -15,7 +15,6 @@ app.use("/api/saved", require("./routes/saved"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/applications", require("./routes/applications"));
 app.use("/api/inquiries", require("./routes/inquiries"));
-app.use("/api/analytics", require("./routes/analytics"));
 
 // Gracefully redirect obsolete analytics page requests to homepage
 app.get(["/analytics.html", "/analytics"], (req, res) => {

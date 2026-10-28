@@ -217,23 +217,15 @@ TenderKart/
 │   ├── server.js              # Express application server and middleware setup
 │   ├── db.js                  # SQLite connection helper with serverless /tmp auto-sync & telemetry schema
 │   ├── seed.js                # Database master seeding script
-│   ├── seed_analytics.js      # Seed script for 200+ realistic web interaction telemetry events
 │   ├── seed_helpdesk.js       # Idempotent helpdesk tickets & two-way conversation seed script
-│   ├── test_analytics_acceptance.js # 32-assertion acceptance suite for analytics, K-Means & Power BI exports
 │   ├── test_helpdesk_acceptance.js  # 33-step automated role & API test suite
 │   ├── tenderkart.db          # Pre-built SQLite database file
 │   ├── package.json           # Backend dependencies and scripts
-│   ├── data_mining/
-│   │   ├── kmeans_clustering.py # Python scikit-learn K-Means clustering engine
-│   │   ├── apriori_mining.py    # Python Apriori association rule mining engine
-│   │   ├── kmeans_results.json  # Cached clustering model centroids & assignments
-│   │   └── apriori_results.json # Cached category association rules & lift metrics
 │   └── routes/
 │       ├── users.js           # Auth routes (register, login, profile validation)
 │       ├── tenders.js         # Tender CRUD and Gemini AI summarizer endpoints
 │       ├── saved.js           # Contractor watchlist persistence endpoints
 │       ├── inquiries.js       # Centralized Helpdesk tickets, conversation replies & role-guarded APIs
-│       ├── analytics.js       # Web analytics, tender insights, K-Means, and Power BI CSV export routes
 │       └── admin.js           # Protected administrative statistics & governance routes
 └── images/
     └── logo.jpg               # Official TenderKart branding emblem
@@ -315,12 +307,7 @@ npm install
 node seed.js
 
 # 4. Run automated test suites
-node test_analytics_acceptance.js # 32 assertions verifying Web Analytics, K-Means, Win Rates, & CSV Exports
 node test_helpdesk_acceptance.js  # 33 assertions verifying Role Security & Helpdesk Queues
-
-# 5. Run Python Data Mining Engine directly (Optional)
-python data_mining/kmeans_clustering.py 3
-python data_mining/apriori_mining.py
 
 # 6. Start the Express server
 npm start

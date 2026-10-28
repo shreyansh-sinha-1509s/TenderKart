@@ -1067,21 +1067,6 @@ async function searchAndFilterTenders() {
       return;
     }
 
-    // Log telemetry for search operations
-    if (location || search) {
-      logAnalyticsEvent("tender_search", {
-        location: location || null,
-        search_keyword: search || null,
-        category: category || null,
-        metadata: { results_count: data.length }
-      });
-    } else if (category) {
-      logAnalyticsEvent("category_filter", {
-        category: category,
-        metadata: { source: "filter_bar" }
-      });
-    }
-
     const countBox = document.getElementById("results-count");
     const headingBox = document.getElementById("results-heading");
     
@@ -1236,14 +1221,6 @@ async function initTenderDetailsPage() {
     }
 
     const t = await res.json();
-
-    // Log tender_view interaction event
-    logAnalyticsEvent("tender_view", {
-      tender_id: t.id,
-      category: t.category,
-      location: t.location,
-      metadata: { name: t.name }
-    });
 
     // Renders data directly to elements
     document.getElementById("tender-name").textContent = t.name;
@@ -3501,36 +3478,3 @@ function initContactPage() {
   });
 }
 
-/* ============================================================= */
-/* TELEMETRY INTERACTION DISPATCH                                */
-/* ============================================================= */
-
-function getOrCreateSessionId() {
-  let sid = sessionStorage.getItem("tk_session_id");
-  if (!sid) {
-    sid = "sess_" + Math.random().toString(36).substring(2, 11);
-    sessionStorage.setItem("tk_session_id", sid);
-  }
-  return sid;
-}
-
-async function logAnalyticsEvent(eventType, payload = {}) {
-  try {
-    const body = {
-      event_type: eventType,
-      tender_id: payload.tender_id || null,
-      category: payload.category || null,
-      location: payload.location || null,
-      search_keyword: payload.search_keyword || null,
-      metadata: payload.metadata || null,
-      session_id: getOrCreateSessionId()
-    };
-    await fetch(`${API_BASE}/analytics/events`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(body)
-    });
-  } catch (err) {
-    console.debug("Telemetry dispatch non-blocking log:", err.message);
-  }
-}
