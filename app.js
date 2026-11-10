@@ -25,12 +25,25 @@ document.addEventListener("DOMContentLoaded", () => {
     initTenderDetailsPage();
   } else if (page === "dashboard.html") {
     initDashboardPage();
+  } else if (page === "manager.html") {
+    initManagerPage();
   } else if (page === "admin.html") {
     initAdminPage();
   } else if (page === "contact.html") {
     initContactPage();
   }
 });
+
+// Helper to escape HTML safely
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 // Helper to get current file name
 function currentPage() {
@@ -71,20 +84,31 @@ function loadTheme() {
   }
 }
 
-function getTenderStatus(deadlineStr) {
+function getTenderStatus(deadlineStr, dbStatus) {
+  const explicit = (dbStatus || "").trim();
+  if (explicit === "Under Evaluation") {
+    return { label: "Under Evaluation", class: "badge-purple", countdown: deadlineStr || "Evaluating" };
+  }
+  if (explicit === "Awarded") {
+    return { label: "Awarded", class: "badge-green", countdown: deadlineStr || "Awarded" };
+  }
+  if (explicit === "Closed") {
+    return { label: "Closed", class: "badge-muted", countdown: "Closed" };
+  }
+
   const deadline = new Date(deadlineStr);
   const now = new Date();
-  deadline.setHours(0,0,0,0);
-  now.setHours(0,0,0,0);
-  
+  deadline.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+
   if (deadline < now) {
     return { label: "Closed", class: "badge-muted", countdown: "Closed" };
   }
-  
+
   const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
   if (diffDays <= 7) {
-    const dayText = diffDays === 1 ? "1 day" : `${diffDays} days`;
-    return { label: "Closing Soon", class: "badge-orange", countdown: `Closes in ${dayText}` };
+    const dayText = diffDays === 0 ? "today" : (diffDays === 1 ? "1 day" : `${diffDays} days`);
+    return { label: "Closing Soon", class: "badge-orange", countdown: diffDays === 0 ? "Closes today" : `Closes in ${dayText}` };
   }
   return { label: "Open", class: "badge-green", countdown: `Closes in ${diffDays} days` };
 }
@@ -145,10 +169,11 @@ function renderNavbar() {
   let authSectionHtml = "";
   if (user) {
     const roleLower = (user.role || "").toLowerCase();
-    const isManagerOrAdmin = roleLower === "admin" || roleLower === "manager";
-    const dashboardPage = isManagerOrAdmin ? "admin.html" : "dashboard.html";
-    const dashboardLabel = roleLower === "admin" ? "Admin Helpdesk" : (roleLower === "manager" ? "Manager Portal" : "Dashboard");
-    const dashboardIcon = isManagerOrAdmin 
+    const dashboardPage = roleLower === "admin" ? "admin.html" : (roleLower === "manager" ? "manager.html" : "dashboard.html");
+    const dashboardLabel = roleLower === "admin"
+      ? "Central Admin"
+      : (roleLower === "manager" ? `${escapeHtml(user.office_state || "State")} Manager` : "Dashboard");
+    const dashboardIcon = (roleLower === "admin" || roleLower === "manager")
       ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-alert"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.8 17 5 19 5a1 1 0 0 1 1 1Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>'
       : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 
@@ -319,27 +344,56 @@ function handleLogout() {
   }, 1000);
 }
 
+function getDashboardUrlForRole(role) {
+  const r = (role || "").toLowerCase();
+  if (r === "admin") return "admin.html";
+  if (r === "manager") return "manager.html";
+  return "dashboard.html";
+}
+
 function setupAuthUI() {
-  // Page authentication gates
+  // Strict role-based page authorization gates
   const userJson = localStorage.getItem("user");
   const user = userJson ? JSON.parse(userJson) : null;
   const path = currentPage();
-
   const roleLower = (user && user.role ? user.role : "").toLowerCase();
-  const isManagerOrAdmin = roleLower === "admin" || roleLower === "manager";
 
-  if (path === "dashboard.html" && (!user || isManagerOrAdmin)) {
-    alert("Please login first as contractor to access dashboard.");
-    window.location.href = "login.html";
+  if (path === "dashboard.html") {
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
+    if (roleLower !== "contractor") {
+      window.location.href = getDashboardUrlForRole(roleLower);
+      return;
+    }
   }
 
-  if (path === "admin.html" && (!user || !isManagerOrAdmin)) {
-    alert("Access denied. Manager / Admin authorization required.");
-    window.location.href = "login.html";
+  if (path === "manager.html") {
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
+    if (roleLower !== "manager") {
+      window.location.href = getDashboardUrlForRole(roleLower);
+      return;
+    }
+  }
+
+  if (path === "admin.html") {
+    if (!user) {
+      window.location.href = "login.html";
+      return;
+    }
+    if (roleLower !== "admin") {
+      alert("Access denied. Central Admin authorization is required.");
+      window.location.href = getDashboardUrlForRole(roleLower);
+      return;
+    }
   }
 
   if ((path === "login.html" || path === "register.html") && user) {
-    window.location.href = isManagerOrAdmin ? "admin.html" : "dashboard.html";
+    window.location.href = getDashboardUrlForRole(roleLower);
   }
 }
 
@@ -421,9 +475,9 @@ const HERO_SHOWCASE_TENDERS = [
   {
     category: "GOVT BUILDINGS",
     badgeClass: "badge-orange",
-    title: "Integrated Common Central Secretariat Office Complex (Blocks 4 & 5)",
-    department: "Central Public Works Department (CPWD) • New Delhi",
-    value: "₹980 Cr",
+    title: "12-Storey International Diamond & Trade Center at GIFT City",
+    department: "Gujarat International Finance Tec-City • Ahmedabad, Gujarat",
+    value: "₹750 Cr",
     matchScore: "⚡ 97.6% Match",
     pipeline: "₹9,400+ Cr",
     categoryFilter: "Buildings",
@@ -828,10 +882,28 @@ function animateCounter(elementId, targetValue) {
 /* ---------------- LOGIN & REGISTER PAGES ---------------- */
 function initLoginPage() {
   const form = document.getElementById("login-form");
+  const alertBox = document.getElementById("login-status-alert");
   if (!form) return;
+
+  const showLoginAlert = (msg, isPending) => {
+    if (!alertBox) return;
+    alertBox.style.display = "block";
+    if (isPending) {
+      alertBox.style.background = "rgba(245, 158, 11, 0.1)";
+      alertBox.style.border = "1px solid rgba(245, 158, 11, 0.35)";
+      alertBox.style.color = "#D97706";
+    } else {
+      alertBox.style.background = "rgba(239, 68, 68, 0.08)";
+      alertBox.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+      alertBox.style.color = "var(--color-danger)";
+    }
+    alertBox.textContent = msg;
+  };
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (alertBox) alertBox.style.display = "none";
+
     const usernameOrEmail = document.getElementById("usernameOrEmail").value.trim();
     const password = document.getElementById("password").value;
 
@@ -839,6 +911,9 @@ function initLoginPage() {
       showToast("Please fill out all fields", "warning");
       return;
     }
+
+    const submitBtn = document.getElementById("login-submit-btn");
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Signing in..."; }
 
     try {
       const res = await fetch(`${API_BASE}/users/login`, {
@@ -853,63 +928,192 @@ function initLoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
         showToast("Login successful!", "success");
         setTimeout(() => {
-          window.location.href = data.user.role === "admin" ? "admin.html" : "dashboard.html";
-        }, 1000);
+          window.location.href = getDashboardUrlForRole(data.user.role);
+        }, 700);
       } else {
-        showToast(data.message || "Invalid credentials", "error");
+        const isPending = data.code === "PENDING_APPROVAL";
+        showLoginAlert(data.message || "Invalid credentials", isPending);
+        showToast(data.message || "Invalid credentials", isPending ? "warning" : "error");
       }
     } catch (err) {
       showToast("Backend connection failed", "error");
+    } finally {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Sign In"; }
     }
   });
 }
 
-function initRegisterPage() {
-  const form = document.getElementById("register-form");
-  if (!form) return;
+async function initRegisterPage() {
+  const contractorForm = document.getElementById("register-contractor-form");
+  const managerForm = document.getElementById("register-manager-form");
+  const pendingBanner = document.getElementById("register-pending-banner");
+  const pendingMsg = document.getElementById("register-pending-msg");
+  const stateSelect = document.getElementById("reg-mgr-state");
 
-  form.addEventListener("submit", async (e) => {
+  if (!contractorForm || !managerForm) return;
+
+  // Populate Indian States dropdown from API (with fallback)
+  const fallbackStates = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
+    "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala",
+    "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland",
+    "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura",
+    "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Chandigarh", "Jammu and Kashmir"
+  ];
+  try {
+    const statesRes = await fetch(`${API_BASE}/users/states`);
+    const statesData = statesRes.ok ? await statesRes.json() : { states: fallbackStates };
+    const statesList = Array.isArray(statesData.states) ? statesData.states : fallbackStates;
+    if (stateSelect) {
+      stateSelect.innerHTML = `<option value="">Select Assigned Indian State</option>` +
+        statesList.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    }
+  } catch (e) {
+    if (stateSelect) {
+      stateSelect.innerHTML = `<option value="">Select Assigned Indian State</option>` +
+        fallbackStates.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    }
+  }
+
+  window.switchRegisterType = (type) => {
+    const tabCon = document.getElementById("tab-reg-contractor");
+    const tabMgr = document.getElementById("tab-reg-manager");
+    if (pendingBanner) pendingBanner.style.display = "none";
+
+    if (type === "manager") {
+      contractorForm.style.display = "none";
+      managerForm.style.display = "flex";
+      if (tabCon) tabCon.classList.remove("active");
+      if (tabMgr) tabMgr.classList.add("active");
+    } else {
+      managerForm.style.display = "none";
+      contractorForm.style.display = "flex";
+      if (tabMgr) tabMgr.classList.remove("active");
+      if (tabCon) tabCon.classList.add("active");
+    }
+  };
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("type") === "manager") {
+    switchRegisterType("manager");
+  }
+
+  // Contractor registration submit
+  contractorForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const username = document.getElementById("username").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const confirmPassword = document.getElementById("confirmPassword").value;
+    const company = document.getElementById("reg-con-company").value.trim();
+    const name = document.getElementById("reg-con-name").value.trim();
+    const email = document.getElementById("reg-con-email").value.trim();
+    const username = document.getElementById("reg-con-username").value.trim();
+    const password = document.getElementById("reg-con-password").value;
+    const confirmPassword = document.getElementById("reg-con-confirm").value;
 
-    if (!username || !email || !password || !confirmPassword) {
+    if (!company || !name || !email || !username || !password || !confirmPassword) {
       showToast("Please fill in all fields", "warning");
       return;
     }
-
     if (password !== confirmPassword) {
       showToast("Passwords do not match", "error");
       return;
     }
-
     if (password.length < 6) {
       showToast("Password must be at least 6 characters", "warning");
       return;
     }
 
+    const btn = document.getElementById("btn-reg-contractor");
+    if (btn) { btn.disabled = true; btn.textContent = "Creating account..."; }
+
     try {
       const res = await fetch(`${API_BASE}/users/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password })
+        body: JSON.stringify({
+          accountType: "contractor",
+          company,
+          name,
+          email,
+          username,
+          password,
+          confirmPassword
+        })
       });
 
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        showToast("Registration successful!", "success");
+        showToast("Contractor account created!", "success");
         setTimeout(() => {
           window.location.href = "dashboard.html";
-        }, 1000);
+        }, 800);
       } else {
         showToast(data.message || "Registration failed", "error");
       }
     } catch (err) {
       showToast("Backend connection failed", "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Create Contractor Account"; }
+    }
+  });
+
+  // Manager registration submit
+  managerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("reg-mgr-name").value.trim();
+    const email = document.getElementById("reg-mgr-email").value.trim();
+    const username = document.getElementById("reg-mgr-username").value.trim();
+    const office_state = document.getElementById("reg-mgr-state").value;
+    const password = document.getElementById("reg-mgr-password").value;
+    const confirmPassword = document.getElementById("reg-mgr-confirm").value;
+
+    if (!name || !email || !username || !office_state || !password || !confirmPassword) {
+      showToast("Please complete all manager registration fields", "warning");
+      return;
+    }
+    if (password !== confirmPassword) {
+      showToast("Passwords do not match", "error");
+      return;
+    }
+    if (password.length < 6) {
+      showToast("Password must be at least 6 characters", "warning");
+      return;
+    }
+
+    const btn = document.getElementById("btn-reg-manager");
+    if (btn) { btn.disabled = true; btn.textContent = "Submitting registration..."; }
+
+    try {
+      const res = await fetch(`${API_BASE}/users/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountType: "manager",
+          name,
+          email,
+          username,
+          office_state,
+          password,
+          confirmPassword
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        managerForm.reset();
+        managerForm.style.display = "none";
+        if (pendingMsg) {
+          pendingMsg.textContent = data.message || `Your Manager registration for ${office_state} has been submitted with Pending Approval status.`;
+        }
+        if (pendingBanner) pendingBanner.style.display = "flex";
+        showToast("Manager registration submitted for Central Admin approval", "success");
+      } else {
+        showToast(data.message || "Registration failed", "error");
+      }
+    } catch (err) {
+      showToast("Backend connection failed", "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Submit Manager Registration"; }
     }
   });
 }
@@ -925,6 +1129,10 @@ async function initTendersPage() {
     const catSelect = document.getElementById("filter-category");
     if (catSelect) catSelect.value = urlParams.get("category");
   }
+  if (urlParams.get("state")) {
+    const stateSelect = document.getElementById("filter-state");
+    if (stateSelect) stateSelect.value = urlParams.get("state");
+  }
   if (urlParams.get("search")) {
     const searchInp = document.getElementById("search-input");
     if (searchInp) searchInp.value = urlParams.get("search");
@@ -934,9 +1142,10 @@ async function initTendersPage() {
     if (locInp) locInp.value = urlParams.get("location");
   }
 
-  // Load Saved Bids Ids to show proper bookmark stars
+  // Load Saved Bids Ids only for contractor accounts
   const userJson = localStorage.getItem("user");
-  if (userJson) {
+  const activeUser = userJson ? JSON.parse(userJson) : null;
+  if (activeUser && (activeUser.role || "").toLowerCase() === "contractor") {
     try {
       const res = await fetch(`${API_BASE}/saved`, { headers: getAuthHeaders() });
       if (res.ok) {
@@ -948,13 +1157,17 @@ async function initTendersPage() {
     }
   }
 
-  // Attach search form submit
+  // Attach search form submit & state select change
   const form = document.getElementById("search-form");
   if (form) {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       searchAndFilterTenders();
     });
+  }
+  const stateSelect = document.getElementById("filter-state");
+  if (stateSelect) {
+    stateSelect.addEventListener("change", () => searchAndFilterTenders());
   }
 
   // Collapsible Advanced Filters toggle
@@ -977,6 +1190,7 @@ async function initTendersPage() {
   const resetBtn = document.getElementById("reset-filters");
   if (resetBtn) {
     resetBtn.addEventListener("click", () => {
+      if (document.getElementById("filter-state")) document.getElementById("filter-state").value = "";
       if (document.getElementById("filter-location")) document.getElementById("filter-location").value = "";
       if (document.getElementById("search-input")) document.getElementById("search-input").value = "";
       if (document.getElementById("filter-category")) document.getElementById("filter-category").value = "";
@@ -991,6 +1205,12 @@ async function initTendersPage() {
   // Initial Fetch of all opportunities
   await searchAndFilterTenders();
 }
+
+window.applyQuickState = (st) => {
+  const stateSel = document.getElementById("filter-state");
+  if (stateSel) stateSel.value = st;
+  searchAndFilterTenders();
+};
 
 window.applyQuickLocation = (loc) => {
   const locInp = document.getElementById("filter-location");
@@ -1010,6 +1230,7 @@ window.focusLocationInput = () => {
 };
 
 window.viewAllTenders = () => {
+  if (document.getElementById("filter-state")) document.getElementById("filter-state").value = "";
   if (document.getElementById("filter-location")) document.getElementById("filter-location").value = "";
   if (document.getElementById("search-input")) document.getElementById("search-input").value = "";
   if (document.getElementById("filter-category")) document.getElementById("filter-category").value = "";
@@ -1041,6 +1262,7 @@ async function searchAndFilterTenders() {
     </div>
   `).join("");
 
+  const state = document.getElementById("filter-state")?.value || "";
   const search = document.getElementById("search-input")?.value.trim() || "";
   const category = document.getElementById("filter-category")?.value || "";
   const location = document.getElementById("filter-location")?.value.trim() || "";
@@ -1050,6 +1272,7 @@ async function searchAndFilterTenders() {
   const deadline = document.getElementById("filter-deadline")?.value || "";
 
   const q = new URLSearchParams();
+  if (state) q.append("state", state);
   if (search) q.append("search", search);
   if (category) q.append("category", category);
   if (location) q.append("location", location);
@@ -1069,13 +1292,16 @@ async function searchAndFilterTenders() {
 
     const countBox = document.getElementById("results-count");
     const headingBox = document.getElementById("results-heading");
-    
-    if (location) {
+
+    if (state) {
+      if (headingBox) headingBox.textContent = `Tenders in ${state}`;
+      if (countBox) countBox.innerHTML = `Found <strong>${data.length}</strong> tenders in ${escapeHtml(state)}`;
+    } else if (location) {
       if (headingBox) headingBox.textContent = `Tenders in "${location}"`;
       if (countBox) countBox.innerHTML = `Found <strong>${data.length}</strong> opportunities matching your location search`;
     } else {
       if (headingBox) headingBox.textContent = "Active Infrastructure Opportunities";
-      if (countBox) countBox.innerHTML = `Showing <strong>${data.length}</strong> active urban tenders across India`;
+      if (countBox) countBox.innerHTML = `Showing <strong>${data.length}</strong> urban tenders across India`;
     }
 
     if (data.length === 0) {
@@ -1085,16 +1311,11 @@ async function searchAndFilterTenders() {
             📍
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px; max-width: 540px;">
-            <h3 style="font-size: 1.4rem; font-weight: 850; color: var(--text-primary);">No Current Tenders Available in This Area</h3>
-            <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5;">We couldn't find any tenders matching your selected location right now. Try another nearby city or district, or check again later when new opportunities are added.</p>
+            <h3 style="font-size: 1.4rem; font-weight: 850; color: var(--text-primary);">No Matching Tenders Found</h3>
+            <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5;">Try selecting another state, clearing filters, or viewing all available tenders.</p>
           </div>
           <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center;">
-            <button onclick="focusLocationInput()" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              <span>Change Location</span>
-            </button>
-            <button onclick="viewAllTenders()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <button onclick="viewAllTenders()" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
               <span>View All Tenders</span>
             </button>
           </div>
@@ -1103,54 +1324,59 @@ async function searchAndFilterTenders() {
       return;
     }
 
+    const activeUser = JSON.parse(localStorage.getItem("user") || "null");
+    const activeRole = (activeUser && activeUser.role ? activeUser.role : "").toLowerCase();
+    const canSave = !activeUser || activeRole === "contractor";
+
     container.innerHTML = data.map(t => {
       const isSaved = savedTendersGlobalList.includes(t.id);
-      const isLogged = !!localStorage.getItem("user");
       const bookmarkIconFill = isSaved ? "currentColor" : "none";
       const bookmarkColor = isSaved ? "var(--color-primary)" : "var(--text-muted)";
-      const status = getTenderStatus(t.deadline);
+      const status = getTenderStatus(t.deadline, t.status);
 
-      // Render tender card
       return `
         <div class="card" style="display: flex; flex-direction: column; gap: 16px; height: 100%;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <span class="badge badge-blue">${t.category}</span>
-              <span class="badge ${status.class}">${status.label}</span>
+              <span class="badge badge-blue">${escapeHtml(t.category)}</span>
+              <span class="badge ${status.class}">${escapeHtml(status.label)}</span>
+              ${t.state ? `<span class="badge badge-purple">${escapeHtml(t.state)}</span>` : ""}
             </div>
-            <button onclick="toggleSaveTender(${t.id})" style="background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: ${bookmarkColor}; background-color: ${isSaved ? 'rgba(var(--primary-rgb), 0.08)' : 'transparent'}; border: 1px solid ${isSaved ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'}; transition: var(--transition-smooth);" title="${isSaved ? 'Saved' : 'Save Tender'}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${bookmarkIconFill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-            </button>
+            ${canSave ? `
+              <button onclick="toggleSaveTender(${t.id})" style="background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: ${bookmarkColor}; background-color: ${isSaved ? 'rgba(var(--primary-rgb), 0.08)' : 'transparent'}; border: 1px solid ${isSaved ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent'}; transition: var(--transition-smooth);" title="${isSaved ? 'Saved' : 'Save Tender'}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${bookmarkIconFill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+              </button>
+            ` : ""}
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 4px;">
-            <h3 style="font-size: 1.15rem; font-weight: 750; color: var(--text-primary); line-height: 1.4; letter-spacing: -0.25px;">${t.name}</h3>
-            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; line-height: 1.3;">${t.department}</span>
+            <h3 style="font-size: 1.15rem; font-weight: 750; color: var(--text-primary); line-height: 1.4; letter-spacing: -0.25px;">${escapeHtml(t.name)}</h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; line-height: 1.3;">${escapeHtml(t.department)}</span>
           </div>
 
-          <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${t.description.substring(0, 130)}...</p>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${escapeHtml((t.description || "").substring(0, 130))}...</p>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 12px 0; margin-top: auto;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-indian-rupee"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3a6 6 0 0 0 6-6V8a6 6 0 0 0-6-6"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3a6 6 0 0 0 6-6V8a6 6 0 0 0-6-6"/></svg>
               <div>
                 <span style="display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">BUDGET</span>
                 <span style="display: block; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;">${formatBudget(t.budget)}</span>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
               <div>
                 <span style="display: block; font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">LOCATION</span>
-                <span style="display: block; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;" title="${t.location}">${t.location}</span>
+                <span style="display: block; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;" title="${escapeHtml(t.location)}">${escapeHtml(t.location)}</span>
               </div>
             </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
             <span class="badge ${status.class}" style="display: inline-flex; align-items: center; gap: 4px; text-transform: none; font-size: 0.75rem;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              <span>${t.deadline} (${status.countdown})</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>${escapeHtml(t.deadline)} (${escapeHtml(status.countdown)})</span>
             </span>
             <a href="tenderDetails.html?id=${t.id}" class="btn btn-outline" style="padding: 8px 14px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;">
               <span>View Details</span>
@@ -1226,22 +1452,28 @@ async function initTenderDetailsPage() {
     document.getElementById("tender-name").textContent = t.name;
     document.getElementById("tender-dept").textContent = t.department;
     
-    // Render Category and Calculated Status badges
-    const status = getTenderStatus(t.deadline);
+    // Render Category, State, and Status badges
+    const status = getTenderStatus(t.deadline, t.status);
     const catBox = document.getElementById("tender-category");
     if (catBox) {
       catBox.outerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="tender-category-container">
-          <span class="badge badge-blue">${t.category}</span>
-          <span class="badge ${status.class}">${status.label} (${status.countdown})</span>
+          <span class="badge badge-blue">${escapeHtml(t.category)}</span>
+          ${t.state ? `<span class="badge badge-purple">${escapeHtml(t.state)}</span>` : ""}
+          <span class="badge ${status.class}">${escapeHtml(status.label)} (${escapeHtml(status.countdown)})</span>
         </div>
       `;
     }
     document.getElementById("tender-budget").textContent = formatBudget(t.budget);
-    document.getElementById("tender-location").textContent = t.location;
+    document.getElementById("tender-location").textContent = t.state ? `${t.location} (${t.state})` : t.location;
     document.getElementById("tender-deadline").textContent = `${t.deadline} (${status.countdown})`;
     document.getElementById("tender-description").textContent = t.description;
     document.getElementById("tender-eligibility").textContent = t.eligibility;
+
+    const inqBtn = document.getElementById("details-inquiry-btn");
+    if (inqBtn) {
+      inqBtn.href = `contact.html?tenderId=${t.id}`;
+    }
 
     // Set official portal source link
     const sourceBtn = document.getElementById("tender-source-btn");
@@ -1278,6 +1510,8 @@ let currentTenderDetails = null;
 
 async function checkTrackButtonState(tenderId) {
   const btn = document.getElementById("details-track-btn");
+  const saveBtn = document.getElementById("details-save-btn");
+  const inqBtn = document.getElementById("details-inquiry-btn");
   if (!btn) return;
   const userJson = localStorage.getItem("user");
   if (!userJson) return;
@@ -1285,6 +1519,8 @@ async function checkTrackButtonState(tenderId) {
   const role = (user.role || "").toLowerCase();
   if (role === "manager" || role === "admin") {
     btn.style.display = "none";
+    if (saveBtn) saveBtn.style.display = "none";
+    if (inqBtn) inqBtn.style.display = "none";
     return;
   }
 
@@ -1696,7 +1932,7 @@ async function fetchContractorHelpdesk() {
 }
 
 function renderContractorHelpdesk(data) {
-  const summary = data.summary || { totalTickets: 0, awaitingAdmin: 0, adminReplied: 0, resolved: 0 };
+  const summary = data.summary || { totalTickets: 0, pending: 0, inProgress: 0, resolved: 0 };
   const tickets = data.tickets || [];
 
   const totalEl = document.getElementById("stat-helpdesk-total");
@@ -1705,11 +1941,11 @@ function renderContractorHelpdesk(data) {
   const resolvedEl = document.getElementById("stat-helpdesk-resolved");
   const badgeEl = document.getElementById("helpdesk-count");
 
-  if (totalEl) totalEl.textContent = summary.totalTickets;
-  if (awaitingEl) awaitingEl.textContent = summary.awaitingAdmin;
-  if (repliedEl) repliedEl.textContent = summary.adminReplied;
-  if (resolvedEl) resolvedEl.textContent = summary.resolved;
-  if (badgeEl) badgeEl.textContent = summary.totalTickets;
+  if (totalEl) totalEl.textContent = summary.totalTickets || 0;
+  if (awaitingEl) awaitingEl.textContent = summary.pending ?? summary.awaitingAdmin ?? 0;
+  if (repliedEl) repliedEl.textContent = summary.inProgress ?? summary.adminReplied ?? 0;
+  if (resolvedEl) resolvedEl.textContent = summary.resolved || 0;
+  if (badgeEl) badgeEl.textContent = summary.totalTickets || 0;
 
   const tbody = document.getElementById("helpdesk-tickets-tbody");
   const emptyState = document.getElementById("helpdesk-empty-state");
@@ -1726,17 +1962,25 @@ function renderContractorHelpdesk(data) {
 
   tbody.innerHTML = tickets.map(t => {
     const statusLower = (t.status || "").toLowerCase();
-    let statusBadgeClass = "badge-blue";
-    if (statusLower === "new") statusBadgeClass = "badge-orange";
-    else if (statusLower === "in progress") statusBadgeClass = "badge-orange";
-    else if (statusLower === "awaiting user response") statusBadgeClass = "badge-blue";
-    else if (statusLower === "resolved") statusBadgeClass = "badge-green";
+    let statusBadgeClass = "badge-orange";
+    let statusLabel = t.status || "Pending";
+    if (statusLower === "resolved") {
+      statusBadgeClass = "badge-green";
+    } else if (statusLower === "in progress" || statusLower === "awaiting user response") {
+      statusBadgeClass = "badge-blue";
+      statusLabel = statusLower === "awaiting user response" ? "In Progress" : t.status;
+    }
 
-    const tenderInfo = t.related_tender_id 
-      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${t.tender_name || ''}">TND-${t.related_tender_id}</span>`
+    const tenderInfo = t.related_tender_id
+      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${escapeHtml(t.tender_name || '')}">${escapeHtml(t.tender_name ? t.tender_name.slice(0, 38) + '...' : ('TND-' + t.related_tender_id))}</span>`
       : `<span style="color: var(--text-muted); font-size: 0.8rem;">General</span>`;
 
-    const lastActivity = t.last_activity_at 
+    const stateLabel = t.state || t.tender_state || "--";
+    const assigneeLabel = t.assigned_manager_name
+      ? `<strong>${escapeHtml(stateLabel)}</strong><div style="font-size:0.74rem; color: var(--text-muted);">${escapeHtml(t.assigned_manager_name)}</div>`
+      : `<strong>${escapeHtml(stateLabel)}</strong><div style="font-size:0.74rem; color: #D97706;">${escapeHtml(t.assignment_status || 'Pending Admin Assignment')}</div>`;
+
+    const lastActivity = t.last_activity_at
       ? new Date(t.last_activity_at).toLocaleDateString()
       : (t.created_at ? new Date(t.created_at).toLocaleDateString() : "--");
 
@@ -1744,18 +1988,16 @@ function renderContractorHelpdesk(data) {
 
     return `
       <tr>
-        <td style="font-weight: 700; color: var(--color-primary);">${t.ticket_number}</td>
-        <td style="font-weight: 600; color: var(--text-primary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.subject}">
-          ${t.subject}
-        </td>
-        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${t.inquiry_category}</span></td>
+        <td style="font-weight: 700; color: var(--color-primary);">${escapeHtml(t.ticket_number)}</td>
         <td>${tenderInfo}</td>
+        <td>${assigneeLabel}</td>
+        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${escapeHtml(t.inquiry_category)}</span></td>
         <td style="color: var(--text-secondary); font-size: 0.8rem;">${submittedDate}</td>
-        <td><span class="badge ${statusBadgeClass}" style="font-size: 0.75rem;">${t.status}</span></td>
+        <td><span class="badge ${statusBadgeClass}" style="font-size: 0.75rem;">${escapeHtml(statusLabel)}</span></td>
         <td style="color: var(--text-muted); font-size: 0.8rem;">${lastActivity}</td>
         <td style="text-align: right;">
           <button onclick="openContractorTicketModal(${t.id})" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 12px;">
-            Open Ticket
+            View Thread
           </button>
         </td>
       </tr>
@@ -1769,7 +2011,7 @@ window.openContractorTicketModal = async (id) => {
   try {
     const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers });
     if (!res.ok) {
-      showToast("Could not open ticket details", "error");
+      showToast("Could not open inquiry details", "error");
       return;
     }
     const data = await res.json();
@@ -1778,18 +2020,22 @@ window.openContractorTicketModal = async (id) => {
 
     document.getElementById("cmodal-ticket-number").textContent = t.ticket_number;
     document.getElementById("cmodal-ticket-subject").textContent = t.subject;
-    document.getElementById("cmodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Submitted on ${t.created_at}`;
+    const routingDesc = t.assigned_manager_name
+      ? `Routed to ${t.assigned_manager_name} (${t.state} Manager)`
+      : (t.assignment_status || "Pending Admin Assignment");
+    document.getElementById("cmodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • ${routingDesc} • Submitted on ${t.created_at}`;
 
     const statusBadge = document.getElementById("cmodal-ticket-status-badge");
     statusBadge.textContent = t.status;
     const statusLower = (t.status || "").toLowerCase();
-    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
+    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "in progress" || statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
 
     const prioBadge = document.getElementById("cmodal-ticket-priority-badge");
-    prioBadge.textContent = `${t.priority} Priority`;
-    prioBadge.className = "badge " + (t.priority === "High" || t.priority === "Urgent" ? "badge-orange" : "badge-secondary");
+    if (prioBadge) {
+      prioBadge.textContent = t.state || "India";
+      prioBadge.className = "badge badge-purple";
+    }
 
-    // Tender info
     const tenderInfoBox = document.getElementById("cmodal-tender-info");
     if (t.related_tender_id && t.tender_name) {
       tenderInfoBox.style.display = "block";
@@ -1798,15 +2044,18 @@ window.openContractorTicketModal = async (id) => {
       tenderInfoBox.style.display = "none";
     }
 
-    // Admin alert banner
     const adminAlert = document.getElementById("cmodal-admin-alert");
-    if (statusLower === "awaiting user response") {
-      adminAlert.style.display = "flex";
-    } else {
-      adminAlert.style.display = "none";
+    const hasOfficialReply = messages.some(m => ["manager", "admin"].includes((m.sender_role || "").toLowerCase()));
+    if (adminAlert) {
+      adminAlert.style.display = hasOfficialReply ? "flex" : "none";
+      const alertText = document.getElementById("cmodal-admin-alert-text");
+      if (alertText && hasOfficialReply) {
+        alertText.innerHTML = t.assigned_manager_name
+          ? `<strong>Manager Response Received:</strong> ${escapeHtml(t.assigned_manager_name)} (${escapeHtml(t.state)} Manager) responded to your inquiry.`
+          : `<strong>Response Received:</strong> Central Admin posted an update on your inquiry.`;
+      }
     }
 
-    // Reply vs Resolved actions
     const replyBox = document.getElementById("cmodal-reply-box");
     const resolvedBox = document.getElementById("cmodal-resolved-box");
     if (statusLower === "resolved") {
@@ -1817,29 +2066,33 @@ window.openContractorTicketModal = async (id) => {
       resolvedBox.style.display = "none";
     }
 
-    // Render conversation messages
     const thread = document.getElementById("cmodal-conversation-thread");
     thread.innerHTML = messages.map(m => {
-      const isFromAdmin = (m.sender_role || "").toLowerCase() === "admin";
-      const align = isFromAdmin ? "flex-start" : "flex-end";
-      const bg = isFromAdmin ? "rgba(37, 99, 235, 0.05)" : "var(--bg-secondary)";
-      const border = isFromAdmin ? "1px solid rgba(37, 99, 235, 0.25)" : "1px solid var(--border-color)";
-      const senderLabel = isFromAdmin ? "TenderKart Central Admin" : (m.sender_name_cached || "You");
-      const badgeRole = isFromAdmin 
+      const roleL = (m.sender_role || "").toLowerCase();
+      const isOfficial = roleL === "admin" || roleL === "manager";
+      const align = isOfficial ? "flex-start" : "flex-end";
+      const bg = isOfficial ? "rgba(37, 99, 235, 0.05)" : "var(--bg-secondary)";
+      const border = isOfficial ? "1px solid rgba(37, 99, 235, 0.25)" : "1px solid var(--border-color)";
+      const senderLabel = roleL === "admin"
+        ? "TenderKart Central Admin"
+        : (roleL === "manager" ? `${m.sender_name_cached || "State Manager"} (${m.sender_office_state || t.state || "State"} Manager)` : (m.sender_name_cached || "You"));
+      const badgeRole = roleL === "admin"
         ? `<span class="badge badge-orange" style="font-size: 0.65rem;">Central Admin</span>`
-        : `<span class="badge badge-blue" style="font-size: 0.65rem;">Contractor</span>`;
+        : (roleL === "manager"
+          ? `<span class="badge badge-purple" style="font-size: 0.65rem;">State Manager</span>`
+          : `<span class="badge badge-blue" style="font-size: 0.65rem;">Contractor</span>`);
 
       return `
         <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
           <div style="max-width: 85%; background: ${bg}; border: ${border}; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
               <div style="display: flex; align-items: center; gap: 6px;">
-                <strong style="color: var(--text-primary); font-size: 0.82rem;">${senderLabel}</strong>
+                <strong style="color: var(--text-primary); font-size: 0.82rem;">${escapeHtml(senderLabel)}</strong>
                 ${badgeRole}
               </div>
-              <span>${m.created_at || ''}</span>
+              <span>${escapeHtml(m.created_at || '')}</span>
             </div>
-            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${m.message_body}</p>
+            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${escapeHtml(m.message_body)}</p>
           </div>
         </div>
       `;
@@ -1848,7 +2101,7 @@ window.openContractorTicketModal = async (id) => {
     document.getElementById("contractor-ticket-modal").style.display = "block";
     thread.scrollTop = thread.scrollHeight;
   } catch (err) {
-    showToast("Error opening ticket modal", "error");
+    showToast("Error opening inquiry modal", "error");
   }
 };
 
@@ -1879,7 +2132,7 @@ window.submitContractorReply = async () => {
 
     if (res.ok) {
       if (input) input.value = "";
-      showToast("Reply sent to TenderKart Admin", "success");
+      showToast("Follow-up reply sent", "success");
       await openContractorTicketModal(currentContractorTicketId);
       await fetchContractorHelpdesk();
     } else {
@@ -1889,7 +2142,7 @@ window.submitContractorReply = async () => {
   } catch (e) {
     showToast("Network error sending reply", "error");
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Send Reply to Admin"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Send Reply"; }
   }
 };
 
@@ -2127,8 +2380,9 @@ window.openAnalysisModal = async (appId) => {
       ? `<span style="color: var(--color-danger); font-weight: 600;">${app.missing_documents.join(", ")}</span>`
       : `<span style="color: var(--color-success); font-weight: 600;">None recorded (Full compliance packet submitted)</span>`;
 
-    const feedbackText = app.feedback_notes
-      ? `<p style="font-size: 0.86rem; color: var(--text-primary); line-height: 1.5; background: var(--bg-card); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 4px;">${app.feedback_notes}</p>`
+    const rawNotes = app.evaluation_notes || app.feedback_notes;
+    const feedbackText = rawNotes
+      ? `<p style="font-size: 0.86rem; color: var(--text-primary); line-height: 1.5; background: var(--bg-card); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 4px;">${escapeHtml(rawNotes)}</p>`
       : `<p style="font-size: 0.82rem; color: var(--text-muted); font-style: italic; margin-top: 4px;">No evaluator notes recorded yet.</p>`;
 
     if (summarySection) {
@@ -2338,115 +2592,18 @@ async function handleReadNotification(id, readStatus) {
   }
 }
 
-/* ---------------- ADMIN WORKSPACE ---------------- */
+/* ---------------- CENTRAL ADMIN WORKSPACE (NATIONWIDE SUPERVISION) ---------------- */
 let adminTendersList = [];
 let adminApplicationsList = [];
+let adminManagersList = [];
+let currentAdminTicketId = null;
 
 async function initAdminPage() {
-  // Add tender listener
-  const form = document.getElementById("admin-add-form");
-  if (form) {
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = document.getElementById("tender-add-name").value.trim();
-      const department = document.getElementById("tender-add-dept").value.trim();
-      const category = document.getElementById("tender-add-category").value;
-      const budget = document.getElementById("tender-add-budget").value;
-      const deadline = document.getElementById("tender-add-deadline").value;
-      const location = document.getElementById("tender-add-location").value.trim();
-      const documentsRaw = document.getElementById("tender-add-docs").value.trim();
-      const eligibility = document.getElementById("tender-add-eligibility").value.trim();
-      const description = document.getElementById("tender-add-description").value.trim();
-
-      const required_documents = documentsRaw.split(",").map(d => d.trim()).filter(Boolean);
-
-      try {
-        const res = await fetch(`${API_BASE}/admin/tenders`, {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            name, department, category, budget, location, deadline, eligibility, required_documents, description
-          })
-        });
-
-        if (res.ok) {
-          showToast("Tender published successfully!", "success");
-          form.reset();
-          switchAdminTab("tenders");
-          await fetchAdminWorkspace();
-        } else {
-          showToast("Failed to create tender", "error");
-        }
-      } catch (err) {
-        showToast("Error connecting to server", "error");
-      }
-    });
-  }
-
-  // Update tender listener
-  const editForm = document.getElementById("admin-edit-form");
-  if (editForm) {
-    editForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const id = document.getElementById("edit-tender-id").value;
-      const name = document.getElementById("tender-edit-name").value.trim();
-      const department = document.getElementById("tender-edit-dept").value.trim();
-      const category = document.getElementById("tender-edit-category").value;
-      const budget = document.getElementById("tender-edit-budget").value;
-      const deadline = document.getElementById("tender-edit-deadline").value;
-      const location = document.getElementById("tender-edit-location").value.trim();
-      const documentsRaw = document.getElementById("tender-edit-docs").value.trim();
-      const eligibility = document.getElementById("tender-edit-eligibility").value.trim();
-      const description = document.getElementById("tender-edit-description").value.trim();
-
-      const required_documents = documentsRaw.split(",").map(d => d.trim()).filter(Boolean);
-
-      try {
-        const res = await fetch(`${API_BASE}/admin/tenders/${id}`, {
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            name, department, category, budget, location, deadline, eligibility, required_documents, description
-          })
-        });
-
-        if (res.ok) {
-          showToast("Specifications updated successfully", "success");
-          document.getElementById("edit-overlay").style.display = "none";
-          await fetchAdminWorkspace();
-        } else {
-          showToast("Failed to save changes", "error");
-        }
-      } catch (err) {
-        showToast("Error saving changes", "error");
-      }
-    });
-  }
-
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const roleLower = (user.role || "").toLowerCase();
-  const isAdmin = roleLower === "admin";
-  const isManager = roleLower === "manager";
-
-  const adminHelpdeskBtn = document.getElementById("btn-admin-helpdesk");
-  const managerHelpdeskBtn = document.getElementById("btn-manager-helpdesk");
-
-  if (isAdmin) {
-    if (adminHelpdeskBtn) adminHelpdeskBtn.style.display = "flex";
-    if (managerHelpdeskBtn) managerHelpdeskBtn.style.display = "none";
-    fetchAdminHelpdeskBadge();
-  } else if (isManager) {
-    if (adminHelpdeskBtn) adminHelpdeskBtn.style.display = "none";
-    if (managerHelpdeskBtn) managerHelpdeskBtn.style.display = "flex";
-    fetchManagerHelpdeskBadge();
-  }
-
-  // Switch tabs (Stats, Add, Tenders, Users, Apps, Helpdesk, Manager Helpdesk)
   window.switchAdminTab = (tabName) => {
-    const tabs = ["stats", "add", "tenders", "users", "apps", "helpdesk", "manager-helpdesk"];
+    const tabs = ["stats", "managers", "tenders", "apps", "users", "helpdesk"];
     tabs.forEach(t => {
       const panel = document.getElementById(`admin-tab-${t}`);
-      const btn = document.getElementById(`btn-admin-${t}`) || document.getElementById(`btn-manager-${t}`);
+      const btn = document.getElementById(`btn-admin-${t}`);
       if (panel) panel.style.display = "none";
       if (btn) {
         btn.style.backgroundColor = "transparent";
@@ -2455,28 +2612,27 @@ async function initAdminPage() {
     });
 
     const activePanel = document.getElementById(`admin-tab-${tabName}`);
-    const activeBtn = document.getElementById(`btn-admin-${tabName}`) || document.getElementById(`btn-manager-${tabName}`);
-    if (activePanel) activePanel.style.display = "block";
+    const activeBtn = document.getElementById(`btn-admin-${tabName}`);
+    if (activePanel) activePanel.style.display = "flex";
     if (activeBtn) {
       activeBtn.style.backgroundColor = "var(--color-primary)";
       activeBtn.style.color = "#FFFFFF";
     }
 
-    if (tabName === "apps") {
-      fetchAdminApplications();
-    } else if (tabName === "helpdesk") {
+    if (tabName === "helpdesk") {
       fetchAdminHelpdeskQueue();
-    } else if (tabName === "manager-helpdesk") {
-      fetchManagerHelpdesk();
+    } else if (tabName === "managers") {
+      fetchAdminManagers();
+    } else if (tabName === "apps") {
+      fetchAdminApplications();
     }
   };
 
-  // Wire filter listeners for Admin Queue
+  // Wire filter listeners for Nationwide Inquiries
   const filterSearch = document.getElementById("filter-inquiry-search");
-  const filterRole = document.getElementById("filter-inquiry-role");
-  const filterCat = document.getElementById("filter-inquiry-category");
+  const filterState = document.getElementById("filter-inquiry-state");
   const filterStatus = document.getElementById("filter-inquiry-status");
-  const filterPrio = document.getElementById("filter-inquiry-priority");
+  const filterAssign = document.getElementById("filter-inquiry-assignment");
 
   let debounceTimer;
   if (filterSearch) {
@@ -2485,220 +2641,100 @@ async function initAdminPage() {
       debounceTimer = setTimeout(() => fetchAdminHelpdeskQueue(), 300);
     });
   }
-  if (filterRole) filterRole.addEventListener("change", () => fetchAdminHelpdeskQueue());
-  if (filterCat) filterCat.addEventListener("change", () => fetchAdminHelpdeskQueue());
+  if (filterState) filterState.addEventListener("change", () => fetchAdminHelpdeskQueue());
   if (filterStatus) filterStatus.addEventListener("change", () => fetchAdminHelpdeskQueue());
-  if (filterPrio) filterPrio.addEventListener("change", () => fetchAdminHelpdeskQueue());
+  if (filterAssign) filterAssign.addEventListener("change", () => fetchAdminHelpdeskQueue());
 
   const urlParams = new URLSearchParams(window.location.search);
   const targetTab = urlParams.get("tab");
-  if (targetTab === "helpdesk" && isAdmin) {
-    switchAdminTab("helpdesk");
-  } else if ((targetTab === "helpdesk" || targetTab === "manager-helpdesk") && isManager) {
-    switchAdminTab("manager-helpdesk");
+  if (["managers", "tenders", "apps", "users", "helpdesk"].includes(targetTab)) {
+    switchAdminTab(targetTab);
   } else {
     switchAdminTab("stats");
   }
   await fetchAdminWorkspace();
 }
 
-async function fetchAdminApplications() {
-  const headers = getAuthHeaders();
-  try {
-    const res = await fetch(`${API_BASE}/admin/applications`, { headers });
-    if (!res.ok) return;
-
-    adminApplicationsList = await res.json();
-
-    const badge = document.getElementById("admin-apps-badge");
-    if (badge) badge.textContent = `${adminApplicationsList.length} Applications`;
-
-    const tbody = document.getElementById("admin-apps-table");
-    if (!tbody) return;
-
-    if (adminApplicationsList.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="8" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-            No applications recorded yet.
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    tbody.innerHTML = adminApplicationsList.map(app => {
-      let statusBadge = "";
-      const statusUpper = (app.application_status || "").toUpperCase();
-      if (statusUpper === "WON") {
-        statusBadge = `<span class="badge badge-green">Won</span>`;
-      } else if (statusUpper === "NOT AWARDED") {
-        statusBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
-      } else if (statusUpper === "UNDER REVIEW") {
-        statusBadge = `<span class="badge badge-blue">Under Review</span>`;
-      } else if (statusUpper === "WITHDRAWN") {
-        statusBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
-      } else {
-        statusBadge = `<span class="badge badge-blue">Submitted</span>`;
-      }
-
-      let outcomeBadge = "";
-      if (app.outcome === "Won") {
-        outcomeBadge = `<span class="badge badge-green">Won</span>`;
-      } else if (app.outcome === "Not Awarded") {
-        outcomeBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
-      } else if (app.outcome === "Withdrawn") {
-        outcomeBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
-      } else {
-        outcomeBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--color-primary); border: 1px solid var(--border-color);">Pending</span>`;
-      }
-
-      return `
-        <tr style="border-bottom: 1px solid var(--border-color);">
-          <td style="padding: 14px 18px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 0.82rem;">
-            ${app.application_code || ("APP-" + app.id)}
-          </td>
-          <td style="padding: 14px 18px;">
-            <strong style="color: var(--text-primary);">${app.contractor_name}</strong>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${app.contractor_company || app.contractor_code}</div>
-          </td>
-          <td style="padding: 14px 18px;">
-            <strong style="color: var(--text-primary); font-size: 0.88rem;">${app.tender_name}</strong>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">${app.tender_category} • ${app.tender_location}</div>
-          </td>
-          <td style="padding: 14px 18px; font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap;">
-            ${app.applied_on}
-          </td>
-          <td style="padding: 14px 18px; font-weight: 700; color: var(--text-primary); white-space: nowrap;">
-            ${app.bid_amount ? formatBudget(app.bid_amount) : '<span style="color: var(--text-muted);">N/A</span>'}
-          </td>
-          <td style="padding: 14px 18px; white-space: nowrap;">
-            ${statusBadge}
-          </td>
-          <td style="padding: 14px 18px; white-space: nowrap;">
-            ${outcomeBadge}
-          </td>
-          <td style="padding: 14px 18px; white-space: nowrap;">
-            <button type="button" onclick="openAdminEvalModal(${app.id})" class="btn btn-outline" style="font-size: 0.78rem; padding: 5px 12px; display: inline-flex; align-items: center; gap: 4px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span>Evaluate</span>
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-  } catch (err) {
-    console.warn("Error fetching admin applications:", err);
-  }
-}
-
-window.openAdminEvalModal = (appId) => {
-  const app = adminApplicationsList.find(a => a.id === appId);
-  if (!app) return;
-
-  const overlay = document.getElementById("eval-overlay");
-  if (!overlay) return;
-
-  document.getElementById("eval-app-id").value = app.id;
-  document.getElementById("eval-app-contractor").textContent = `${app.contractor_name} (${app.contractor_company || app.contractor_code})`;
-  document.getElementById("eval-app-bid").textContent = `Bid: ${app.bid_amount ? formatBudget(app.bid_amount) : 'Not specified'}`;
-  document.getElementById("eval-app-tender").textContent = `Tender: ${app.tender_name} (${app.tender_category})`;
-
-  const statusSel = document.getElementById("eval-status-select");
-  if (statusSel) statusSel.value = app.application_status || "Under Review";
-
-  const outcomeSel = document.getElementById("eval-outcome-select");
-  if (outcomeSel) outcomeSel.value = app.outcome || "Pending";
-
-  const missingDocsEl = document.getElementById("eval-missing-docs");
-  if (missingDocsEl) {
-    missingDocsEl.value = Array.isArray(app.missing_documents) ? app.missing_documents.join(", ") : (app.missing_documents || "");
-  }
-
-  const notesEl = document.getElementById("eval-notes");
-  if (notesEl) notesEl.value = app.feedback_notes || "";
-
-  overlay.style.display = "block";
-};
-
-window.closeAdminEvalOverlay = () => {
-  const overlay = document.getElementById("eval-overlay");
-  if (overlay) overlay.style.display = "none";
-};
-
-window.syncOutcomeSelect = () => {
-  const statusSel = document.getElementById("eval-status-select");
-  const outcomeSel = document.getElementById("eval-outcome-select");
-  if (!statusSel || !outcomeSel) return;
-
-  const st = statusSel.value;
-  if (st === "Won") outcomeSel.value = "Won";
-  else if (st === "Not Awarded") outcomeSel.value = "Not Awarded";
-  else if (st === "Withdrawn") outcomeSel.value = "Withdrawn";
-  else outcomeSel.value = "Pending";
-};
-
-window.handleAdminEvalSubmit = async (e) => {
-  e.preventDefault();
-  const appId = document.getElementById("eval-app-id").value;
-  const status = document.getElementById("eval-status-select").value;
-  const outcome = document.getElementById("eval-outcome-select").value;
-  const missingDocsRaw = document.getElementById("eval-missing-docs").value.trim();
-  const feedback_notes = document.getElementById("eval-notes").value.trim();
-
-  const missing_documents = missingDocsRaw ? missingDocsRaw.split(",").map(d => d.trim()).filter(Boolean) : [];
-
-  try {
-    const res = await fetch(`${API_BASE}/admin/applications/${appId}/evaluate`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        status,
-        outcome,
-        feedback_notes,
-        missing_documents
-      })
-    });
-
-    if (res.ok) {
-      showToast("Application evaluation recorded successfully!", "success");
-      closeAdminEvalOverlay();
-      await fetchAdminApplications();
-      await fetchAdminWorkspace();
-    } else {
-      const err = await res.json();
-      showToast(err.message || "Failed to save evaluation", "error");
-    }
-  } catch (err) {
-    showToast("Server error recording evaluation", "error");
-  }
-};
-
 async function fetchAdminWorkspace() {
   const headers = getAuthHeaders();
-
   try {
-    // 1. Fetch Stats
+    // 1. Fetch Real Nationwide Analytics
     const statsRes = await fetch(`${API_BASE}/admin/stats`, { headers });
     if (statsRes.ok) {
       const stats = await statsRes.json();
-      
-      document.getElementById("stat-box-tenders").textContent = `${stats.tendersCount} Tenders`;
-      document.getElementById("stat-box-budget").textContent = formatBudget(stats.totalBudget);
-      document.getElementById("stat-box-contractors").textContent = `${stats.usersCount} Profiles`;
-      document.getElementById("stat-box-saves").textContent = `${stats.savedCount} Saves`;
 
-      // Allocations progress bars
+      document.getElementById("stat-box-tenders").textContent = stats.tendersCount ?? 0;
+      document.getElementById("stat-box-budget").textContent = `Outlay: ${formatBudget(stats.totalBudget || 0)}`;
+      document.getElementById("stat-box-contractors").textContent = stats.contractorsCount ?? 0;
+      document.getElementById("stat-box-saves").textContent = `${stats.savedCount ?? 0} Saved Tenders`;
+      document.getElementById("stat-box-managers").textContent = stats.approvedManagersCount ?? 0;
+      document.getElementById("stat-box-pending-mgrs").textContent = `${stats.pendingManagersCount ?? 0} Pending Approval`;
+      document.getElementById("stat-box-views").textContent = stats.totalViews ?? 0;
+      document.getElementById("stat-box-apps-total").textContent = `${stats.applicationsSummary?.total ?? 0} Applications`;
+
+      const pendingMgrBadge = document.getElementById("admin-pending-mgr-badge");
+      if (pendingMgrBadge) pendingMgrBadge.textContent = stats.pendingManagersCount ?? 0;
+      const tendersBadge = document.getElementById("admin-tenders-badge");
+      if (tendersBadge) tendersBadge.textContent = stats.tendersCount ?? 0;
+
+      // Application Outcomes Strip
+      const appOutcomesEl = document.getElementById("analytics-app-outcomes");
+      if (appOutcomesEl && stats.applicationsSummary) {
+        const as = stats.applicationsSummary;
+        appOutcomesEl.innerHTML = `
+          <div style="padding:10px; background:var(--bg-secondary); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850;">${as.total}</div>
+            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">TOTAL</div>
+          </div>
+          <div style="padding:10px; background:rgba(16,185,129,0.08); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850; color:var(--color-success);">${as.won}</div>
+            <div style="font-size:0.7rem; color:var(--color-success); font-weight:700;">WON</div>
+          </div>
+          <div style="padding:10px; background:rgba(37,99,235,0.08); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850; color:var(--color-primary);">${as.pending}</div>
+            <div style="font-size:0.7rem; color:var(--color-primary); font-weight:700;">IN REVIEW</div>
+          </div>
+          <div style="padding:10px; background:rgba(239,68,68,0.08); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850; color:var(--color-danger);">${as.notAwarded}</div>
+            <div style="font-size:0.7rem; color:var(--color-danger); font-weight:700;">NOT AWARDED</div>
+          </div>
+        `;
+      }
+
+      // Nationwide Inquiries Summary Strip
+      const inqSumEl = document.getElementById("analytics-inquiry-summary");
+      if (inqSumEl && stats.inquiriesSummary) {
+        const is = stats.inquiriesSummary;
+        inqSumEl.innerHTML = `
+          <div style="padding:10px; background:var(--bg-secondary); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850;">${is.total}</div>
+            <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">TOTAL</div>
+          </div>
+          <div style="padding:10px; background:rgba(245,158,11,0.08); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850; color:#D97706;">${is.pending}</div>
+            <div style="font-size:0.7rem; color:#D97706; font-weight:700;">PENDING</div>
+          </div>
+          <div style="padding:10px; background:rgba(37,99,235,0.08); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850; color:var(--color-primary);">${is.inProgress}</div>
+            <div style="font-size:0.7rem; color:var(--color-primary); font-weight:700;">IN PROGRESS</div>
+          </div>
+          <div style="padding:10px; background:rgba(16,185,129,0.08); border-radius:10px;">
+            <div style="font-size:1.35rem; font-weight:850; color:var(--color-success);">${is.resolved}</div>
+            <div style="font-size:0.7rem; color:var(--color-success); font-weight:700;">RESOLVED</div>
+          </div>
+        `;
+      }
+
+      // 6-Category Distribution
       const allocContainer = document.getElementById("analytics-allocations");
       if (allocContainer) {
-        allocContainer.innerHTML = stats.categoryStats.map(cat => {
-          const pct = Math.min((cat.budget / stats.totalBudget) * 100 || 0, 100).toFixed(0);
+        allocContainer.innerHTML = (stats.categoryStats || []).map(cat => {
+          const pct = Math.min(((cat.count / (stats.tendersCount || 12)) * 100), 100).toFixed(0);
           return `
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-                <span style="font-weight: 700; color: var(--text-primary);">${cat.category}</span>
-                <span style="color: var(--text-secondary); font-weight: 600;">${formatBudget(cat.budget)} (${cat.count} bids)</span>
+              <div style="display: flex; justify-content: space-between; font-size: 0.84rem; gap: 8px; flex-wrap: wrap;">
+                <span style="font-weight: 700; color: var(--text-primary);">${escapeHtml(cat.category)} (${cat.count} tenders)</span>
+                <span style="color: var(--text-secondary); font-weight: 600;">${formatBudget(cat.budget)} • ${cat.applications_count} apps • ${cat.views} views</span>
               </div>
               <div style="height: 6px; width: 100%; background-color: var(--bg-secondary); border-radius: 99px; overflow: hidden;">
                 <div style="height: 100%; width: ${pct}%; background-color: var(--color-primary); border-radius: 99px;"></div>
@@ -2708,161 +2744,357 @@ async function fetchAdminWorkspace() {
         }).join("");
       }
 
-      // Recent Activity Log
+      // Recent Platform Activity Log
       const logsContainer = document.getElementById("analytics-logs");
       if (logsContainer) {
-        logsContainer.innerHTML = stats.recentActivity.map(act => `
-          <div style="display: flex; gap: 12px; align-items: start;">
-            <div style="height: 8px; width: 8px; border-radius: 50%; background-color: var(--color-warning); margin-top: 6px; flex-shrink: 0;"></div>
-            <div>
-              <p style="font-size: 0.85rem; color: var(--text-primary); line-height: 1.4; font-weight: 550;">${act.message}</p>
-              <span style="font-size: 0.7rem; color: var(--text-muted);">Log: ${act.time}</span>
-            </div>
-          </div>
-        `).join("");
-      }
-    }
-
-    // 2. Fetch Applications for Admin badge
-    await fetchAdminApplications();
-
-    // 3. Fetch Tenders list for table
-    const tendersRes = await fetch(`${API_BASE}/tenders`);
-    if (tendersRes.ok) {
-      adminTendersList = await tendersRes.json();
-      const tableBody = document.getElementById("admin-tenders-table");
-      if (tableBody) {
-        tableBody.innerHTML = adminTendersList.map(t => `
-          <tr style="border-bottom: 1px solid var(--border-color);">
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><strong>${t.name}</strong></td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><span class="badge badge-blue">${t.category}</span></td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${t.department.split('(')[0].substring(0, 16)}...</td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary); font-weight: bold;" class="text-primary">${formatBudget(t.budget)}</td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${t.deadline}</span></td>
-            <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">
-              <div style="display: flex; gap: 8px;">
-                <button onclick="handleEditTrigger(${t.id})" style="background: none; border: none; cursor: pointer; padding: 6px; border-radius: 4px; color: var(--color-primary); background-color: rgba(var(--primary-rgb), 0.05); border: 1px solid rgba(var(--primary-rgb), 0.1); transition: var(--transition-smooth);" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit-3"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-                <button onclick="handleDeleteTrigger(${t.id})" style="background: none; border: none; cursor: pointer; padding: 6px; border-radius: 4px; color: var(--color-danger); background-color: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.1); transition: var(--transition-smooth);" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+        if (!stats.recentActivity || stats.recentActivity.length === 0) {
+          logsContainer.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted);">No recorded activity yet.</p>`;
+        } else {
+          logsContainer.innerHTML = stats.recentActivity.map(act => `
+            <div style="display: flex; gap: 10px; align-items: start;">
+              <div style="height: 8px; width: 8px; border-radius: 50%; background-color: var(--color-primary); margin-top: 6px; flex-shrink: 0;"></div>
+              <div>
+                <p style="font-size: 0.84rem; color: var(--text-primary); line-height: 1.4; margin: 0; font-weight: 550;">
+                  ${escapeHtml(act.details || act.action_type)}
+                </p>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">
+                  ${escapeHtml(act.actor_name || act.actor_role || "System")} ${act.state ? `• ${escapeHtml(act.state)}` : ""} • ${escapeHtml(act.created_at || "")}
+                </span>
               </div>
-            </td>
+            </div>
+          `).join("");
+        }
+      }
+
+      // State-Wise Distribution & Contractor Activity Table
+      const stateTbody = document.getElementById("analytics-state-table");
+      if (stateTbody) {
+        stateTbody.innerHTML = (stats.stateStats || []).map(st => `
+          <tr>
+            <td><strong>${escapeHtml(st.state || "Unspecified")}</strong></td>
+            <td><span class="badge badge-blue">${st.tender_count}</span></td>
+            <td style="font-weight: 600;">${formatBudget(st.total_budget)}</td>
+            <td>${st.total_views}</td>
+            <td>${st.saved_count}</td>
+            <td>${st.applications_count} (${st.active_contractors} contractors)</td>
+            <td>${st.inquiries_count} (${st.resolved_inquiries_count} resolved)</td>
+            <td>${st.approved_manager ? `<span class="badge badge-green">${escapeHtml(st.approved_manager)}</span>` : `<span class="badge badge-orange">Unassigned State</span>`}</td>
           </tr>
         `).join("");
       }
-    }
 
-    // 4. Fetch User registry accounts (Contractors and Managers)
-    const usersRes = await fetch(`${API_BASE}/admin/users`, { headers });
-    if (usersRes.ok) {
-      const usersData = await usersRes.json();
-      const usersTableBody = document.getElementById("admin-users-table");
-      if (usersTableBody) {
-        usersTableBody.innerHTML = usersData.map(u => {
-          const roleLower = (u.role || "").toLowerCase();
-          const badgeClass = (roleLower === 'admin' || roleLower === 'manager') ? 'badge-orange' : 'badge-green';
-          const orgInfo = u.company ? ` • ${u.company}` : (u.department ? ` • ${u.department}` : '');
-          const nameDisplay = u.name ? `<strong>${u.name}</strong><br><span style="font-size: 0.72rem; color: var(--text-muted);">${u.username}${orgInfo}</span>` : `<strong>${u.username}</strong>`;
+      // Manager-Wise Performance Table
+      const mgrPerfTbody = document.getElementById("analytics-manager-perf-table");
+      if (mgrPerfTbody) {
+        mgrPerfTbody.innerHTML = (stats.managerPerformance || []).map(m => {
+          const statusBadge = m.approval_status === "Pending"
+            ? `<span class="badge badge-orange">Pending</span>`
+            : (m.approval_status === "Rejected"
+              ? `<span class="badge badge-red">Rejected</span>`
+              : (m.is_active ? `<span class="badge badge-green">Active</span>` : `<span class="badge badge-muted">Inactive</span>`));
           return `
-            <tr style="border-bottom: 1px solid var(--border-color);">
-              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;">${u.user_code || u.username}</td>
-              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${nameDisplay}</td>
-              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${u.email}</td>
-              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);"><span class="badge ${badgeClass}" style="text-transform: capitalize;">${u.role}</span></td>
-              <td style="padding: 16px 20px; font-size: 0.85rem; color: var(--text-primary);">${(u.created_at || '').substring(0, 10)}</td>
+            <tr>
+              <td>
+                <strong>${escapeHtml(m.name || m.username)}</strong>
+                <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(m.user_code || m.username)}</div>
+              </td>
+              <td><span class="badge badge-blue">${escapeHtml(m.office_state || "--")}</span></td>
+              <td>${statusBadge}</td>
+              <td>${m.state_tenders_count}</td>
+              <td><strong>${m.tender_updates_count}</strong></td>
+              <td><strong>${m.inquiry_responses_count}</strong></td>
+              <td>${m.assigned_inquiries_count} / ${m.resolved_inquiries_count}</td>
+              <td>${m.evaluated_applications_count}</td>
             </tr>
           `;
         }).join("");
       }
     }
 
+    // 2. Fetch Tenders, Managers, Applications, Users, Inquiries
+    await Promise.all([
+      fetchAdminTenders(),
+      fetchAdminManagers(),
+      fetchAdminApplications(),
+      fetchAdminUsers(),
+      fetchAdminHelpdeskQueue()
+    ]);
+
   } catch (err) {
-    showToast("Error updating administrative data", "error");
+    showToast("Error loading Central Admin workspace", "error");
   }
 }
 
-window.handleEditTrigger = (tenderId) => {
-  const tender = adminTendersList.find(t => t.id === tenderId);
-  if (!tender) return;
+async function fetchAdminTenders() {
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/admin/tenders`, { headers });
+  if (!res.ok) return;
+  adminTendersList = await res.json();
 
-  document.getElementById("edit-tender-id").value = tender.id;
-  document.getElementById("tender-edit-name").value = tender.name;
-  document.getElementById("tender-edit-dept").value = tender.department;
-  document.getElementById("tender-edit-category").value = tender.category;
-  document.getElementById("tender-edit-budget").value = tender.budget;
-  document.getElementById("tender-edit-deadline").value = tender.deadline;
-  document.getElementById("tender-edit-location").value = tender.location;
-  document.getElementById("tender-edit-docs").value = tender.required_documents.join(", ");
-  document.getElementById("tender-edit-eligibility").value = tender.eligibility;
-  document.getElementById("tender-edit-description").value = tender.description;
+  // Populate state filter dropdowns on Admin page
+  const uniqueStates = [...new Set(adminTendersList.map(t => t.state).filter(Boolean))].sort();
+  const tenderStateSel = document.getElementById("admin-tenders-state-filter");
+  if (tenderStateSel) {
+    const prev = tenderStateSel.value;
+    tenderStateSel.innerHTML = `<option value="">All States</option>` +
+      uniqueStates.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    tenderStateSel.value = prev;
+  }
+  const inqStateSel = document.getElementById("filter-inquiry-state");
+  if (inqStateSel) {
+    const prev = inqStateSel.value;
+    inqStateSel.innerHTML = `<option value="">All States</option>` +
+      uniqueStates.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    inqStateSel.value = prev;
+  }
 
-  document.getElementById("edit-overlay").style.display = "block";
+  renderAdminTendersTable();
+}
+
+window.renderAdminTendersTable = () => {
+  const tableBody = document.getElementById("admin-tenders-table");
+  if (!tableBody) return;
+  const stateFilter = document.getElementById("admin-tenders-state-filter")?.value || "";
+  const filtered = stateFilter
+    ? adminTendersList.filter(t => (t.state || "").toLowerCase() === stateFilter.toLowerCase())
+    : adminTendersList;
+
+  tableBody.innerHTML = filtered.map(t => {
+    const st = getTenderStatus(t.deadline, t.status);
+    return `
+      <tr>
+        <td>
+          <a href="tenderDetails.html?id=${t.id}" style="font-weight:700; color:var(--text-primary);">${escapeHtml(t.name)}</a>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(t.department)}</div>
+        </td>
+        <td><span class="badge badge-purple">${escapeHtml(t.state || "--")}</span></td>
+        <td><span class="badge badge-blue">${escapeHtml(t.category)}</span></td>
+        <td style="font-weight:700;">${formatBudget(t.budget)}</td>
+        <td style="white-space:nowrap;">${escapeHtml(t.deadline)}</td>
+        <td><span class="badge ${st.class}">${escapeHtml(st.label)}</span></td>
+        <td style="font-size:0.8rem; color:var(--text-secondary);">
+          ${t.views_count || 0} views • ${t.saved_count || 0} saves • ${t.applications_count || 0} apps
+        </td>
+      </tr>
+    `;
+  }).join("");
 };
 
-window.closeEditOverlay = () => {
-  document.getElementById("edit-overlay").style.display = "none";
-};
+async function fetchAdminManagers() {
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/admin/managers`, { headers });
+  if (!res.ok) return;
+  adminManagersList = await res.json();
 
-window.handleDeleteTrigger = async (tenderId) => {
-  if (!window.confirm("Are you sure you want to delete this tender? This will erase bookmark records.")) return;
-  const token = localStorage.getItem("token");
+  const pendingCount = adminManagersList.filter(m => m.approval_status === "Pending").length;
+  const pendingBadge = document.getElementById("admin-pending-mgr-badge");
+  if (pendingBadge) pendingBadge.textContent = pendingCount;
 
+  const tbody = document.getElementById("admin-managers-table");
+  if (!tbody) return;
+
+  tbody.innerHTML = adminManagersList.map(m => {
+    const approvalBadge = m.approval_status === "Approved"
+      ? `<span class="badge badge-green">Approved</span>`
+      : (m.approval_status === "Rejected"
+        ? `<span class="badge badge-red">Rejected</span>`
+        : `<span class="badge badge-orange">Pending Approval</span>`);
+
+    const activeBadge = m.is_active
+      ? `<span class="badge badge-green">Active</span>`
+      : `<span class="badge badge-muted">Deactivated</span>`;
+
+    let actionBtns = "";
+    if (m.approval_status === "Pending") {
+      actionBtns = `
+        <button onclick="approveManagerAccount(${m.id})" class="btn btn-primary" style="font-size:0.75rem; padding:5px 12px;">Approve</button>
+        <button onclick="rejectManagerAccount(${m.id})" class="btn btn-outline" style="font-size:0.75rem; padding:5px 12px; color:var(--color-danger); border-color:rgba(239,68,68,0.35);">Reject</button>
+      `;
+    } else if (m.approval_status === "Approved") {
+      actionBtns = m.is_active
+        ? `<button onclick="toggleManagerActiveStatus(${m.id}, false)" class="btn btn-outline" style="font-size:0.75rem; padding:5px 12px; color:var(--color-danger); border-color:rgba(239,68,68,0.35);">Deactivate</button>`
+        : `<button onclick="toggleManagerActiveStatus(${m.id}, true)" class="btn btn-primary" style="font-size:0.75rem; padding:5px 12px;">Activate</button>`;
+    } else {
+      actionBtns = `<button onclick="approveManagerAccount(${m.id})" class="btn btn-outline" style="font-size:0.75rem; padding:5px 12px;">Re-Approve</button>`;
+    }
+
+    return `
+      <tr>
+        <td style="font-weight:700;">${escapeHtml(m.user_code || m.username)}</td>
+        <td>
+          <strong>${escapeHtml(m.name || m.username)}</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(m.email)}</div>
+        </td>
+        <td><span class="badge badge-blue">${escapeHtml(m.office_state || "--")}</span></td>
+        <td>${approvalBadge}</td>
+        <td>${activeBadge}</td>
+        <td><strong>${m.tender_updates_count || 0}</strong></td>
+        <td><strong>${m.inquiry_responses_count || 0}</strong></td>
+        <td style="text-align:right; white-space:nowrap;">
+          <div style="display:inline-flex; gap:6px;">${actionBtns}</div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.approveManagerAccount = async (managerId) => {
   try {
-    const res = await fetch(`${API_BASE}/admin/tenders/${tenderId}`, {
-      method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
+    const res = await fetch(`${API_BASE}/admin/managers/${managerId}/approve`, {
+      method: "PATCH",
+      headers: getAuthHeaders()
     });
-
+    const data = await res.json();
     if (res.ok) {
-      showToast("Tender removed successfully", "success");
+      showToast(data.message || "Manager approved", "success");
       await fetchAdminWorkspace();
     } else {
-      showToast("Failed to delete tender", "error");
+      showToast(data.message || "Failed to approve manager", "error");
     }
   } catch (e) {
-    showToast("Connection error during delete", "error");
+    showToast("Error approving manager", "error");
   }
 };
 
-/* ---------------- HELP DESK & INQUIRIES MANAGEMENT (ADMIN & MANAGER) ---------------- */
-let currentAdminTicketId = null;
-let currentManagerTicketId = null;
-
-async function fetchAdminHelpdeskBadge() {
-  const headers = getAuthHeaders();
+window.rejectManagerAccount = async (managerId) => {
+  if (!window.confirm("Reject this manager registration?")) return;
   try {
-    const res = await fetch(`${API_BASE}/inquiries/admin/all`, { headers });
+    const res = await fetch(`${API_BASE}/admin/managers/${managerId}/reject`, {
+      method: "PATCH",
+      headers: getAuthHeaders()
+    });
+    const data = await res.json();
     if (res.ok) {
-      const data = await res.json();
-      const badge = document.getElementById("admin-helpdesk-badge");
-      if (badge) badge.textContent = (data.summary && data.summary.countNew) || 0;
+      showToast(data.message || "Manager rejected", "info");
+      await fetchAdminWorkspace();
+    } else {
+      showToast(data.message || "Failed to reject manager", "error");
     }
-  } catch (e) {}
+  } catch (e) {
+    showToast("Error rejecting manager", "error");
+  }
+};
+
+window.toggleManagerActiveStatus = async (managerId, nextActive) => {
+  try {
+    const res = await fetch(`${API_BASE}/admin/managers/${managerId}/status`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ is_active: nextActive })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || "Manager status updated", "success");
+      await fetchAdminWorkspace();
+    } else {
+      showToast(data.message || "Failed to update manager status", "error");
+    }
+  } catch (e) {
+    showToast("Error updating manager status", "error");
+  }
+};
+
+async function fetchAdminUsers() {
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/admin/users`, { headers });
+  if (!res.ok) return;
+  const usersData = await res.json();
+  const tbody = document.getElementById("admin-users-table");
+  if (!tbody) return;
+
+  tbody.innerHTML = usersData.map(u => {
+    const roleLower = (u.role || "").toLowerCase();
+    const badgeClass = roleLower === "admin" ? "badge-orange" : (roleLower === "manager" ? "badge-purple" : "badge-blue");
+    const orgInfo = u.company ? ` • ${u.company}` : (u.office_state ? ` • ${u.office_state}` : "");
+    const statusText = roleLower === "manager"
+      ? `${u.approval_status}${u.is_active ? "" : " (Inactive)"}`
+      : (u.is_active ? "Active" : "Inactive");
+
+    const activitySummary = roleLower === "contractor"
+      ? `${u.applications_count || 0} apps (${u.won_count || 0} won) • ${u.saved_count || 0} saved • ${u.inquiries_count || 0} inquiries`
+      : (roleLower === "manager"
+        ? `${u.tender_updates_count || 0} tender updates • ${u.inquiry_responses_count || 0} inquiry replies`
+        : "Nationwide Central Supervisor");
+
+    return `
+      <tr>
+        <td style="font-weight:700;">${escapeHtml(u.user_code || u.username)}</td>
+        <td>
+          <strong>${escapeHtml(u.name || u.username)}</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(u.username + orgInfo)}</div>
+        </td>
+        <td>${escapeHtml(u.email)}</td>
+        <td><span class="badge ${badgeClass}">${escapeHtml(u.role)}</span></td>
+        <td><span style="font-size:0.8rem; font-weight:600;">${escapeHtml(statusText)}</span></td>
+        <td style="font-size:0.8rem; color:var(--text-secondary);">${escapeHtml(activitySummary)}</td>
+        <td style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml((u.created_at || "").substring(0, 10))}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function fetchAdminApplications() {
+  const headers = getAuthHeaders();
+  const res = await fetch(`${API_BASE}/admin/applications`, { headers });
+  if (!res.ok) return;
+  adminApplicationsList = await res.json();
+
+  const badge = document.getElementById("admin-apps-badge");
+  if (badge) badge.textContent = adminApplicationsList.length;
+
+  const tbody = document.getElementById("admin-apps-table");
+  if (!tbody) return;
+
+  if (adminApplicationsList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">No applications recorded yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = adminApplicationsList.map(app => {
+    const stUp = (app.application_status || "").toUpperCase();
+    const stClass = stUp === "WON" ? "badge-green" : ((stUp === "NOT AWARDED" || stUp === "REJECTED") ? "badge-red" : (stUp === "WITHDRAWN" ? "badge-muted" : "badge-blue"));
+    const outClass = app.outcome === "Won" ? "badge-green" : ((app.outcome === "Not Awarded" || app.outcome === "Rejected") ? "badge-red" : "badge-secondary");
+
+    return `
+      <tr>
+        <td style="font-family:monospace; font-weight:700;">${escapeHtml(app.application_code || ("APP-" + app.id))}</td>
+        <td>
+          <strong>${escapeHtml(app.contractor_name)}</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.contractor_company || app.contractor_code)}</div>
+        </td>
+        <td>
+          <strong>${escapeHtml(app.tender_name)}</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.tender_state || "--")} • ${escapeHtml(app.tender_category)}</div>
+        </td>
+        <td style="white-space:nowrap;">${escapeHtml(app.applied_on)}</td>
+        <td style="font-weight:700; white-space:nowrap;">${app.bid_amount ? formatBudget(app.bid_amount) : "N/A"}</td>
+        <td><span class="badge ${stClass}">${escapeHtml(app.application_status)}</span></td>
+        <td><span class="badge ${outClass}">${escapeHtml(app.outcome || "Pending")}</span></td>
+      </tr>
+    `;
+  }).join("");
 }
 
 async function fetchAdminHelpdeskQueue() {
   const headers = getAuthHeaders();
-  const search = document.getElementById("filter-inquiry-search") ? document.getElementById("filter-inquiry-search").value.trim() : "";
-  const role = document.getElementById("filter-inquiry-role") ? document.getElementById("filter-inquiry-role").value : "";
-  const category = document.getElementById("filter-inquiry-category") ? document.getElementById("filter-inquiry-category").value : "";
-  const status = document.getElementById("filter-inquiry-status") ? document.getElementById("filter-inquiry-status").value : "";
-  const priority = document.getElementById("filter-inquiry-priority") ? document.getElementById("filter-inquiry-priority").value : "";
+  const search = document.getElementById("filter-inquiry-search")?.value.trim() || "";
+  const state = document.getElementById("filter-inquiry-state")?.value || "";
+  const status = document.getElementById("filter-inquiry-status")?.value || "";
+  const assignment_status = document.getElementById("filter-inquiry-assignment")?.value || "";
 
   const params = new URLSearchParams();
   if (search) params.append("search", search);
-  if (role) params.append("role", role);
-  if (category) params.append("category", category);
+  if (state) params.append("state", state);
   if (status) params.append("status", status);
-  if (priority) params.append("priority", priority);
+  if (assignment_status) params.append("assignment_status", assignment_status);
 
   try {
-    const res = await fetch(`${API_BASE}/inquiries/admin/all?${params.toString()}`, { headers });
-    if (!res.ok) {
-      showToast("Access denied or error fetching admin helpdesk queue", "error");
-      return;
-    }
+    const res = await fetch(`${API_BASE}/admin/inquiries?${params.toString()}`, { headers });
+    if (!res.ok) return;
     const data = await res.json();
     renderAdminHelpdeskQueue(data);
   } catch (err) {
-    showToast("Network error fetching admin queue", "error");
+    showToast("Error loading inquiries", "error");
   }
 }
 
@@ -2870,19 +3102,13 @@ function renderAdminHelpdeskQueue(data) {
   const summary = data.summary || {};
   const inquiries = data.inquiries || [];
 
-  const totalEl = document.getElementById("stat-inquiries-total");
-  const newEl = document.getElementById("stat-inquiries-new");
-  const progressEl = document.getElementById("stat-inquiries-progress");
-  const awaitingEl = document.getElementById("stat-inquiries-awaiting");
-  const resolvedEl = document.getElementById("stat-inquiries-resolved");
-  const badgeEl = document.getElementById("admin-helpdesk-badge");
-
-  if (totalEl) totalEl.textContent = summary.totalInquiries || 0;
-  if (newEl) newEl.textContent = summary.countNew || 0;
-  if (progressEl) progressEl.textContent = summary.countInProgress || 0;
-  if (awaitingEl) awaitingEl.textContent = summary.countAwaitingUser || 0;
-  if (resolvedEl) resolvedEl.textContent = summary.countResolved || 0;
-  if (badgeEl) badgeEl.textContent = summary.countNew || 0;
+  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setTxt("stat-inquiries-total", summary.totalInquiries || 0);
+  setTxt("stat-inquiries-new", summary.countPending || 0);
+  setTxt("stat-inquiries-progress", summary.countInProgress || 0);
+  setTxt("stat-inquiries-resolved", summary.countResolved || 0);
+  setTxt("stat-inquiries-unassigned", summary.countUnassigned || 0);
+  setTxt("admin-helpdesk-badge", (summary.countPending || 0) + (summary.countUnassigned || 0));
 
   const tbody = document.getElementById("admin-inquiries-tbody");
   const emptyEl = document.getElementById("admin-inquiries-empty");
@@ -2893,50 +3119,32 @@ function renderAdminHelpdeskQueue(data) {
     if (emptyEl) emptyEl.style.display = "block";
     return;
   }
-
   if (emptyEl) emptyEl.style.display = "none";
 
   tbody.innerHTML = inquiries.map(t => {
-    const statusLower = (t.status || "").toLowerCase();
-    let statusClass = "badge-blue";
-    if (statusLower === "new") statusClass = "badge-orange";
-    else if (statusLower === "in progress") statusClass = "badge-orange";
-    else if (statusLower === "awaiting user response") statusClass = "badge-blue";
-    else if (statusLower === "resolved") statusClass = "badge-green";
-
-    const isManager = (t.sender_role || "").toLowerCase() === "manager";
-    const roleBadge = isManager
-      ? `<span class="badge badge-purple" style="font-size: 0.7rem; background: rgba(147, 51, 234, 0.1); color: #9333EA; border: 1px solid rgba(147, 51, 234, 0.25);">Manager</span>`
-      : `<span class="badge badge-blue" style="font-size: 0.7rem;">Contractor</span>`;
-
-    const prioBadge = t.priority === "High" || t.priority === "Urgent"
-      ? `<span class="badge badge-orange" style="font-size: 0.72rem;">${t.priority}</span>`
-      : `<span class="badge badge-secondary" style="font-size: 0.72rem;">${t.priority}</span>`;
-
-    const tenderInfo = t.related_tender_id 
-      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${t.tender_name || ''}">TND-${t.related_tender_id}</span>`
-      : `<span style="color: var(--text-muted); font-size: 0.78rem;">General</span>`;
-
-    const submittedDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : "--";
+    const stLow = (t.status || "").toLowerCase();
+    const stClass = stLow === "resolved" ? "badge-green" : ((stLow === "in progress" || stLow === "awaiting user response") ? "badge-blue" : "badge-orange");
+    const assignedLabel = t.assigned_manager_name
+      ? `<span class="badge badge-green">${escapeHtml(t.assigned_manager_name)}</span>`
+      : `<span class="badge badge-red">${escapeHtml(t.assignment_status || "Unassigned / Pending Admin Assignment")}</span>`;
 
     return `
       <tr>
-        <td style="font-weight: 700; color: #D97706;">${t.ticket_number}</td>
-        <td style="font-weight: 600; color: var(--text-primary);">${t.sender_name}</td>
-        <td>${roleBadge}</td>
-        <td style="color: var(--text-secondary); font-size: 0.82rem;">${t.organization_name || '--'}</td>
-        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${t.inquiry_category}</span></td>
-        <td style="font-weight: 600; color: var(--text-primary); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.subject}">
-          ${t.subject}
+        <td style="font-weight:700; color:#D97706;">${escapeHtml(t.ticket_number)}</td>
+        <td>
+          <strong>${escapeHtml(t.sender_name)}</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(t.organization_name || t.sender_role)}</div>
         </td>
-        <td>${tenderInfo}</td>
-        <td>${prioBadge}</td>
-        <td><span class="badge ${statusClass}" style="font-size: 0.74rem;">${t.status}</span></td>
-        <td style="color: var(--text-muted); font-size: 0.8rem;">${submittedDate}</td>
-        <td style="text-align: right;">
-          <button onclick="openAdminTicketModal(${t.id})" class="btn btn-primary" style="font-size: 0.78rem; padding: 4px 12px;">
-            Open Ticket
-          </button>
+        <td><span class="badge badge-purple">${escapeHtml(t.state || t.tender_state || "--")}</span></td>
+        <td>${assignedLabel}</td>
+        <td><span class="badge badge-secondary" style="font-size:0.72rem;">${escapeHtml(t.inquiry_category)}</span></td>
+        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(t.tender_name || t.subject)}">
+          ${escapeHtml(t.tender_name || t.subject)}
+        </td>
+        <td><span class="badge ${stClass}">${escapeHtml(t.status)}</span></td>
+        <td style="font-size:0.78rem; color:var(--text-muted);">${escapeHtml((t.created_at || "").substring(0, 10))}</td>
+        <td style="text-align:right;">
+          <button onclick="openAdminTicketModal(${t.id})" class="btn btn-primary" style="font-size:0.76rem; padding:4px 12px;">Inspect</button>
         </td>
       </tr>
     `;
@@ -2944,11 +3152,10 @@ function renderAdminHelpdeskQueue(data) {
 }
 
 window.resetAdminInquiryFilters = () => {
-  if (document.getElementById("filter-inquiry-search")) document.getElementById("filter-inquiry-search").value = "";
-  if (document.getElementById("filter-inquiry-role")) document.getElementById("filter-inquiry-role").value = "";
-  if (document.getElementById("filter-inquiry-category")) document.getElementById("filter-inquiry-category").value = "";
-  if (document.getElementById("filter-inquiry-status")) document.getElementById("filter-inquiry-status").value = "";
-  if (document.getElementById("filter-inquiry-priority")) document.getElementById("filter-inquiry-priority").value = "";
+  ["filter-inquiry-search", "filter-inquiry-state", "filter-inquiry-status", "filter-inquiry-assignment"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
   fetchAdminHelpdeskQueue();
 };
 
@@ -2958,7 +3165,7 @@ window.openAdminTicketModal = async (id) => {
   try {
     const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers });
     if (!res.ok) {
-      showToast("Could not load ticket details", "error");
+      showToast("Could not load inquiry details", "error");
       return;
     }
     const data = await res.json();
@@ -2967,64 +3174,54 @@ window.openAdminTicketModal = async (id) => {
 
     document.getElementById("amodal-ticket-number").textContent = t.ticket_number;
     document.getElementById("amodal-ticket-subject").textContent = t.subject;
-    document.getElementById("amodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Submitted on ${t.created_at}`;
+    document.getElementById("amodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Created: ${t.created_at}`;
+    document.getElementById("amodal-ticket-state-badge").textContent = t.state || t.tender_state || "India";
 
     const statusBadge = document.getElementById("amodal-ticket-status-badge");
+    const stLow = (t.status || "").toLowerCase();
     statusBadge.textContent = t.status;
-    const statusLower = (t.status || "").toLowerCase();
-    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
+    statusBadge.className = "badge " + (stLow === "resolved" ? "badge-green" : ((stLow === "in progress" || stLow === "awaiting user response") ? "badge-blue" : "badge-orange"));
 
-    const prioBadge = document.getElementById("amodal-ticket-priority-badge");
-    prioBadge.textContent = `${t.priority} Priority`;
-    prioBadge.className = "badge " + (t.priority === "High" || t.priority === "Urgent" ? "badge-orange" : "badge-secondary");
-
-    // Sender metadata
     document.getElementById("amodal-sender-name").textContent = t.sender_name;
     document.getElementById("amodal-sender-role").textContent = t.sender_role;
-    document.getElementById("amodal-sender-org").textContent = t.organization_name || "Independent";
+    document.getElementById("amodal-sender-org").textContent = t.organization_name || "--";
     document.getElementById("amodal-sender-email").textContent = t.sender_email;
-    document.getElementById("amodal-sender-phone").textContent = t.contact_number || "Not provided";
+    document.getElementById("amodal-assignment-info").textContent = t.assigned_manager_name
+      ? `${t.assigned_manager_name} (${t.state} Manager)`
+      : (t.assignment_status || "Unassigned / Pending Admin Assignment");
 
-    // Linked Tender info
     const tenderBox = document.getElementById("amodal-tender-info");
     if (t.related_tender_id && t.tender_name) {
       tenderBox.style.display = "block";
-      document.getElementById("amodal-tender-name").textContent = `[TND-${t.related_tender_id}] ${t.tender_name}`;
-      document.getElementById("amodal-tender-extra").textContent = `(${t.tender_category} • Dept: ${t.tender_authority || ''} • Deadline: ${t.tender_deadline || ''})`;
+      document.getElementById("amodal-tender-name").textContent = `${t.tender_name} (${t.tender_state || ""})`;
     } else {
       tenderBox.style.display = "none";
     }
 
-    // Set control selects
-    document.getElementById("amodal-priority-select").value = t.priority;
-    document.getElementById("amodal-status-select").value = t.status;
+    const statusSelect = document.getElementById("amodal-status-select");
+    if (statusSelect) {
+      statusSelect.value = stLow === "resolved" ? "Resolved" : (stLow === "in progress" || stLow === "awaiting user response" ? "In Progress" : "Pending");
+    }
 
-    // Render conversation messages
     const thread = document.getElementById("amodal-conversation-thread");
     thread.innerHTML = messages.map(m => {
-      const isFromAdmin = (m.sender_role || "").toLowerCase() === "admin";
-      const align = isFromAdmin ? "flex-end" : "flex-start";
-      const bg = isFromAdmin ? "rgba(245, 158, 11, 0.05)" : "var(--bg-secondary)";
-      const border = isFromAdmin ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid var(--border-color)";
-      const senderLabel = isFromAdmin ? "Admin (You)" : `${m.sender_name_cached || t.sender_name} (${t.sender_role})`;
-
+      const roleL = (m.sender_role || "").toLowerCase();
+      const isOfficial = roleL === "admin" || roleL === "manager";
       return `
-        <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
-          <div style="max-width: 85%; background: ${bg}; border: ${border}; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-              <strong style="color: var(--text-primary); font-size: 0.82rem;">${senderLabel}</strong>
-              <span>${m.created_at || ''}</span>
+        <div style="display:flex; flex-direction:column; align-items:${isOfficial ? "flex-end" : "flex-start"};">
+          <div style="max-width:85%; background:${isOfficial ? "rgba(245,158,11,0.06)" : "var(--bg-secondary)"}; border:1px solid var(--border-color); border-radius:12px; padding:10px 14px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">
+              <strong style="color:var(--text-primary);">${escapeHtml(m.sender_name_cached || m.sender_role)} (${escapeHtml(m.sender_role)})</strong> • ${escapeHtml(m.created_at || "")}
             </div>
-            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${m.message_body}</p>
+            <p style="margin:0; font-size:0.86rem; white-space:pre-wrap;">${escapeHtml(m.message_body)}</p>
           </div>
         </div>
       `;
     }).join("");
 
     document.getElementById("admin-ticket-modal").style.display = "block";
-    thread.scrollTop = thread.scrollHeight;
   } catch (err) {
-    showToast("Error opening admin ticket modal", "error");
+    showToast("Error opening inquiry modal", "error");
   }
 };
 
@@ -3036,445 +3233,733 @@ window.closeAdminTicketModal = () => {
 
 window.updateAdminTicketControls = async () => {
   if (!currentAdminTicketId) return;
-  const priority = document.getElementById("amodal-priority-select").value;
   const status = document.getElementById("amodal-status-select").value;
-
   try {
-    const res = await fetch(`${API_BASE}/inquiries/admin/${currentAdminTicketId}`, {
+    const res = await fetch(`${API_BASE}/admin/inquiries/${currentAdminTicketId}`, {
       method: "PATCH",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ priority, status })
+      body: JSON.stringify({ status })
     });
-
     if (res.ok) {
-      showToast("Ticket controls updated", "success");
+      showToast("Inquiry status updated", "success");
       await openAdminTicketModal(currentAdminTicketId);
       await fetchAdminHelpdeskQueue();
-    } else {
-      showToast("Failed to update ticket controls", "error");
     }
   } catch (e) {
-    showToast("Error updating controls", "error");
+    showToast("Failed to update status", "error");
   }
 };
 
-window.submitAdminReply = async (targetStatus, isRequestInfo) => {
+window.submitAdminReply = async (targetStatus) => {
   if (!currentAdminTicketId) return;
   const input = document.getElementById("amodal-reply-input");
-  let body = input ? input.value.trim() : "";
-
-  if (isRequestInfo && !body) {
-    body = "Please share the relevant document, tender ID, and specific clarification so our administrative desk can proceed with your verification.";
-  }
-
+  const body = input ? input.value.trim() : "";
   if (!body) {
-    showToast("Please enter an administrative reply", "warning");
+    showToast("Please enter a reply message", "warning");
     return;
   }
-
   try {
-    const res = await fetch(`${API_BASE}/inquiries/admin/${currentAdminTicketId}/reply`, {
+    const res = await fetch(`${API_BASE}/admin/inquiries/${currentAdminTicketId}/reply`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ message_body: body, status: targetStatus })
     });
-
     if (res.ok) {
       if (input) input.value = "";
-      showToast("Official reply dispatched to sender dashboard", "success");
+      showToast("Admin reply saved", "success");
       await openAdminTicketModal(currentAdminTicketId);
-      await fetchAdminHelpdeskQueue();
+      await fetchAdminWorkspace();
     } else {
       const err = await res.json();
-      showToast(err.message || "Failed to submit admin reply", "error");
+      showToast(err.message || "Reply failed", "error");
     }
   } catch (e) {
-    showToast("Network error submitting admin reply", "error");
+    showToast("Network error", "error");
   }
 };
 
-/* --- Manager Self-Service Helpdesk Logic --- */
-async function fetchManagerHelpdeskBadge() {
-  const headers = getAuthHeaders();
-  try {
-    const res = await fetch(`${API_BASE}/inquiries/mine`, { headers });
-    if (res.ok) {
-      const data = await res.json();
-      const badge = document.getElementById("manager-helpdesk-badge");
-      if (badge) badge.textContent = (data.summary && data.summary.totalTickets) || 0;
+/* ---------------- STATE-WISE MANAGER WORKSPACE ---------------- */
+let mgrTendersList = [];
+let mgrAppsList = [];
+let mgrInquiriesList = [];
+let currentMgrInquiryId = null;
+
+async function initManagerPage() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const state = user.office_state || "";
+
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt("mgr-profile-name", user.name || user.username || "State Manager");
+  setTxt("mgr-state-badge", `Assigned State: ${state || "Unassigned"}`);
+  setTxt("mgr-code-badge", user.user_code || "MGR");
+  setTxt("mgr-tenders-state-title", state);
+  setTxt("mgr-add-state-title", state);
+  setTxt("mgr-inq-state-title", state);
+  setTxt("mgr-apps-state-title", state);
+  setTxt("mgr-con-state-title", state);
+  const addStateInp = document.getElementById("mgr-add-state");
+  if (addStateInp) addStateInp.value = state;
+
+  window.switchManagerTab = (tabName) => {
+    const tabs = ["overview", "tenders", "add", "inquiries", "apps", "contractors"];
+    tabs.forEach(t => {
+      const panel = document.getElementById(`mgr-tab-${t}`);
+      const btn = document.getElementById(`btn-mgr-${t}`);
+      if (panel) panel.style.display = "none";
+      if (btn) {
+        btn.style.backgroundColor = "transparent";
+        btn.style.color = "var(--text-secondary)";
+      }
+    });
+    const activePanel = document.getElementById(`mgr-tab-${tabName}`);
+    const activeBtn = document.getElementById(`btn-mgr-${tabName}`);
+    if (activePanel) activePanel.style.display = "flex";
+    if (activeBtn) {
+      activeBtn.style.backgroundColor = "var(--color-primary)";
+      activeBtn.style.color = "#FFFFFF";
     }
-  } catch (e) {}
+  };
+
+  // Wire Manager Add Tender form
+  const addForm = document.getElementById("mgr-add-form");
+  if (addForm) {
+    addForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById("mgr-add-name").value.trim(),
+        department: document.getElementById("mgr-add-dept").value.trim(),
+        category: document.getElementById("mgr-add-category").value,
+        budget: document.getElementById("mgr-add-budget").value,
+        deadline: document.getElementById("mgr-add-deadline").value,
+        location: document.getElementById("mgr-add-location").value.trim(),
+        required_documents: document.getElementById("mgr-add-docs").value.split(",").map(s => s.trim()).filter(Boolean),
+        eligibility: document.getElementById("mgr-add-eligibility").value.trim(),
+        description: document.getElementById("mgr-add-description").value.trim()
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/manager/tenders`, {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || "Tender created", "success");
+          addForm.reset();
+          if (addStateInp) addStateInp.value = state;
+          switchManagerTab("tenders");
+          await fetchManagerWorkspace();
+        } else {
+          showToast(data.message || "Could not create tender", "error");
+        }
+      } catch (err) {
+        showToast("Network error creating tender", "error");
+      }
+    });
+  }
+
+  // Wire Manager Edit Tender form
+  const editForm = document.getElementById("mgr-edit-form");
+  if (editForm) {
+    editForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("mgr-edit-id").value;
+      const payload = {
+        name: document.getElementById("mgr-edit-name").value.trim(),
+        department: document.getElementById("mgr-edit-dept").value.trim(),
+        category: document.getElementById("mgr-edit-category").value,
+        budget: document.getElementById("mgr-edit-budget").value,
+        deadline: document.getElementById("mgr-edit-deadline").value,
+        location: document.getElementById("mgr-edit-location").value.trim(),
+        status: document.getElementById("mgr-edit-status").value,
+        required_documents: document.getElementById("mgr-edit-docs").value.split(",").map(s => s.trim()).filter(Boolean),
+        eligibility: document.getElementById("mgr-edit-eligibility").value.trim(),
+        description: document.getElementById("mgr-edit-description").value.trim()
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/manager/tenders/${id}`, {
+          method: "PUT",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast("State tender updated successfully!", "success");
+          closeManagerEditModal();
+          await fetchManagerWorkspace();
+        } else {
+          showToast(data.message || "Failed to update tender", "error");
+        }
+      } catch (err) {
+        showToast("Error updating tender", "error");
+      }
+    });
+  }
+
+  // Inquiry search/status filters
+  const inqSearch = document.getElementById("mgr-inq-search");
+  const inqStatus = document.getElementById("mgr-inq-status-filter");
+  let mgrDeb;
+  if (inqSearch) {
+    inqSearch.addEventListener("input", () => {
+      clearTimeout(mgrDeb);
+      mgrDeb = setTimeout(() => fetchManagerInquiries(), 300);
+    });
+  }
+  if (inqStatus) inqStatus.addEventListener("change", () => fetchManagerInquiries());
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetTab = urlParams.get("tab");
+  if (["tenders", "add", "inquiries", "apps", "contractors"].includes(targetTab)) {
+    switchManagerTab(targetTab);
+  } else {
+    switchManagerTab("overview");
+  }
+
+  await fetchManagerWorkspace();
 }
 
-async function fetchManagerHelpdesk() {
+async function fetchManagerWorkspace() {
   const headers = getAuthHeaders();
   try {
-    const res = await fetch(`${API_BASE}/inquiries/mine`, { headers });
-    if (!res.ok) {
-      showToast("Could not load manager helpdesk tickets", "error");
-      return;
+    const dashRes = await fetch(`${API_BASE}/manager/dashboard`, { headers });
+    if (dashRes.ok) {
+      const d = await dashRes.json();
+      const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
+      setTxt("mgr-dataset-cap", `${d.platformTendersCount} / ${d.maxPlatformTenders} Tenders`);
+      setTxt("mgr-stat-tenders", d.stateTendersCount);
+      setTxt("mgr-stat-budget", formatBudget(d.stateBudgetTotal || 0));
+      setTxt("mgr-stat-apps", d.applicationsSummary?.total || 0);
+      setTxt("mgr-stat-pending-inq", d.inquiriesSummary?.pending || 0);
+      setTxt("mgr-tenders-badge", d.stateTendersCount);
+      setTxt("mgr-inquiries-badge", d.inquiriesSummary?.pending || 0);
+      setTxt("mgr-apps-badge", d.applicationsSummary?.total || 0);
+
+      // Show 12-tender cap warning banner if platform cap reached
+      const limitWarn = document.getElementById("mgr-limit-warning");
+      const addSubmitBtn = document.getElementById("mgr-add-submit-btn");
+      if (d.platformTendersCount >= d.maxPlatformTenders) {
+        if (limitWarn) limitWarn.style.display = "block";
+        if (addSubmitBtn) {
+          addSubmitBtn.title = "12-tender dataset limit reached";
+        }
+      } else {
+        if (limitWarn) limitWarn.style.display = "none";
+      }
+
+      const breakEl = document.getElementById("mgr-overview-breakdown");
+      if (breakEl) {
+        breakEl.innerHTML = `
+          <div style="display:flex; justify-content:space-between;"><span>State Tender Views:</span><strong>${d.stateViewsCount}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>State Saved Bookmarks:</span><strong>${d.stateSavedCount}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Active Contractors in State:</span><strong>${d.activeContractorsCount}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Applications (Won / Pending):</span><strong>${d.applicationsSummary.won} Won / ${d.applicationsSummary.pending} Pending</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Inquiries (Pending / In Progress / Resolved):</span><strong>${d.inquiriesSummary.pending} / ${d.inquiriesSummary.inProgress} / ${d.inquiriesSummary.resolved}</strong></div>
+        `;
+      }
+
+      const actEl = document.getElementById("mgr-recent-activity");
+      if (actEl) {
+        if (!d.recentActivity || d.recentActivity.length === 0) {
+          actEl.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">No state activity recorded yet.</p>`;
+        } else {
+          actEl.innerHTML = d.recentActivity.map(a => `
+            <div style="display:flex; gap:10px; align-items:start;">
+              <div style="height:8px; width:8px; border-radius:50%; background:var(--color-primary); margin-top:6px; flex-shrink:0;"></div>
+              <div>
+                <div style="font-size:0.84rem; font-weight:600; color:var(--text-primary);">${escapeHtml(a.details || a.action_type)}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(a.actor_name || a.actor_role || "")} • ${escapeHtml(a.created_at || "")}</div>
+              </div>
+            </div>
+          `).join("");
+        }
+      }
     }
-    const data = await res.json();
-    renderManagerHelpdesk(data);
+
+    await Promise.all([
+      fetchManagerTenders(),
+      fetchManagerInquiries(),
+      fetchManagerApplications(),
+      fetchManagerContractors()
+    ]);
   } catch (err) {
-    showToast("Network error fetching manager helpdesk", "error");
+    showToast("Error loading state manager dashboard", "error");
   }
 }
 
-function renderManagerHelpdesk(data) {
-  const summary = data.summary || { totalTickets: 0, awaitingAdmin: 0, adminReplied: 0, resolved: 0 };
-  const tickets = data.tickets || [];
+async function fetchManagerTenders() {
+  const res = await fetch(`${API_BASE}/manager/tenders`, { headers: getAuthHeaders() });
+  if (!res.ok) return;
+  const data = await res.json();
+  mgrTendersList = data.tenders || [];
 
-  const totalEl = document.getElementById("stat-mgr-helpdesk-total");
-  const awaitingEl = document.getElementById("stat-mgr-helpdesk-awaiting");
-  const repliedEl = document.getElementById("stat-mgr-helpdesk-replied");
-  const resolvedEl = document.getElementById("stat-mgr-helpdesk-resolved");
-  const badgeEl = document.getElementById("manager-helpdesk-badge");
-
-  if (totalEl) totalEl.textContent = summary.totalTickets;
-  if (awaitingEl) awaitingEl.textContent = summary.awaitingAdmin;
-  if (repliedEl) repliedEl.textContent = summary.adminReplied;
-  if (resolvedEl) resolvedEl.textContent = summary.resolved;
-  if (badgeEl) badgeEl.textContent = summary.totalTickets;
-
-  const tbody = document.getElementById("manager-helpdesk-tbody");
-  const emptyState = document.getElementById("manager-helpdesk-empty");
+  const tbody = document.getElementById("mgr-tenders-table");
   if (!tbody) return;
-
-  if (tickets.length === 0) {
-    tbody.innerHTML = "";
-    if (emptyState) emptyState.style.display = "flex";
+  if (mgrTendersList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">No tenders found in your assigned state.</td></tr>`;
     return;
   }
 
-  if (emptyState) emptyState.style.display = "none";
-
-  tbody.innerHTML = tickets.map(t => {
-    const statusLower = (t.status || "").toLowerCase();
-    let statusClass = "badge-blue";
-    if (statusLower === "new") statusClass = "badge-orange";
-    else if (statusLower === "in progress") statusClass = "badge-orange";
-    else if (statusLower === "awaiting user response") statusClass = "badge-blue";
-    else if (statusLower === "resolved") statusClass = "badge-green";
-
-    const tenderInfo = t.related_tender_id 
-      ? `<span style="font-weight: 600; color: var(--color-primary);" title="${t.tender_name || ''}">TND-${t.related_tender_id}</span>`
-      : `<span style="color: var(--text-muted); font-size: 0.8rem;">General</span>`;
-
-    const lastActivity = t.last_activity_at 
-      ? new Date(t.last_activity_at).toLocaleDateString()
-      : (t.created_at ? new Date(t.created_at).toLocaleDateString() : "--");
-
-    const submittedDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : "--";
-
+  tbody.innerHTML = mgrTendersList.map(t => {
+    const st = getTenderStatus(t.deadline, t.status);
     return `
       <tr>
-        <td style="font-weight: 700; color: var(--color-primary);">${t.ticket_number}</td>
-        <td style="font-weight: 600; color: var(--text-primary); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.subject}">
-          ${t.subject}
-        </td>
-        <td><span class="badge badge-secondary" style="font-size: 0.72rem;">${t.inquiry_category}</span></td>
-        <td>${tenderInfo}</td>
-        <td style="color: var(--text-secondary); font-size: 0.8rem;">${submittedDate}</td>
-        <td><span class="badge ${statusClass}" style="font-size: 0.75rem;">${t.status}</span></td>
-        <td style="color: var(--text-muted); font-size: 0.8rem;">${lastActivity}</td>
-        <td style="text-align: right;">
-          <button onclick="openManagerTicketModal(${t.id})" class="btn btn-outline" style="font-size: 0.78rem; padding: 4px 12px;">
-            Open Ticket
-          </button>
+        <td><strong>${escapeHtml(t.name)}</strong><div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(t.location)}</div></td>
+        <td><span class="badge badge-blue">${escapeHtml(t.category)}</span></td>
+        <td style="font-size:0.82rem;">${escapeHtml(t.department)}</td>
+        <td style="font-weight:700; white-space:nowrap;">${formatBudget(t.budget)}</td>
+        <td style="white-space:nowrap;">${escapeHtml(t.deadline)}</td>
+        <td><span class="badge ${st.class}">${escapeHtml(st.label)}</span></td>
+        <td style="font-size:0.8rem;">${t.views_count || 0} views • ${t.applications_count || 0} apps</td>
+        <td>
+          <button onclick="openManagerEditModal(${t.id})" class="btn btn-outline" style="font-size:0.76rem; padding:5px 12px;">Edit</button>
         </td>
       </tr>
     `;
   }).join("");
 }
 
-window.openManagerTicketModal = async (id) => {
-  currentManagerTicketId = id;
-  const headers = getAuthHeaders();
+window.openManagerEditModal = (id) => {
+  const t = mgrTendersList.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById("mgr-edit-id").value = t.id;
+  document.getElementById("mgr-edit-name").value = t.name;
+  document.getElementById("mgr-edit-dept").value = t.department;
+  document.getElementById("mgr-edit-category").value = t.category;
+  document.getElementById("mgr-edit-budget").value = t.budget;
+  document.getElementById("mgr-edit-deadline").value = t.deadline;
+  document.getElementById("mgr-edit-state").value = t.state;
+  document.getElementById("mgr-edit-location").value = t.location;
+  document.getElementById("mgr-edit-status").value = t.status || "Open";
+  document.getElementById("mgr-edit-docs").value = Array.isArray(t.required_documents) ? t.required_documents.join(", ") : "";
+  document.getElementById("mgr-edit-eligibility").value = t.eligibility;
+  document.getElementById("mgr-edit-description").value = t.description;
+  document.getElementById("mgr-edit-overlay").style.display = "block";
+};
+
+window.closeManagerEditModal = () => {
+  const m = document.getElementById("mgr-edit-overlay");
+  if (m) m.style.display = "none";
+};
+
+async function fetchManagerInquiries() {
+  const search = document.getElementById("mgr-inq-search")?.value.trim() || "";
+  const status = document.getElementById("mgr-inq-status-filter")?.value || "";
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (status) params.append("status", status);
+
+  const res = await fetch(`${API_BASE}/manager/inquiries?${params.toString()}`, { headers: getAuthHeaders() });
+  if (!res.ok) return;
+  const data = await res.json();
+  mgrInquiriesList = data.inquiries || [];
+  const s = data.summary || { total: 0, pending: 0, inProgress: 0, resolved: 0 };
+
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt("mgr-inq-total", s.total);
+  setTxt("mgr-inq-pending", s.pending);
+  setTxt("mgr-inq-progress", s.inProgress);
+  setTxt("mgr-inq-resolved", s.resolved);
+  setTxt("mgr-inquiries-badge", s.pending);
+
+  const tbody = document.getElementById("mgr-inquiries-tbody");
+  const emptyEl = document.getElementById("mgr-inquiries-empty");
+  if (!tbody) return;
+
+  if (mgrInquiriesList.length === 0) {
+    tbody.innerHTML = "";
+    if (emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = "none";
+
+  tbody.innerHTML = mgrInquiriesList.map(i => {
+    const stLow = (i.status || "").toLowerCase();
+    const stClass = stLow === "resolved" ? "badge-green" : (stLow === "in progress" ? "badge-blue" : "badge-orange");
+    return `
+      <tr>
+        <td style="font-weight:700; color:var(--color-primary);">${escapeHtml(i.ticket_number)}</td>
+        <td>
+          <strong>${escapeHtml(i.sender_name)}</strong>
+          <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(i.organization_name || i.sender_email)}</div>
+        </td>
+        <td style="max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(i.tender_name || '')}">
+          ${escapeHtml(i.tender_name || ("TND-" + i.related_tender_id))}
+        </td>
+        <td><span class="badge badge-secondary" style="font-size:0.72rem;">${escapeHtml(i.inquiry_category)}</span></td>
+        <td><span class="badge ${stClass}">${escapeHtml(i.status)}</span></td>
+        <td style="font-size:0.78rem; color:var(--text-muted);">${escapeHtml((i.created_at || "").substring(0, 10))}</td>
+        <td style="text-align:right;">
+          <button onclick="openManagerInquiryModal(${i.id})" class="btn btn-primary" style="font-size:0.76rem; padding:5px 12px;">View &amp; Respond</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.openManagerInquiryModal = async (id) => {
+  currentMgrInquiryId = id;
   try {
-    const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers });
+    const res = await fetch(`${API_BASE}/inquiries/${id}`, { headers: getAuthHeaders() });
     if (!res.ok) {
-      showToast("Could not open manager ticket details", "error");
+      showToast("Access denied or inquiry not found", "error");
       return;
     }
     const data = await res.json();
     const t = data.ticket;
     const messages = data.messages || [];
 
-    document.getElementById("mmodal-ticket-number").textContent = t.ticket_number;
-    document.getElementById("mmodal-ticket-subject").textContent = t.subject;
-    document.getElementById("mmodal-ticket-meta").textContent = `Category: ${t.inquiry_category} • Submitted on ${t.created_at}`;
+    document.getElementById("minq-ticket-num").textContent = t.ticket_number;
+    document.getElementById("minq-subject").textContent = t.subject;
+    document.getElementById("minq-meta").textContent = `Category: ${t.inquiry_category} • Created: ${t.created_at}`;
+    document.getElementById("minq-state-badge").textContent = t.state;
+    document.getElementById("minq-contractor").textContent = `${t.sender_name} (${t.organization_name || ""}) • ${t.sender_email}`;
+    document.getElementById("minq-tender").textContent = t.tender_name || `Tender #${t.related_tender_id}`;
 
-    const statusBadge = document.getElementById("mmodal-ticket-status-badge");
-    statusBadge.textContent = t.status;
-    const statusLower = (t.status || "").toLowerCase();
-    statusBadge.className = "badge " + (statusLower === "resolved" ? "badge-green" : (statusLower === "awaiting user response" ? "badge-blue" : "badge-orange"));
+    const stLow = (t.status || "").toLowerCase();
+    const stBadge = document.getElementById("minq-status-badge");
+    stBadge.textContent = t.status;
+    stBadge.className = "badge " + (stLow === "resolved" ? "badge-green" : (stLow === "in progress" ? "badge-blue" : "badge-orange"));
 
-    const prioBadge = document.getElementById("mmodal-ticket-priority-badge");
-    prioBadge.textContent = `${t.priority} Priority`;
-    prioBadge.className = "badge " + (t.priority === "High" || t.priority === "Urgent" ? "badge-orange" : "badge-secondary");
+    const statusSel = document.getElementById("minq-status-select");
+    if (statusSel) statusSel.value = stLow === "resolved" ? "Resolved" : (stLow === "in progress" ? "In Progress" : "Pending");
 
-    // Tender info
-    const tenderInfoBox = document.getElementById("mmodal-tender-info");
-    if (t.related_tender_id && t.tender_name) {
-      tenderInfoBox.style.display = "block";
-      document.getElementById("mmodal-tender-name").textContent = `${t.tender_name} (${t.tender_category || ''})`;
-    } else {
-      tenderInfoBox.style.display = "none";
-    }
-
-    // Admin alert banner
-    const adminAlert = document.getElementById("mmodal-admin-alert");
-    if (statusLower === "awaiting user response") {
-      adminAlert.style.display = "flex";
-    } else {
-      adminAlert.style.display = "none";
-    }
-
-    // Reply vs Resolved actions
-    const replyBox = document.getElementById("mmodal-reply-box");
-    const resolvedBox = document.getElementById("mmodal-resolved-box");
-    if (statusLower === "resolved") {
-      replyBox.style.display = "none";
-      resolvedBox.style.display = "flex";
-    } else {
-      replyBox.style.display = "flex";
-      resolvedBox.style.display = "none";
-    }
-
-    // Render conversation messages
-    const thread = document.getElementById("mmodal-conversation-thread");
+    const thread = document.getElementById("minq-thread");
     thread.innerHTML = messages.map(m => {
-      const isFromAdmin = (m.sender_role || "").toLowerCase() === "admin";
-      const align = isFromAdmin ? "flex-start" : "flex-end";
-      const bg = isFromAdmin ? "rgba(37, 99, 235, 0.05)" : "var(--bg-secondary)";
-      const border = isFromAdmin ? "1px solid rgba(37, 99, 235, 0.25)" : "1px solid var(--border-color)";
-      const senderLabel = isFromAdmin ? "TenderKart Central Admin" : (m.sender_name_cached || "You (Manager)");
-      const badgeRole = isFromAdmin 
-        ? `<span class="badge badge-orange" style="font-size: 0.65rem;">Central Admin</span>`
-        : `<span class="badge badge-purple" style="font-size: 0.65rem; background: rgba(147, 51, 234, 0.1); color: #9333EA;">Manager</span>`;
-
+      const isMgr = (m.sender_role || "").toLowerCase() === "manager";
       return `
-        <div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%;">
-          <div style="max-width: 85%; background: ${bg}; border: ${border}; border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <strong style="color: var(--text-primary); font-size: 0.82rem;">${senderLabel}</strong>
-                ${badgeRole}
-              </div>
-              <span>${m.created_at || ''}</span>
+        <div style="display:flex; flex-direction:column; align-items:${isMgr ? "flex-end" : "flex-start"};">
+          <div style="max-width:85%; background:${isMgr ? "rgba(37,99,235,0.06)" : "var(--bg-secondary)"}; border:1px solid var(--border-color); border-radius:12px; padding:10px 14px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">
+              <strong style="color:var(--text-primary);">${escapeHtml(m.sender_name_cached || m.sender_role)} (${escapeHtml(m.sender_role)})</strong> • ${escapeHtml(m.created_at || "")}
             </div>
-            <p style="font-size: 0.88rem; color: var(--text-primary); margin: 0; line-height: 1.5; white-space: pre-wrap;">${m.message_body}</p>
+            <p style="margin:0; font-size:0.86rem; white-space:pre-wrap;">${escapeHtml(m.message_body)}</p>
           </div>
         </div>
       `;
     }).join("");
 
-    document.getElementById("manager-ticket-modal").style.display = "block";
-    thread.scrollTop = thread.scrollHeight;
+    document.getElementById("mgr-inquiry-modal").style.display = "block";
   } catch (err) {
-    showToast("Error opening manager ticket modal", "error");
+    showToast("Error opening inquiry", "error");
   }
 };
 
-window.closeManagerTicketModal = () => {
-  const modal = document.getElementById("manager-ticket-modal");
-  if (modal) modal.style.display = "none";
-  currentManagerTicketId = null;
+window.closeManagerInquiryModal = () => {
+  const m = document.getElementById("mgr-inquiry-modal");
+  if (m) m.style.display = "none";
+  currentMgrInquiryId = null;
 };
 
-window.submitManagerReply = async () => {
-  if (!currentManagerTicketId) return;
-  const input = document.getElementById("mmodal-reply-input");
+window.updateManagerInquiryStatusOnly = async () => {
+  if (!currentMgrInquiryId) return;
+  const status = document.getElementById("minq-status-select").value;
+  try {
+    const res = await fetch(`${API_BASE}/manager/inquiries/${currentMgrInquiryId}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(data.message || "Status updated", "success");
+      await openManagerInquiryModal(currentMgrInquiryId);
+      await fetchManagerWorkspace();
+    } else {
+      showToast(data.message || "Failed to update status", "error");
+    }
+  } catch (e) {
+    showToast("Error updating status", "error");
+  }
+};
+
+window.submitManagerInquiryReply = async (targetStatus) => {
+  if (!currentMgrInquiryId) return;
+  const input = document.getElementById("minq-reply-input");
   const body = input ? input.value.trim() : "";
   if (!body) {
-    showToast("Please enter a reply message", "warning");
+    showToast("Please type your response", "warning");
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/manager/inquiries/${currentMgrInquiryId}/reply`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ message_body: body, status: targetStatus })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (input) input.value = "";
+      showToast("Response sent to contractor", "success");
+      await openManagerInquiryModal(currentMgrInquiryId);
+      await fetchManagerWorkspace();
+    } else {
+      showToast(data.message || "Failed to send response", "error");
+    }
+  } catch (e) {
+    showToast("Error sending response", "error");
+  }
+};
+
+async function fetchManagerApplications() {
+  const res = await fetch(`${API_BASE}/manager/applications`, { headers: getAuthHeaders() });
+  if (!res.ok) return;
+  const data = await res.json();
+  mgrAppsList = data.applications || [];
+
+  const tbody = document.getElementById("mgr-apps-table");
+  if (!tbody) return;
+
+  if (mgrAppsList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">No contractor applications recorded for your state yet.</td></tr>`;
     return;
   }
 
-  const btn = document.getElementById("mmodal-send-btn");
-  if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
+  tbody.innerHTML = mgrAppsList.map(app => {
+    const stUp = (app.application_status || "").toUpperCase();
+    const stClass = stUp === "WON" ? "badge-green" : ((stUp === "NOT AWARDED" || stUp === "REJECTED") ? "badge-red" : "badge-blue");
+    return `
+      <tr>
+        <td style="font-family:monospace; font-weight:700;">${escapeHtml(app.application_code || ("APP-" + app.id))}</td>
+        <td><strong>${escapeHtml(app.contractor_name)}</strong><div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.contractor_company || "")}</div></td>
+        <td><strong>${escapeHtml(app.tender_name)}</strong><div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.tender_category)}</div></td>
+        <td style="white-space:nowrap;">${escapeHtml(app.applied_on)}</td>
+        <td style="font-weight:700; white-space:nowrap;">${app.bid_amount ? formatBudget(app.bid_amount) : "N/A"}</td>
+        <td><span class="badge ${stClass}">${escapeHtml(app.application_status)}</span></td>
+        <td>${escapeHtml(app.outcome || "Pending")}</td>
+        <td><button onclick="openManagerEvalModal(${app.id})" class="btn btn-outline" style="font-size:0.76rem; padding:4px 10px;">Evaluate</button></td>
+      </tr>
+    `;
+  }).join("");
+}
+
+window.openManagerEvalModal = (appId) => {
+  const app = mgrAppsList.find(a => a.id === appId);
+  if (!app) return;
+  document.getElementById("mgr-eval-app-id").value = app.id;
+  document.getElementById("mgr-eval-contractor").textContent = `${app.contractor_name} (${app.contractor_company || app.contractor_code})`;
+  document.getElementById("mgr-eval-tender").textContent = `${app.tender_name} • Bid: ${app.bid_amount ? formatBudget(app.bid_amount) : "Not recorded"}`;
+  document.getElementById("mgr-eval-status").value = app.application_status || "Under Review";
+  document.getElementById("mgr-eval-outcome").value = app.outcome || "Pending";
+  document.getElementById("mgr-eval-missing").value = Array.isArray(app.missing_documents) ? app.missing_documents.join(", ") : "";
+  document.getElementById("mgr-eval-notes").value = app.evaluation_notes || "";
+  document.getElementById("mgr-eval-overlay").style.display = "block";
+};
+
+window.closeManagerEvalModal = () => {
+  const m = document.getElementById("mgr-eval-overlay");
+  if (m) m.style.display = "none";
+};
+
+window.syncManagerEvalOutcome = () => {
+  const st = document.getElementById("mgr-eval-status").value;
+  const out = document.getElementById("mgr-eval-outcome");
+  if (!out) return;
+  if (["Won", "Not Awarded", "Rejected", "Withdrawn"].includes(st)) out.value = st;
+  else out.value = "Pending";
+};
+
+window.handleManagerEvalSubmit = async (e) => {
+  e.preventDefault();
+  const appId = document.getElementById("mgr-eval-app-id").value;
+  const application_status = document.getElementById("mgr-eval-status").value;
+  const outcome = document.getElementById("mgr-eval-outcome").value;
+  const missing_documents = document.getElementById("mgr-eval-missing").value.split(",").map(s => s.trim()).filter(Boolean);
+  const evaluation_notes = document.getElementById("mgr-eval-notes").value.trim();
 
   try {
-    const res = await fetch(`${API_BASE}/inquiries/${currentManagerTicketId}/messages`, {
-      method: "POST",
+    const res = await fetch(`${API_BASE}/manager/applications/${appId}/evaluate`, {
+      method: "PUT",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ message_body: body })
+      body: JSON.stringify({ application_status, outcome, missing_documents, evaluation_notes })
     });
-
+    const data = await res.json();
     if (res.ok) {
-      if (input) input.value = "";
-      showToast("Reply dispatched to Central Admin", "success");
-      await openManagerTicketModal(currentManagerTicketId);
-      await fetchManagerHelpdesk();
+      showToast("Application evaluation saved", "success");
+      closeManagerEvalModal();
+      await fetchManagerWorkspace();
     } else {
-      const err = await res.json();
-      showToast(err.message || "Could not send reply", "error");
+      showToast(data.message || "Evaluation failed", "error");
     }
-  } catch (e) {
-    showToast("Network error sending reply", "error");
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Send Reply to Admin"; }
+  } catch (err) {
+    showToast("Error saving evaluation", "error");
   }
 };
 
-window.reopenManagerCurrentTicket = async () => {
-  if (!currentManagerTicketId) return;
+async function fetchManagerContractors() {
+  const res = await fetch(`${API_BASE}/manager/contractors`, { headers: getAuthHeaders() });
+  if (!res.ok) return;
+  const data = await res.json();
+  const list = data.contractors || [];
+
+  const tbody = document.getElementById("mgr-contractors-table");
+  if (!tbody) return;
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">No contractor activity recorded in your state yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(c => `
+    <tr>
+      <td style="font-weight:700;">${escapeHtml(c.user_code || "--")}</td>
+      <td><strong>${escapeHtml(c.name)}</strong><div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(c.company || "")}</div></td>
+      <td>${escapeHtml(c.email)}</td>
+      <td>${c.state_applications_count || 0}</td>
+      <td style="color:var(--color-success); font-weight:700;">${c.state_won_count || 0}</td>
+      <td>${c.state_saved_count || 0}</td>
+      <td>${c.state_inquiries_count || 0}</td>
+    </tr>
+  `).join("");
+}
+
+/* ---------------- CONTACT & TENDER INQUIRY PAGE ---------------- */
+async function initContactPage() {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const token = localStorage.getItem("token");
+  const roleLower = (user && user.role ? user.role : "").toLowerCase();
+
+  const publicView = document.getElementById("contact-public-visitor-view");
+  const nonContractorView = document.getElementById("contact-non-contractor-view");
+  const contractorView = document.getElementById("contact-contractor-view");
+  const roleBadge = document.getElementById("contact-role-badge");
+  const cardTitle = document.getElementById("contact-card-title");
+
+  if (!user || !token) {
+    // Public Visitor View (no tender inquiry form shown)
+    if (publicView) publicView.style.display = "flex";
+    if (nonContractorView) nonContractorView.style.display = "none";
+    if (contractorView) contractorView.style.display = "none";
+    if (roleBadge) roleBadge.textContent = "Public Visitor";
+    return;
+  }
+
+  if (roleLower !== "contractor") {
+    // Manager / Central Admin View (cannot submit contractor inquiries)
+    if (publicView) publicView.style.display = "none";
+    if (contractorView) contractorView.style.display = "none";
+    if (nonContractorView) nonContractorView.style.display = "flex";
+    if (roleBadge) roleBadge.textContent = roleLower === "admin" ? "Central Admin" : `${user.office_state || "State"} Manager`;
+    if (cardTitle) cardTitle.textContent = "Inquiry Management Notice";
+
+    const link = document.getElementById("non-contractor-dashboard-link");
+    if (link) {
+      link.href = roleLower === "admin" ? "admin.html?tab=helpdesk" : "manager.html?tab=inquiries";
+      link.textContent = roleLower === "admin" ? "Open Admin Inquiries Monitor" : `Open ${user.office_state || ""} State Inquiries`;
+    }
+    return;
+  }
+
+  // Logged-in Contractor View
+  if (publicView) publicView.style.display = "none";
+  if (nonContractorView) nonContractorView.style.display = "none";
+  if (contractorView) contractorView.style.display = "flex";
+  if (roleBadge) roleBadge.textContent = "Authenticated Contractor";
+  if (cardTitle) cardTitle.textContent = "Submit Tender Inquiry";
+
+  // Auto-populate contractor details from authenticated account (no manual re-entry)
+  const nameEl = document.getElementById("auto-contractor-name");
+  const compEl = document.getElementById("auto-contractor-company");
+  const emailEl = document.getElementById("auto-contractor-email");
+  if (nameEl) nameEl.textContent = user.name || user.username || "--";
+  if (compEl) compEl.textContent = user.company || "Independent Contractor";
+  if (emailEl) emailEl.textContent = user.email || "--";
+
+  const tenderSelect = document.getElementById("contact-tender-id");
+  const stateHint = document.getElementById("contact-tender-state-hint");
+  let loadedTenders = [];
+
   try {
-    const res = await fetch(`${API_BASE}/inquiries/${currentManagerTicketId}/reopen`, {
-      method: "PATCH",
-      headers: getAuthHeaders()
-    });
-
-    if (res.ok) {
-      showToast("Ticket has been reopened", "success");
-      await openManagerTicketModal(currentManagerTicketId);
-      await fetchManagerHelpdesk();
-    } else {
-      showToast("Could not reopen ticket", "error");
+    const tRes = await fetch(`${API_BASE}/tenders`);
+    if (tRes.ok) {
+      loadedTenders = await tRes.json();
+      if (tenderSelect) {
+        tenderSelect.innerHTML = `<option value="">Select a tender from the 12 active tenders...</option>` +
+          loadedTenders.map(t => `<option value="${t.id}">[${escapeHtml(t.state || "India")}] ${escapeHtml(t.name)} (${escapeHtml(t.category)})</option>`).join("");
+      }
     }
   } catch (e) {
-    showToast("Network error reopening ticket", "error");
+    console.warn("Could not load tenders for inquiry dropdown:", e);
   }
-};
 
-/* ---------------- SHARED CONTACT & INQUIRY FORM ---------------- */
-function initContactPage() {
+  const updateStateHint = () => {
+    if (!tenderSelect || !stateHint) return;
+    const selected = loadedTenders.find(t => String(t.id) === String(tenderSelect.value));
+    if (selected && selected.state) {
+      stateHint.style.display = "block";
+      stateHint.textContent = `State Routing: This tender belongs to ${selected.state}. Your inquiry will be routed automatically to the approved ${selected.state} Manager (or Central Admin if unassigned).`;
+    } else {
+      stateHint.style.display = "none";
+    }
+  };
+
+  if (tenderSelect) {
+    tenderSelect.addEventListener("change", updateStateHint);
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramTenderId = urlParams.get("tenderId") || urlParams.get("id");
+    if (paramTenderId) {
+      tenderSelect.value = paramTenderId;
+      updateStateHint();
+    }
+  }
+
+  window.resetContractorInquiryForm = () => {
+    const banner = document.getElementById("contact-success-banner");
+    const form = document.getElementById("contact-form");
+    if (banner) banner.style.display = "none";
+    if (form) form.style.display = "flex";
+  };
+
   const form = document.getElementById("contact-form");
   if (!form) return;
 
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  const token = localStorage.getItem("token");
-
-  const orgInput = document.getElementById("contact-org");
-  const nameInput = document.getElementById("contact-name");
-  const emailInput = document.getElementById("contact-email");
-  const roleInput = document.getElementById("contact-role");
-  const roleBadge = document.getElementById("contact-role-badge");
-  const tenderInput = document.getElementById("contact-tender-id");
-
-  // Prefill authenticated user profile
-  if (user) {
-    const roleLower = (user.role || "").toLowerCase();
-    const roleDisplay = roleLower === "admin" ? "Admin" : (roleLower === "manager" ? "Manager" : "Contractor");
-
-    if (roleInput) roleInput.value = roleDisplay;
-    if (roleBadge) roleBadge.textContent = `${roleDisplay} Portal Helpdesk`;
-
-    if (nameInput) {
-      nameInput.value = user.name || user.username || "";
-      nameInput.readOnly = true;
-      nameInput.style.backgroundColor = "var(--bg-secondary)";
-    }
-
-    if (emailInput) {
-      emailInput.value = user.email || "";
-      emailInput.readOnly = true;
-      emailInput.style.backgroundColor = "var(--bg-secondary)";
-    }
-
-    if (orgInput) {
-      if (roleLower === "contractor") {
-        orgInput.value = user.company || "";
-      } else if (roleLower === "manager") {
-        orgInput.value = user.department || "Municipal Department";
-      } else {
-        orgInput.value = user.department || user.company || "TenderKart Administration";
-      }
-    }
-  } else {
-    if (roleBadge) roleBadge.textContent = "General Helpdesk Inquiry";
-  }
-
-  // Check URL query parameters for related tender prefill: ?tenderId=123
-  const urlParams = new URLSearchParams(window.location.search);
-  const paramTenderId = urlParams.get("tenderId") || urlParams.get("id");
-  if (paramTenderId && tenderInput) {
-    tenderInput.value = paramTenderId;
-  }
-
-  // Handle form submission
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const related_tender_id = tenderSelect ? tenderSelect.value : "";
+    const inquiry_category = document.getElementById("contact-category")?.value || "";
+    const message = document.getElementById("contact-message")?.value.trim() || "";
 
-    if (!token) {
-      showToast("Please log in as a contractor or manager to submit helpdesk inquiries", "warning");
-      setTimeout(() => { window.location.href = "login.html"; }, 1500);
+    if (!related_tender_id || !inquiry_category || !message) {
+      showToast("Please select a tender, category, and enter your message", "warning");
       return;
     }
 
-    const org = orgInput ? orgInput.value.trim() : "";
-    const name = nameInput ? nameInput.value.trim() : "";
-    const email = emailInput ? emailInput.value.trim() : "";
-    const category = document.getElementById("contact-category") ? document.getElementById("contact-category").value : "";
-    const tenderId = tenderInput ? tenderInput.value.trim() : "";
-    const phone = document.getElementById("contact-phone") ? document.getElementById("contact-phone").value.trim() : "";
-    const subject = document.getElementById("contact-subject") ? document.getElementById("contact-subject").value.trim() : "";
-    const message = document.getElementById("contact-message") ? document.getElementById("contact-message").value.trim() : "";
-
-    if (!org || !name || !email || !category || !subject || !message) {
-      showToast("Please fill in all required fields", "warning");
-      return;
-    }
-
-    const submitBtn = document.getElementById("contact-submit-btn") || form.querySelector("button[type='submit']");
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span>Submitting to Admin Helpdesk...</span>`;
-    }
+    const submitBtn = document.getElementById("contact-submit-btn");
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Routing Inquiry..."; }
 
     try {
       const res = await fetch(`${API_BASE}/inquiries`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          organization_name: org,
-          inquiry_category: category,
-          related_tender_id: tenderId ? parseInt(tenderId, 10) : null,
-          contact_number: phone || null,
-          subject,
-          description: message
+          related_tender_id: parseInt(related_tender_id, 10),
+          inquiry_category,
+          message
         })
       });
 
       const data = await res.json();
-
       if (res.ok) {
-        // Show success banner with generated ticket number
         const banner = document.getElementById("contact-success-banner");
         const headerEl = document.getElementById("success-ticket-header");
         const msgEl = document.getElementById("success-ticket-msg");
-        const viewBtn = document.getElementById("success-view-ticket-btn");
-
-        if (headerEl) headerEl.textContent = `Inquiry Ticket ${data.ticket_number} Registered`;
-        if (msgEl) {
-          msgEl.textContent = `Your inquiry has been stored and routed to the TenderKart Central Admin. Replies and status updates will appear in your dashboard.`;
-        }
-
-        if (viewBtn) {
-          const roleLower = user ? (user.role || "").toLowerCase() : "contractor";
-          viewBtn.href = (roleLower === "admin" || roleLower === "manager") ? "admin.html?tab=helpdesk" : "dashboard.html?tab=helpdesk";
-        }
-
+        if (headerEl) headerEl.textContent = `Inquiry ${data.ticket_number} Submitted`;
+        if (msgEl) msgEl.textContent = data.message || "Your tender inquiry has been saved and routed.";
+        form.reset();
+        if (stateHint) stateHint.style.display = "none";
         form.style.display = "none";
         if (banner) banner.style.display = "block";
-
-        showToast(`Helpdesk inquiry ${data.ticket_number} registered successfully!`, "success");
-        form.reset();
+        showToast(data.message || "Inquiry submitted!", "success");
       } else {
         showToast(data.message || "Failed to submit inquiry", "error");
       }
     } catch (err) {
-      showToast("Network connection error. Please try again.", "error");
+      showToast("Network error submitting inquiry", "error");
     } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `
-          <span>Submit Inquiry to Admin Helpdesk</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-        `;
-      }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = "<span>Submit Tender Inquiry</span>"; }
     }
   });
 }
+
 

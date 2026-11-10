@@ -3,136 +3,291 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../db");
+const { INDIAN_STATES, normalizeState } = require("../constants");
+const { JWT_SECRET, authenticateUser } = require("../middleware/auth");
 
-const JWT_SECRET = "student_secret_key_12345";
+// 0. Public list of Indian States & UTs for registration and filtering
+router.get("/states", (req, res) => {
+  return res.json({ states: INDIAN_STATES });
+});
 
-// Middleware to check if user is logged in
-function checkAuth(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  
-  if (!token) {
-    return res.status(401).json({ message: "Access denied. Please login first." });
-  }
+// 1. User Registration (Contractor or State Manager ONLY; Admin registration is blocked)
+router.post("/register", async (req, res) => {
+  try {
+    const {
+      accountType,
+      role,
+      company,
+      name,
+      username,
+      email,
+      password,
+      confirmPassword,
+      office_state
+    } = req.body;
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: "Session expired. Please login again." });
+    const requestedRole = (accountType || role || "contractor").trim().toLowerCase();
+
+    if (requestedRole === "admin") {
+      return res.status(403).json({ message: "Central Admin registration is restricted and cannot be performed publicly." });
     }
-    req.user = decoded;
-    next();
-  });
-}
 
-// 1. User Registration
-router.post("/register", (req, res) => {
-  const { username, email, password } = req.body;
+    if (requestedRole !== "contractor" && requestedRole !== "manager") {
+      return res.status(400).json({ message: "Invalid account type. Must be Contractor or Manager." });
+    }
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: "Username, email and password are required" });
-  }
+    const cleanName = (name || "").trim();
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cleanUsername = (username || "").trim();
+    const cleanCompany = (company || "").trim();
+    const cleanState = normalizeState(office_state || "");
 
-  // Check if username or email already exists
-  db.query("SELECT id FROM users WHERE username = ? OR email = ?", [username, email], (err, results) => {
-    if (err) return res.status(500).json({ message: err.message });
+    if (!cleanName || !cleanEmail || !cleanUsername || !password) {
+      return res.status(400).json({ message: "All required fields must be filled in." });
+    }
 
-    if (results.length > 0) {
-      return res.status(409).json({ message: "Username or email is already registered." });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address." });
+    }
+
+    if (cleanUsername.length < 3 || /\s/.test(cleanUsername)) {
+      return res.status(400).json({ message: "Username must be at least 3 characters without spaces." });
+    }
+
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long." });
+    }
+
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      return res.status(400).json({ message: "Password and Confirm Password do not match." });
+    }
+
+    if (requestedRole === "contractor" && !cleanCompany) {
+      return res.status(400).json({ message: "Company Name is required for contractor registration." });
+    }
+
+    if (requestedRole === "manager") {
+      if (!cleanState || !INDIAN_STATES.includes(cleanState)) {
+        return res.status(400).json({ message: "Please select a valid Indian Office State." });
+      }
+    }
+
+    // Prevent duplicate usernames or emails (case-insensitive)
+    const dupRows = await db.queryAsync(
+      "SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1",
+      [cleanUsername, cleanEmail]
+    );
+
+    if (dupRows.length > 0) {
+      return res.status(409).json({ message: "Username or email address is already registered." });
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    db.query(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-      [username, email, hashedPassword, "user"],
-      (insertErr, result) => {
-        if (insertErr) return res.status(500).json({ message: insertErr.message });
-
-        const userId = result.insertId;
-        const token = jwt.sign({ id: userId, username, role: "user" }, JWT_SECRET, { expiresIn: "7d" });
-
-        // Add welcome notification
-        db.query(
-          "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
-          [userId, "Welcome to TenderKart!", "Explore active urban tenders and track opportunities tailored for you."],
-          () => {}
-        );
-
-        return res.status(201).json({
-          token,
-          user: { id: userId, username, email, role: "user" },
-          message: "Registration successful"
-        });
-      }
+    // Generate deterministic unique user_code
+    const countRow = await db.getAsync(
+      "SELECT COUNT(*) AS count FROM users WHERE LOWER(role) = ?",
+      [requestedRole]
     );
-  });
-});
+    const seq = (countRow ? countRow.count : 0) + 1;
+    const prefix = requestedRole === "manager" ? "MGR" : "CON";
+    const baseNum = requestedRole === "manager" ? 2000 : 1000;
+    const userCode = `${prefix}${baseNum + seq}_${Date.now().toString().slice(-3)}`.slice(0, 12);
 
-// 2. User Login
-router.post("/login", (req, res) => {
-  const { usernameOrEmail, password } = req.body;
+    if (requestedRole === "contractor") {
+      const insertRes = await db.queryAsync(
+        `INSERT INTO users (username, user_code, name, company, department, office_state, email, password, role, approval_status, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, 'contractor', 'Approved', 1, datetime('now'), datetime('now'))`,
+        [cleanUsername, `${prefix}${baseNum + seq}`, cleanName, cleanCompany, cleanEmail, hashedPassword]
+      );
 
-  if (!usernameOrEmail || !password) {
-    return res.status(400).json({ message: "Please fill in all fields" });
-  }
-
-  db.query(
-    "SELECT id, username, email, password, role, name, company, department, user_code, created_at FROM users WHERE username = ? OR email = ? OR user_code = ? LIMIT 1",
-    [usernameOrEmail, usernameOrEmail, usernameOrEmail],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: err.message });
-
-      if (results.length === 0) {
-        return res.status(401).json({ message: "Incorrect username, email, or password" });
-      }
-
-      const user = results[0];
-      const match = bcrypt.compareSync(password, user.password);
-      if (!match) {
-        return res.status(401).json({ message: "Incorrect username, email, or password" });
-      }
-
+      const userId = insertRes.insertId;
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role, name: user.name },
+        { id: userId, username: cleanUsername, role: "contractor", name: cleanName },
         JWT_SECRET,
         { expiresIn: "7d" }
       );
 
-      return res.json({
+      await db.queryAsync(
+        "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+        [userId, "Welcome to TenderKart!", "Explore active urban infrastructure tenders across India and track your applications."]
+      );
+
+      db.logActivity({
+        actor_user_id: userId,
+        actor_role: "contractor",
+        action_type: "contractor_registered",
+        entity_type: "user",
+        entity_id: userId,
+        details: `Contractor "${cleanName}" (${cleanCompany}) registered.`
+      });
+
+      return res.status(201).json({
         token,
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          email: user.email, 
-          role: user.role,
-          name: user.name,
-          company: user.company,
-          department: user.department,
-          user_code: user.user_code
+        user: {
+          id: userId,
+          username: cleanUsername,
+          user_code: `${prefix}${baseNum + seq}`,
+          name: cleanName,
+          company: cleanCompany,
+          email: cleanEmail,
+          role: "contractor",
+          office_state: null,
+          approval_status: "Approved",
+          is_active: 1
         },
-        message: "Login successful"
+        message: "Contractor registration successful!"
+      });
+    } else {
+      // Manager registration -> Pending Central Admin approval
+      const dept = `${cleanState} Procurement Division`;
+      const insertRes = await db.queryAsync(
+        `INSERT INTO users (username, user_code, name, company, department, office_state, email, password, role, approval_status, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 'manager', 'Pending', 1, datetime('now'), datetime('now'))`,
+        [cleanUsername, userCode, cleanName, dept, cleanState, cleanEmail, hashedPassword]
+      );
+
+      const userId = insertRes.insertId;
+
+      // Notify Central Admin of new pending manager registration
+      const adminUser = await db.getAsync("SELECT id FROM users WHERE LOWER(role) = 'admin' LIMIT 1");
+      if (adminUser) {
+        await db.queryAsync(
+          "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+          [
+            adminUser.id,
+            "New State Manager Registration Pending",
+            `${cleanName} (${cleanUsername}) registered as Manager for ${cleanState} and awaits your approval.`
+          ]
+        );
+      }
+
+      db.logActivity({
+        actor_user_id: userId,
+        actor_role: "manager",
+        action_type: "manager_registered",
+        entity_type: "user",
+        entity_id: userId,
+        state: cleanState,
+        details: `Manager "${cleanName}" registered for ${cleanState} (Pending Approval).`
+      });
+
+      return res.status(201).json({
+        pendingApproval: true,
+        user: {
+          id: userId,
+          username: cleanUsername,
+          name: cleanName,
+          email: cleanEmail,
+          role: "manager",
+          office_state: cleanState,
+          approval_status: "Pending",
+          is_active: 1
+        },
+        message: `Manager registration submitted for ${cleanState}. Your account is pending Central Admin approval before you can sign in.`
       });
     }
-  );
+  } catch (err) {
+    console.error("Registration error:", err);
+    return res.status(500).json({ message: err.message || "Registration failed." });
+  }
+});
+
+// 2. User Login (Automatic role identification from DB)
+router.post("/login", async (req, res) => {
+  try {
+    const { usernameOrEmail, password } = req.body;
+
+    if (!usernameOrEmail || !password) {
+      return res.status(400).json({ message: "Please enter your email/username and password." });
+    }
+
+    const identifier = usernameOrEmail.trim();
+    const user = await db.getAsync(
+      `SELECT id, username, email, password, role, name, company, department, office_state,
+              approval_status, is_active, user_code, created_at
+       FROM users
+       WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(user_code) = LOWER(?)
+       LIMIT 1`,
+      [identifier, identifier, identifier]
+    );
+
+    if (!user) {
+      return res.status(401).json({ message: "Incorrect username, email, or password." });
+    }
+
+    const match = bcrypt.compareSync(password, user.password);
+    if (!match) {
+      return res.status(401).json({ message: "Incorrect username, email, or password." });
+    }
+
+    const role = (user.role || "contractor").toLowerCase();
+
+    if (role === "manager") {
+      if (user.approval_status === "Pending") {
+        return res.status(403).json({
+          code: "PENDING_APPROVAL",
+          message: "Your manager account is currently pending Central Admin approval. Please wait for approval before accessing your state dashboard."
+        });
+      }
+      if (user.approval_status === "Rejected") {
+        return res.status(403).json({
+          code: "REJECTED",
+          message: "Your manager registration was rejected by Central Admin."
+        });
+      }
+      if (!user.is_active) {
+        return res.status(403).json({
+          code: "DEACTIVATED",
+          message: "Your manager account has been deactivated by Central Admin."
+        });
+      }
+    } else if (!user.is_active) {
+      return res.status(403).json({
+        code: "DEACTIVATED",
+        message: "Your account is currently deactivated."
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role,
+        name: user.name,
+        company: user.company,
+        department: user.department,
+        office_state: user.office_state,
+        approval_status: user.approval_status,
+        is_active: user.is_active,
+        user_code: user.user_code
+      },
+      message: "Login successful"
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json({ message: err.message || "Login failed." });
+  }
 });
 
 // 3. Get Active User Profile
-router.get("/me", checkAuth, (req, res) => {
-  db.query(
-    "SELECT id, username, email, role, name, company, department, user_code, created_at FROM users WHERE id = ? LIMIT 1",
-    [req.user.id],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (results.length === 0) return res.status(404).json({ message: "User not found" });
-      return res.json(results[0]);
-    }
-  );
+router.get("/me", authenticateUser, (req, res) => {
+  return res.json(req.user);
 });
 
 // 4. Get Notifications
-router.get("/notifications", checkAuth, (req, res) => {
+router.get("/notifications", authenticateUser, (req, res) => {
   db.query(
-    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
+    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC",
     [req.user.id],
     (err, results) => {
       if (err) return res.status(500).json({ message: err.message });
@@ -142,7 +297,7 @@ router.get("/notifications", checkAuth, (req, res) => {
 });
 
 // 5. Mark Notification as Read
-router.put("/notifications/:id/read", checkAuth, (req, res) => {
+router.put("/notifications/:id/read", authenticateUser, (req, res) => {
   db.query(
     "UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?",
     [req.params.id, req.user.id],
@@ -153,26 +308,9 @@ router.put("/notifications/:id/read", checkAuth, (req, res) => {
   );
 });
 
-// 6. Get Search History
-// Note: Since we removed the searches table, we will log/store history directly in client-side localStorage,
-// or we can auto-create a simple searches table. Oh! In db.js we didn't create searches table. Let's create it 
-// or simply handle it on the client side since that is simpler! But wait, let's provide a mock endpoint 
-// so client doesn't error out if it requests /api/users/searches, or let's query it.
-// Actually, let's implement searches table in db.js? We didn't, but we can write a simple mock route
-// that returns an empty array, or lets us read/save searches in memory, or we can just read from a temporary searches log.
-// Wait! Let's check `db.js`. It does not have `searches` table. That is fine, we can manage recent searches 
-// directly in the browser's `localStorage` on the frontend side! It is much simpler, avoids extra database calls,
-// and fits the student project style perfectly. Let's add mock routes here just in case.
-router.get("/searches", checkAuth, (req, res) => {
-  return res.json([]);
-});
-
-router.post("/searches", checkAuth, (req, res) => {
-  return res.json({ message: "Search saved locally" });
-});
-
-router.delete("/searches", checkAuth, (req, res) => {
-  return res.json({ message: "Search history cleared" });
-});
+// 6. Search history compatibility routes
+router.get("/searches", authenticateUser, (req, res) => res.json([]));
+router.post("/searches", authenticateUser, (req, res) => res.json({ message: "Search saved locally" }));
+router.delete("/searches", authenticateUser, (req, res) => res.json({ message: "Search history cleared" }));
 
 module.exports = router;

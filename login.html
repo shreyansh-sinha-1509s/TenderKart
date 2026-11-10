@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TenderKart - Contractor & Administrative Login</title>
+  <title>TenderKart - Sign In</title>
   <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
   <link rel="stylesheet" href="style.css">
 </head>
@@ -14,46 +14,30 @@
 
   <!-- Login Card Section -->
   <main style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 4rem 1.5rem;">
-    <div class="card" style="max-width: 440px; width: 100%; display: flex; flex-direction: column; gap: 24px; padding: 2.5rem; box-shadow: var(--shadow-premium);">
+    <div class="card" style="max-width: 440px; width: 100%; display: flex; flex-direction: column; gap: 22px; padding: 2.5rem; box-shadow: var(--shadow-premium);">
       <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
-        <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">Welcome Back</h2>
-        <p style="font-size: 0.9rem; color: var(--text-secondary);">Log in to track opportunities and view smart audits</p>
+        <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary);">Sign In to TenderKart</h2>
+        <p style="font-size: 0.9rem; color: var(--text-secondary);">Enter your registered email or username and password. Your portal access is identified automatically.</p>
       </div>
 
-      <form id="login-form" style="display: flex; flex-direction: column; gap: 18px;">
+      <!-- Inline Alert for Pending Approval / Auth Errors -->
+      <div id="login-status-alert" style="display: none; padding: 12px 14px; border-radius: 10px; font-size: 0.85rem; line-height: 1.45; font-weight: 500;"></div>
+
+      <form id="login-form" style="display: flex; flex-direction: column; gap: 18px;" autocomplete="on">
         <div style="display: flex; flex-direction: column; gap: 6px;">
-          <label for="usernameOrEmail" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Username or Email</label>
-          <input type="text" id="usernameOrEmail" class="form-input" placeholder="e.g. admin or contractor" required />
+          <label for="usernameOrEmail" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Email or Username</label>
+          <input type="text" id="usernameOrEmail" class="form-input" placeholder="Enter your email or username" required />
         </div>
         <div style="display: flex; flex-direction: column; gap: 6px;">
           <label for="password" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Password</label>
-          <input type="password" id="password" class="form-input" placeholder="••••••••" required />
+          <input type="password" id="password" class="form-input" placeholder="Enter your password" required />
         </div>
-        <button type="submit" class="btn btn-primary" style="margin-top: 6px; width: 100%; border: none;">Sign In</button>
+        <button type="submit" id="login-submit-btn" class="btn btn-primary" style="margin-top: 6px; width: 100%; border: none;">Sign In</button>
       </form>
 
-      <!-- Quick Default Credentials Suggestions -->
-      <div style="border-top: 1px solid var(--border-color); padding-top: 18px; display: flex; flex-direction: column; gap: 12px;">
-        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: center;">Quick Login Credentials</span>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-          <button onclick="document.getElementById('usernameOrEmail').value='admin'; document.getElementById('password').value='Admin@1001';" style="padding: 10px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); background-color: rgba(245, 158, 11, 0.05); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: center; transition: var(--transition-smooth); display: flex; flex-direction: column; gap: 4px;" class="card-suggest">
-            <strong style="color: #D97706;">Central Admin</strong>
-            <span>admin / Admin@1001</span>
-          </button>
-          <button onclick="document.getElementById('usernameOrEmail').value='MGR2001'; document.getElementById('password').value='Manager@2001';" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: center; transition: var(--transition-smooth); display: flex; flex-direction: column; gap: 4px;" class="card-suggest">
-            <strong style="color: var(--text-primary);">Procurement Mgr (PWD)</strong>
-            <span>MGR2001 / Manager@2001</span>
-          </button>
-          <button onclick="document.getElementById('usernameOrEmail').value='CON1001'; document.getElementById('password').value='Contractor@1001';" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-align: center; transition: var(--transition-smooth); display: flex; flex-direction: column; gap: 4px;" class="card-suggest">
-            <strong style="color: var(--text-primary);">Contractor (Mehta Infra)</strong>
-            <span>CON1001 / Contractor@1001</span>
-          </button>
-        </div>
-      </div>
-
-      <div style="text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
+      <div style="border-top: 1px solid var(--border-color); padding-top: 16px; text-align: center; font-size: 0.9rem; color: var(--text-secondary);">
         <span>Don't have an account? </span>
-        <a href="register.html" style="color: var(--color-primary); font-weight: 600;">Register here</a>
+        <a href="register.html" style="color: var(--color-primary); font-weight: 600;">Register as Contractor or Manager</a>
       </div>
     </div>
   </main>

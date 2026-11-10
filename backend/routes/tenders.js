@@ -1,18 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { normalizeState } = require("../constants");
 
-// 1. Get Tenders (with dynamic filters)
+// 1. Get Tenders (with dynamic filters including state, category, location, department, budget, deadline)
 router.get("/", (req, res) => {
-  const { search, category, location, department, minBudget, maxBudget, deadline } = req.query;
+  const { search, category, state, location, department, minBudget, maxBudget, deadline, status } = req.query;
 
   let query = "SELECT * FROM tenders WHERE 1=1";
   const params = [];
 
   if (search) {
-    query += " AND (name LIKE ? OR description LIKE ? OR department LIKE ? OR location LIKE ?)";
-    const val = `%${search}%`;
-    params.push(val, val, val, val);
+    query += " AND (name LIKE ? OR description LIKE ? OR department LIKE ? OR location LIKE ? OR state LIKE ?)";
+    const val = `%${search.trim()}%`;
+    params.push(val, val, val, val, val);
   }
 
   if (category) {
@@ -20,54 +21,35 @@ router.get("/", (req, res) => {
     params.push(category);
   }
 
+  if (state && typeof state === "string" && state.trim().length > 0) {
+    const cleanState = normalizeState(state.trim()) || state.trim();
+    query += " AND LOWER(state) = LOWER(?)";
+    params.push(cleanState);
+  }
+
   if (location && typeof location === "string" && location.trim().length > 0) {
     const rawLoc = location.trim();
-    const lower = rawLoc.toLowerCase();
-
-    // Regional and state variations / abbreviations normalization
-    const stateAbbr = {
-      "mh": "Maharashtra",
-      "maharashtra": "Maharashtra",
-      "dl": "Delhi",
-      "delhi": "Delhi",
-      "new delhi": "Delhi",
-      "central delhi": "Delhi",
-      "ncr": "Delhi",
-      "up": "Uttar Pradesh",
-      "uttar pradesh": "Uttar Pradesh",
-      "mp": "Madhya Pradesh",
-      "madhya pradesh": "Madhya Pradesh",
-      "wb": "West Bengal",
-      "west bengal": "West Bengal",
-      "pb": "Punjab",
-      "punjab": "Punjab",
-      "hr": "Haryana",
-      "haryana": "Haryana",
-      "as": "Assam",
-      "assam": "Assam"
-    };
-
-    const resolvedState = stateAbbr[lower];
+    const resolvedState = normalizeState(rawLoc);
 
     if (resolvedState) {
-      query += " AND (location LIKE ? OR location LIKE ?)";
-      params.push(`%${rawLoc}%`, `%${resolvedState}%`);
+      query += " AND (location LIKE ? OR location LIKE ? OR LOWER(state) = LOWER(?))";
+      params.push(`%${rawLoc}%`, `%${resolvedState}%`, resolvedState);
     } else {
-      const tokens = rawLoc.split(/[,/]+/).map(t => t.trim()).filter(Boolean);
+      const tokens = rawLoc.split(/[,/]+/).map((t) => t.trim()).filter(Boolean);
       if (tokens.length > 1) {
-        const orClauses = tokens.map(() => "location LIKE ?").join(" OR ");
+        const orClauses = tokens.map(() => "(location LIKE ? OR state LIKE ?)").join(" OR ");
         query += ` AND (${orClauses})`;
-        tokens.forEach(t => params.push(`%${t}%`));
+        tokens.forEach((t) => params.push(`%${t}%`, `%${t}%`));
       } else {
-        query += " AND location LIKE ?";
-        params.push(`%${rawLoc}%`);
+        query += " AND (location LIKE ? OR state LIKE ?)";
+        params.push(`%${rawLoc}%`, `%${rawLoc}%`);
       }
     }
   }
 
   if (department) {
     query += " AND department LIKE ?";
-    params.push(`%${department}%`);
+    params.push(`%${department.trim()}%`);
   }
 
   if (minBudget) {
@@ -85,13 +67,17 @@ router.get("/", (req, res) => {
     params.push(deadline);
   }
 
-  query += " ORDER BY id DESC";
+  if (status) {
+    query += " AND LOWER(status) = LOWER(?)";
+    params.push(status.trim());
+  }
+
+  query += " ORDER BY id ASC";
 
   db.query(query, params, (err, results) => {
     if (err) return res.status(500).json({ message: err.message });
-    
-    // Parse required_documents back to JavaScript array
-    const tenders = results.map(t => {
+
+    const tenders = results.map((t) => {
       try {
         t.required_documents = JSON.parse(t.required_documents || "[]");
       } catch (e) {
@@ -104,20 +90,35 @@ router.get("/", (req, res) => {
   });
 });
 
-// 2. Get Tender by ID
-router.get("/:id", (req, res) => {
-  db.query("SELECT * FROM tenders WHERE id = ? LIMIT 1", [req.params.id], (err, results) => {
-    if (err) return res.status(500).json({ message: err.message });
-    if (results.length === 0) return res.status(404).json({ message: "Tender not found" });
+// 2. Get Tender by ID (tracks genuine tender views unless noTrack=1)
+router.get("/:id", async (req, res) => {
+  try {
+    const tenderId = parseInt(req.params.id, 10);
+    if (isNaN(tenderId)) {
+      return res.status(400).json({ message: "Invalid tender ID" });
+    }
 
-    const tender = results[0];
+    if (req.query.noTrack !== "1") {
+      await db.queryAsync(
+        "UPDATE tenders SET views_count = COALESCE(views_count, 0) + 1 WHERE id = ?",
+        [tenderId]
+      );
+    }
+
+    const tender = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
+    if (!tender) {
+      return res.status(404).json({ message: "Tender not found" });
+    }
+
     try {
       tender.required_documents = JSON.parse(tender.required_documents || "[]");
     } catch (e) {
       tender.required_documents = [];
     }
     return res.json(tender);
-  });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
 // 3. AI Summarization Endpoint
@@ -134,10 +135,9 @@ router.post("/:id/summarize", (req, res) => {
       docList = [];
     }
 
-    // Local summary generator (fallback if no API key is available)
     const generateLocalSummary = () => {
-      const sentences = tender.description.split(/[.!?]/).map(s => s.trim()).filter(Boolean);
-      const points = sentences.slice(0, 3).map(s => s + ".");
+      const sentences = tender.description.split(/[.!?]/).map((s) => s.trim()).filter(Boolean);
+      const points = sentences.slice(0, 3).map((s) => s + ".");
       if (sentences.length > 3) {
         points.push("Includes detailed materials audits and milestone reviews.");
       }
@@ -150,25 +150,24 @@ router.post("/:id/summarize", (req, res) => {
         eligibility: tender.eligibility.split(".")[0] + ".",
         requiredDocuments: docList.slice(0, 3),
         summaryPoints: points,
-        method: "Mock AI Summarization Fallback"
+        method: "Local Procurement Analyzer"
       };
     };
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      // Simulate network lag and return local mock summary
       setTimeout(() => {
         return res.json(generateLocalSummary());
-      }, 700);
+      }, 500);
       return;
     }
 
-    // Call actual Gemini API if key is present
     const promptText = `
       You are an expert procurement analyst for government tenders. Summarize the following tender details into a clean JSON structure.
       Tender Name: ${tender.name}
       Department: ${tender.department}
       Category: ${tender.category}
+      State: ${tender.state}
       Budget: INR ${tender.budget}
       Location: ${tender.location}
       Deadline: ${tender.deadline}

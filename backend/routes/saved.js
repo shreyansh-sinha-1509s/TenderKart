@@ -1,40 +1,20 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 const db = require("../db");
+const { requireContractor } = require("../middleware/auth");
 
-const JWT_SECRET = "student_secret_key_12345";
-
-// Auth checking middleware
-function checkAuth(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  
-  if (!token) {
-    return res.status(401).json({ message: "Access denied. Please login first." });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: "Session expired. Please login again." });
-    }
-    req.user = decoded;
-    next();
-  });
-}
-
-// 1. Get all saved tenders for logged-in user
-router.get("/", checkAuth, (req, res) => {
+// 1. Get all saved tenders for logged-in contractor
+router.get("/", requireContractor, (req, res) => {
   db.query(
-    `SELECT t.* FROM tenders t 
-     JOIN saved_tenders s ON t.id = s.tender_id 
-     WHERE s.user_id = ? 
+    `SELECT t.* FROM tenders t
+     JOIN saved_tenders s ON t.id = s.tender_id
+     WHERE s.user_id = ?
      ORDER BY t.id DESC`,
     [req.user.id],
     (err, results) => {
       if (err) return res.status(500).json({ message: err.message });
-      
-      const parsedResults = results.map(t => {
+
+      const parsedResults = results.map((t) => {
         try {
           t.required_documents = JSON.parse(t.required_documents || "[]");
         } catch (e) {
@@ -48,40 +28,53 @@ router.get("/", checkAuth, (req, res) => {
   );
 });
 
-// 2. Toggle Save/Unsave status
-router.post("/:id/save", checkAuth, (req, res) => {
-  const tenderId = parseInt(req.params.id);
-  const userId = req.user.id;
+// 2. Toggle Save/Unsave status (Contractors only)
+router.post("/:id/save", requireContractor, async (req, res) => {
+  try {
+    const tenderId = parseInt(req.params.id, 10);
+    const userId = req.user.id;
 
-  db.query(
-    "SELECT 1 FROM saved_tenders WHERE user_id = ? AND tender_id = ? LIMIT 1",
-    [userId, tenderId],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: err.message });
-
-      if (results.length > 0) {
-        // Already saved, let's unsave it
-        db.query(
-          "DELETE FROM saved_tenders WHERE user_id = ? AND tender_id = ?",
-          [userId, tenderId],
-          (deleteErr) => {
-            if (deleteErr) return res.status(500).json({ message: deleteErr.message });
-            return res.json({ saved: false, message: "Tender removed from saved list" });
-          }
-        );
-      } else {
-        // Not saved, let's save it
-        db.query(
-          "INSERT INTO saved_tenders (user_id, tender_id) VALUES (?, ?)",
-          [userId, tenderId],
-          (insertErr) => {
-            if (insertErr) return res.status(500).json({ message: insertErr.message });
-            return res.json({ saved: true, message: "Tender saved successfully" });
-          }
-        );
-      }
+    if (isNaN(tenderId)) {
+      return res.status(400).json({ message: "Invalid tender ID." });
     }
-  );
+
+    const tender = await db.getAsync("SELECT id, name, state FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
+    if (!tender) {
+      return res.status(404).json({ message: "Tender not found." });
+    }
+
+    const existing = await db.getAsync(
+      "SELECT 1 FROM saved_tenders WHERE user_id = ? AND tender_id = ? LIMIT 1",
+      [userId, tenderId]
+    );
+
+    if (existing) {
+      await db.queryAsync(
+        "DELETE FROM saved_tenders WHERE user_id = ? AND tender_id = ?",
+        [userId, tenderId]
+      );
+      return res.json({ saved: false, message: "Tender removed from saved list" });
+    } else {
+      await db.queryAsync(
+        "INSERT INTO saved_tenders (user_id, tender_id, created_at) VALUES (?, ?, datetime('now'))",
+        [userId, tenderId]
+      );
+
+      db.logActivity({
+        actor_user_id: userId,
+        actor_role: "contractor",
+        action_type: "tender_saved",
+        entity_type: "tender",
+        entity_id: tenderId,
+        state: tender.state,
+        details: `Saved tender "${tender.name.slice(0, 60)}"`
+      });
+
+      return res.json({ saved: true, message: "Tender saved successfully" });
+    }
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;

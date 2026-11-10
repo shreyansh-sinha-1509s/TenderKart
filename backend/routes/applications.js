@@ -1,34 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 const db = require("../db");
-
-const JWT_SECRET = "student_secret_key_12345";
-
-// Auth checking middleware for authenticated contractors
-function checkContractorAuth(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Access denied. Please login first." });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: "Session expired. Please login again." });
-    }
-    req.user = decoded;
-    next();
-  });
-}
+const { authenticateUser, requireContractor } = require("../middleware/auth");
 
 // 1. GET /api/applications/my - Retrieve applications & performance stats for logged-in contractor
-router.get("/my", checkContractorAuth, (req, res) => {
+router.get("/my", requireContractor, (req, res) => {
   const contractorId = req.user.id;
 
   const query = `
-    SELECT 
+    SELECT
       a.id,
       a.application_code,
       a.contractor_id,
@@ -47,6 +27,7 @@ router.get("/my", checkContractorAuth, (req, res) => {
       t.category AS tender_category,
       t.department AS tender_department,
       t.location AS tender_location,
+      t.state AS tender_state,
       t.budget AS tender_budget,
       t.deadline AS tender_deadline,
       t.eligibility AS tender_eligibility,
@@ -63,7 +44,7 @@ router.get("/my", checkContractorAuth, (req, res) => {
       return res.status(500).json({ message: "Error fetching applications" });
     }
 
-    const applications = results.map(row => {
+    const applications = results.map((row) => {
       let missingDocs = [];
       let requiredDocs = [];
       try {
@@ -84,7 +65,6 @@ router.get("/my", checkContractorAuth, (req, res) => {
       };
     });
 
-    // Compute metrics
     const total = applications.length;
     let won = 0;
     let notAwarded = 0;
@@ -93,13 +73,13 @@ router.get("/my", checkContractorAuth, (req, res) => {
 
     const categoryStatsMap = {};
 
-    applications.forEach(app => {
+    applications.forEach((app) => {
       const status = (app.application_status || "").trim();
       const outcome = (app.outcome || "").trim();
 
       if (status === "Won" || outcome === "Won") {
         won++;
-      } else if (status === "Not Awarded" || outcome === "Not Awarded") {
+      } else if (status === "Not Awarded" || outcome === "Not Awarded" || status === "Rejected" || outcome === "Rejected") {
         notAwarded++;
       } else if (status === "Withdrawn" || outcome === "Withdrawn") {
         withdrawn++;
@@ -107,7 +87,6 @@ router.get("/my", checkContractorAuth, (req, res) => {
         pending++;
       }
 
-      // Category breakdown
       const cat = app.tender_category || "Other";
       if (!categoryStatsMap[cat]) {
         categoryStatsMap[cat] = { category: cat, total: 0, won: 0, notAwarded: 0, pending: 0 };
@@ -115,17 +94,13 @@ router.get("/my", checkContractorAuth, (req, res) => {
       categoryStatsMap[cat].total++;
       if (status === "Won" || outcome === "Won") {
         categoryStatsMap[cat].won++;
-      } else if (status === "Not Awarded" || outcome === "Not Awarded") {
+      } else if (status === "Not Awarded" || outcome === "Not Awarded" || status === "Rejected" || outcome === "Rejected") {
         categoryStatsMap[cat].notAwarded++;
-      } else if (status === "Withdrawn" || outcome === "Withdrawn") {
-        // withdrawn
-      } else {
+      } else if (status !== "Withdrawn" && outcome !== "Withdrawn") {
         categoryStatsMap[cat].pending++;
       }
     });
 
-    // Win rate = Confirmed Wins / (Confirmed Wins + Confirmed Unsuccessful) * 100
-    // Exclude pending and withdrawn from denominator.
     const decided = won + notAwarded;
     const winRate = decided > 0 ? parseFloat(((won / decided) * 100).toFixed(1)) : null;
     const winRateDisplay = winRate !== null ? `${winRate}%` : "Not enough completed outcomes to calculate win rate.";
@@ -158,13 +133,14 @@ router.get("/my", checkContractorAuth, (req, res) => {
 });
 
 // 2. GET /api/applications/:id - Detailed analysis view of a single application
-router.get("/:id", checkContractorAuth, (req, res) => {
+// Enforces contractor ownership OR manager state restriction OR Central Admin supervision
+router.get("/:id", authenticateUser, (req, res) => {
   const applicationId = req.params.id;
   const userId = req.user.id;
-  const userRole = (req.user.role || "").toLowerCase();
+  const userRole = req.user.role;
 
   const query = `
-    SELECT 
+    SELECT
       a.id,
       a.application_code,
       a.contractor_id,
@@ -183,6 +159,7 @@ router.get("/:id", checkContractorAuth, (req, res) => {
       t.category AS tender_category,
       t.department AS tender_department,
       t.location AS tender_location,
+      t.state AS tender_state,
       t.budget AS tender_budget,
       t.deadline AS tender_deadline,
       t.eligibility AS tender_eligibility,
@@ -202,9 +179,16 @@ router.get("/:id", checkContractorAuth, (req, res) => {
 
     const app = results[0];
 
-    // Contractor can only view their own application (managers/admins can view all)
-    if (userRole !== "admin" && userRole !== "manager" && app.contractor_id !== userId) {
+    if (userRole === "contractor" && app.contractor_id !== userId) {
       return res.status(403).json({ message: "Access denied. You can only view your own applications." });
+    }
+    if (
+      userRole === "manager" &&
+      (app.tender_state || "").toLowerCase() !== (req.user.office_state || "").toLowerCase()
+    ) {
+      return res.status(403).json({
+        message: "Access denied. You can only view applications for tenders in your assigned state."
+      });
     }
 
     try {
@@ -218,7 +202,6 @@ router.get("/:id", checkContractorAuth, (req, res) => {
       app.tender_required_docs = [];
     }
 
-    // Build educational analysis factors based strictly on recorded database facts
     const insights = buildFactualInsights(app);
 
     res.json({
@@ -229,15 +212,12 @@ router.get("/:id", checkContractorAuth, (req, res) => {
   });
 });
 
-// Helper to build factual improvement insights
 function buildFactualInsights(app) {
   const findings = [];
-  const status = app.application_status;
   const outcome = app.outcome;
   const bid = parseFloat(app.bid_amount);
   const budget = parseFloat(app.tender_budget);
 
-  // 1. Budget comparison
   if (bid > 0 && budget > 0) {
     const diffPct = (((bid - budget) / budget) * 100).toFixed(1);
     if (bid > budget) {
@@ -259,12 +239,11 @@ function buildFactualInsights(app) {
     }
   }
 
-  // 2. Missing documents & checklist
   if (Array.isArray(app.missing_documents) && app.missing_documents.length > 0) {
     findings.push({
       factor: "Document Compliance & Completeness",
       type: "danger",
-      observation: `A required document is marked as missing in the evaluation feedback: "${app.missing_documents.join(', ')}".`,
+      observation: `A required document is marked as missing in the evaluation feedback: "${app.missing_documents.join(", ")}".`,
       whyItMatters: "Incomplete documentation may cause an application to fail the preliminary technical compliance review before commercial bids are opened.",
       recommendedAction: "Review the tender's document checklist before submission and verify each required attachment with digital signature."
     });
@@ -272,13 +251,12 @@ function buildFactualInsights(app) {
     findings.push({
       factor: "Required Documentation Checklist",
       type: "info",
-      observation: `Tender requires ${app.tender_required_docs.length} mandatory compliance certificates (including ${app.tender_required_docs.slice(0, 2).join(', ')}).`,
+      observation: `Tender requires ${app.tender_required_docs.length} mandatory compliance certificates (including ${app.tender_required_docs.slice(0, 2).join(", ")}).`,
       whyItMatters: "Rigorous verification of statutory documents (GST, Class-A registrations, solvency letters) is mandatory for government contracts.",
       recommendedAction: "Pre-assemble an updated statutory document folder refreshed quarterly to speed up application filings."
     });
   }
 
-  // 3. Submission timing & deadline
   if (app.applied_on && app.tender_deadline) {
     const applied = new Date(app.applied_on);
     const deadline = new Date(app.tender_deadline);
@@ -288,7 +266,7 @@ function buildFactualInsights(app) {
       findings.push({
         factor: "Submission Schedule & Timeliness",
         type: "positive",
-        observation: `Application was recorded on ${app.applied_on}, ${diffDays === 0 ? 'on the deadline day' : `${diffDays} days before the deadline`} (${app.tender_deadline}).`,
+        observation: `Application was recorded on ${app.applied_on}, ${diffDays === 0 ? "on the deadline day" : `${diffDays} days before the deadline`} (${app.tender_deadline}).`,
         whyItMatters: "Timely filing avoids e-procurement portal server congestion and ensures bid validity bank guarantees are properly registered.",
         recommendedAction: "Continue planning bid uploads at least 48 to 72 hours ahead of the closing hour."
       });
@@ -303,18 +281,17 @@ function buildFactualInsights(app) {
     }
   }
 
-  // 4. Official evaluator feedback
   if (app.evaluation_notes && app.evaluation_notes.trim()) {
     findings.push({
       factor: "Official Evaluator Review Notes",
-      type: outcome === "Won" ? "positive" : (outcome === "Not Awarded" ? "danger" : "info"),
+      type: outcome === "Won" ? "positive" : (outcome === "Not Awarded" || outcome === "Rejected" ? "danger" : "info"),
       observation: `Procurement authority note: "${app.evaluation_notes.trim()}"`,
       whyItMatters: "Direct feedback from departmental technical review committees provides factual insight into compliance strengths or gaps.",
-      recommendedAction: outcome === "Won" 
+      recommendedAction: outcome === "Won"
         ? "Document the successful technical proposal structure as a reusable baseline for similar contracts."
         : "Address the specific committee remarks in pre-bid meetings for subsequent procurement cycles."
     });
-  } else if (outcome === "Not Awarded") {
+  } else if (outcome === "Not Awarded" || outcome === "Rejected") {
     findings.push({
       factor: "Outcome Assessment",
       type: "neutral",
@@ -324,12 +301,10 @@ function buildFactualInsights(app) {
     });
   }
 
-  const normalizedFindings = findings.map(f => ({
+  const normalizedFindings = findings.map((f) => ({
     ...f,
-    why_it_matters: f.whyItMatters || f.why_it_matters,
-    whyItMatters: f.whyItMatters || f.why_it_matters,
-    recommended_action: f.recommendedAction || f.recommended_action,
-    recommendedAction: f.recommendedAction || f.recommended_action
+    why_it_matters: f.whyItMatters,
+    recommended_action: f.recommendedAction
   }));
 
   return {
@@ -338,122 +313,147 @@ function buildFactualInsights(app) {
   };
 }
 
-// 3. POST /api/applications - Track / Record an application for current contractor
-router.post("/", checkContractorAuth, (req, res) => {
-  const contractorId = req.user.id;
-  const { tender_id, bid_amount, applied_on, proposal_notes } = req.body;
+// 3. POST /api/applications - Record an application (Contractors only)
+router.post("/", requireContractor, async (req, res) => {
+  try {
+    const contractorId = req.user.id;
+    const { tender_id, bid_amount, applied_on, proposal_notes } = req.body;
 
-  if (!tender_id) {
-    return res.status(400).json({ message: "Tender ID is required." });
-  }
-
-  let parsedBid = null;
-  if (bid_amount !== undefined && bid_amount !== null && String(bid_amount).trim() !== "") {
-    parsedBid = parseFloat(bid_amount);
-    if (isNaN(parsedBid) || parsedBid <= 0) {
-      return res.status(400).json({ message: "Please provide a valid bid amount in INR." });
+    if (!tender_id) {
+      return res.status(400).json({ message: "Tender ID is required." });
     }
-  }
 
-  const submissionDate = applied_on && applied_on.trim() 
-    ? applied_on.trim() 
-    : new Date().toISOString().split("T")[0];
-
-  // 1. Verify tender exists
-  db.query("SELECT id, name FROM tenders WHERE id = ? LIMIT 1", [tender_id], (tErr, tResults) => {
-    if (tErr) return res.status(500).json({ message: "Database error validating tender" });
-    if (tResults.length === 0) return res.status(404).json({ message: "Tender does not exist." });
-
-    // 2. Prevent duplicate application for same contractor and tender
-    db.query(
-      "SELECT id, application_code, application_status FROM applications WHERE contractor_id = ? AND tender_id = ? LIMIT 1",
-      [contractorId, tender_id],
-      (dupErr, dupResults) => {
-        if (dupErr) return res.status(500).json({ message: "Database error checking duplicates" });
-        if (dupResults.length > 0) {
-          return res.status(409).json({
-            message: `You have already recorded an application (${dupResults[0].application_code}) for this tender with status "${dupResults[0].application_status}".`,
-            application: dupResults[0]
-          });
-        }
-
-        // 3. Determine next application code
-        db.query("SELECT COUNT(*) as count FROM applications", [], (cErr, cResults) => {
-          const totalCount = (cResults && cResults[0] ? cResults[0].count : 0) + 1;
-          const appCode = `APP-${1000 + totalCount}`;
-
-          const insertSql = `
-            INSERT INTO applications (
-              application_code, contractor_id, tender_id, applied_on, bid_amount, 
-              application_status, outcome, proposal_notes, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, 'Submitted', 'Pending', ?, datetime('now'), datetime('now'))
-          `;
-
-          db.query(
-            insertSql,
-            [appCode, contractorId, tender_id, submissionDate, parsedBid, proposal_notes || null],
-            (inErr, inResult) => {
-              if (inErr) {
-                console.error("Error creating application:", inErr);
-                return res.status(500).json({ message: "Failed to record application: " + inErr.message });
-              }
-
-              // Also create an in-app notification for the user
-              db.query(
-                `INSERT INTO notifications (user_id, title, message, created_at)
-                 VALUES (?, 'Application Recorded', ?, datetime('now'))`,
-                [contractorId, `Application ${appCode} for "${tResults[0].name}" was recorded successfully.`]
-              );
-
-              res.status(201).json({
-                message: "Application recorded successfully!",
-                application: {
-                  id: inResult.insertId,
-                  application_code: appCode,
-                  tender_id,
-                  applied_on: submissionDate,
-                  bid_amount: parsedBid,
-                  application_status: "Submitted",
-                  outcome: "Pending"
-                }
-              });
-            }
-          );
-        });
+    let parsedBid = null;
+    if (bid_amount !== undefined && bid_amount !== null && String(bid_amount).trim() !== "") {
+      parsedBid = parseFloat(bid_amount);
+      if (isNaN(parsedBid) || parsedBid <= 0) {
+        return res.status(400).json({ message: "Please provide a valid bid amount in INR." });
       }
+    }
+
+    const submissionDate = applied_on && applied_on.trim()
+      ? applied_on.trim()
+      : new Date().toISOString().split("T")[0];
+
+    const tender = await db.getAsync("SELECT id, name, state FROM tenders WHERE id = ? LIMIT 1", [tender_id]);
+    if (!tender) {
+      return res.status(404).json({ message: "Tender does not exist." });
+    }
+
+    const dup = await db.getAsync(
+      "SELECT id, application_code, application_status FROM applications WHERE contractor_id = ? AND tender_id = ? LIMIT 1",
+      [contractorId, tender_id]
     );
-  });
+    if (dup) {
+      return res.status(409).json({
+        message: `You have already recorded an application (${dup.application_code}) for this tender with status "${dup.application_status}".`,
+        application: dup
+      });
+    }
+
+    const maxRow = await db.getAsync("SELECT MAX(id) AS maxId FROM applications");
+    const appCode = `APP-${1001 + (maxRow && maxRow.maxId ? maxRow.maxId : 0)}`;
+
+    const inResult = await db.queryAsync(
+      `INSERT INTO applications (
+        application_code, contractor_id, tender_id, applied_on, bid_amount,
+        application_status, outcome, proposal_notes, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 'Submitted', 'Pending', ?, datetime('now'), datetime('now'))`,
+      [appCode, contractorId, tender_id, submissionDate, parsedBid, proposal_notes || null]
+    );
+
+    await db.queryAsync(
+      `INSERT INTO notifications (user_id, title, message, created_at)
+       VALUES (?, 'Application Recorded', ?, datetime('now'))`,
+      [contractorId, `Application ${appCode} for "${tender.name}" was recorded successfully.`]
+    );
+
+    // Notify assigned state manager if approved & active
+    if (tender.state) {
+      const stateManager = await db.getAsync(
+        "SELECT id FROM users WHERE role = 'manager' AND LOWER(office_state) = LOWER(?) AND approval_status = 'Approved' AND is_active = 1 LIMIT 1",
+        [tender.state]
+      );
+      if (stateManager) {
+        await db.queryAsync(
+          `INSERT INTO notifications (user_id, title, message, created_at)
+           VALUES (?, 'New State Bid Application', ?, datetime('now'))`,
+          [stateManager.id, `${req.user.company || req.user.name} submitted ${appCode} for "${tender.name}" (${tender.state}).`]
+        );
+      }
+    }
+
+    db.logActivity({
+      actor_user_id: contractorId,
+      actor_role: "contractor",
+      action_type: "application_submitted",
+      entity_type: "application",
+      entity_id: inResult.insertId,
+      state: tender.state,
+      details: `Application ${appCode} submitted for "${tender.name.slice(0, 60)}"`
+    });
+
+    return res.status(201).json({
+      message: "Application recorded successfully!",
+      application: {
+        id: inResult.insertId,
+        application_code: appCode,
+        tender_id,
+        applied_on: submissionDate,
+        bid_amount: parsedBid,
+        application_status: "Submitted",
+        outcome: "Pending"
+      }
+    });
+  } catch (err) {
+    console.error("Error creating application:", err);
+    return res.status(500).json({ message: "Failed to record application: " + err.message });
+  }
 });
 
 // 4. PUT /api/applications/:id/withdraw - Voluntary withdrawal by contractor
-router.put("/:id/withdraw", checkContractorAuth, (req, res) => {
-  const applicationId = req.params.id;
-  const contractorId = req.user.id;
+router.put("/:id/withdraw", requireContractor, async (req, res) => {
+  try {
+    const applicationId = req.params.id;
+    const contractorId = req.user.id;
 
-  db.query(
-    "SELECT id, application_status, outcome FROM applications WHERE id = ? AND contractor_id = ? LIMIT 1",
-    [applicationId, contractorId],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: "Database error" });
-      if (results.length === 0) return res.status(404).json({ message: "Application not found or unauthorized" });
+    const current = await db.getAsync(
+      `SELECT a.id, a.application_code, a.application_status, a.outcome, t.state
+       FROM applications a
+       JOIN tenders t ON a.tender_id = t.id
+       WHERE a.id = ? AND a.contractor_id = ? LIMIT 1`,
+      [applicationId, contractorId]
+    );
 
-      const current = results[0];
-      if (current.application_status === "Won" || current.application_status === "Not Awarded") {
-        return res.status(400).json({ message: "Cannot withdraw an application that has already reached a final decision." });
-      }
-
-      db.query(
-        `UPDATE applications 
-         SET application_status = 'Withdrawn', outcome = 'Withdrawn', updated_at = datetime('now')
-         WHERE id = ? AND contractor_id = ?`,
-        [applicationId, contractorId],
-        (uErr) => {
-          if (uErr) return res.status(500).json({ message: "Failed to withdraw application" });
-          res.json({ message: "Application withdrawn successfully." });
-        }
-      );
+    if (!current) {
+      return res.status(404).json({ message: "Application not found or unauthorized." });
     }
-  );
+
+    if (["Won", "Not Awarded", "Rejected"].includes(current.application_status)) {
+      return res.status(400).json({ message: "Cannot withdraw an application that has already reached a final decision." });
+    }
+
+    await db.queryAsync(
+      `UPDATE applications
+       SET application_status = 'Withdrawn', outcome = 'Withdrawn', updated_at = datetime('now')
+       WHERE id = ? AND contractor_id = ?`,
+      [applicationId, contractorId]
+    );
+
+    db.logActivity({
+      actor_user_id: contractorId,
+      actor_role: "contractor",
+      action_type: "application_withdrawn",
+      entity_type: "application",
+      entity_id: current.id,
+      state: current.state,
+      details: `Application ${current.application_code} withdrawn by contractor.`
+    });
+
+    return res.json({ message: "Application withdrawn successfully." });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to withdraw application" });
+  }
 });
 
 module.exports = router;

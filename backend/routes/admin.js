@@ -1,459 +1,625 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 const db = require("../db");
+const { ALLOWED_CATEGORIES, MAX_DEMO_TENDERS, INQUIRY_STATUSES, normalizeState } = require("../constants");
+const { requireAdmin } = require("../middleware/auth");
 
-const JWT_SECRET = "student_secret_key_12345";
+// Strictly Central Admin ONLY across ALL /api/admin endpoints
+router.use(requireAdmin);
 
-// Middleware to check if user is admin or manager
-function checkAdmin(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  
-  if (!token) {
-    return res.status(401).json({ message: "Access denied. Please login first." });
-  }
+// 1. Nationwide Admin Analytics & Supervision Overview
+router.get(["/stats", "/analytics"], async (req, res) => {
+  try {
+    const [tendersCountRow, contractorsRow, approvedMgrRow, pendingMgrRow, totalMgrRow, viewsRow, savedRow, budgetRow] =
+      await Promise.all([
+        db.getAsync("SELECT COUNT(*) AS count FROM tenders"),
+        db.getAsync("SELECT COUNT(*) AS count FROM users WHERE LOWER(role) = 'contractor'"),
+        db.getAsync("SELECT COUNT(*) AS count FROM users WHERE LOWER(role) = 'manager' AND approval_status = 'Approved' AND is_active = 1"),
+        db.getAsync("SELECT COUNT(*) AS count FROM users WHERE LOWER(role) = 'manager' AND approval_status = 'Pending'"),
+        db.getAsync("SELECT COUNT(*) AS count FROM users WHERE LOWER(role) = 'manager'"),
+        db.getAsync("SELECT COALESCE(SUM(views_count), 0) AS totalViews FROM tenders"),
+        db.getAsync("SELECT COUNT(*) AS count FROM saved_tenders"),
+        db.getAsync("SELECT COALESCE(SUM(budget), 0) AS total, COALESCE(AVG(budget), 0) AS avg FROM tenders")
+      ]);
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: "Session expired. Please login again." });
-    }
-    const r = (decoded.role || "").toLowerCase();
-    if (r !== "admin" && r !== "manager") {
-      return res.status(403).json({ message: "Access denied. Admin or Manager privileges required." });
-    }
-    req.user = decoded;
-    next();
-  });
-}
+    // Category breakdown
+    const categoryStats = await db.queryAsync(
+      `SELECT
+        t.category,
+        COUNT(DISTINCT t.id) AS count,
+        COALESCE(SUM(t.budget), 0) AS budget,
+        COALESCE(SUM(t.views_count), 0) AS views,
+        (SELECT COUNT(*) FROM applications a JOIN tenders t2 ON a.tender_id = t2.id WHERE t2.category = t.category) AS applications_count,
+        (SELECT COUNT(*) FROM saved_tenders s JOIN tenders t3 ON s.tender_id = t3.id WHERE t3.category = t.category) AS saved_count
+       FROM tenders t
+       GROUP BY t.category
+       ORDER BY count DESC, t.category ASC`
+    );
 
-// 1. Get Operational Stats and Activity Logs
-router.get("/stats", checkAdmin, (req, res) => {
-  // Query 1: Tenders Count
-  db.query("SELECT COUNT(*) as count FROM tenders", [], (err, tendersRes) => {
-    if (err) return res.status(500).json({ message: err.message });
-    
-    // Query 2: Contractors Count
-    db.query("SELECT COUNT(*) as count FROM users WHERE LOWER(role) NOT IN ('admin', 'manager')", [], (err, usersRes) => {
-      if (err) return res.status(500).json({ message: err.message });
-      
-      // Query 3: Saved Tenders Count
-      db.query("SELECT COUNT(*) as count FROM saved_tenders", [], (err, savedRes) => {
-        if (err) return res.status(500).json({ message: err.message });
-        
-        // Query 4: Total Outlay Budget
-        db.query("SELECT SUM(budget) as total, AVG(budget) as avg FROM tenders", [], (err, budgetRes) => {
-          if (err) return res.status(500).json({ message: err.message });
-          
-          // Query 5: Budget per Category
-          db.query("SELECT category, COUNT(*) as count, SUM(budget) as budget FROM tenders GROUP BY category", [], (err, catStats) => {
-            if (err) return res.status(500).json({ message: err.message });
+    // State-wise tender & contractor activity breakdown
+    const stateStats = await db.queryAsync(
+      `SELECT
+        t.state,
+        COUNT(DISTINCT t.id) AS tender_count,
+        COALESCE(SUM(t.budget), 0) AS total_budget,
+        COALESCE(SUM(t.views_count), 0) AS total_views,
+        (SELECT COUNT(*) FROM saved_tenders s JOIN tenders t2 ON s.tender_id = t2.id WHERE LOWER(t2.state) = LOWER(t.state)) AS saved_count,
+        (SELECT COUNT(*) FROM applications a JOIN tenders t3 ON a.tender_id = t3.id WHERE LOWER(t3.state) = LOWER(t.state)) AS applications_count,
+        (SELECT COUNT(DISTINCT a.contractor_id) FROM applications a JOIN tenders t4 ON a.tender_id = t4.id WHERE LOWER(t4.state) = LOWER(t.state)) AS active_contractors,
+        (SELECT COUNT(*) FROM inquiries i WHERE LOWER(i.state) = LOWER(t.state)) AS inquiries_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE LOWER(i.state) = LOWER(t.state) AND LOWER(i.status) = 'resolved') AS resolved_inquiries_count,
+        (SELECT GROUP_CONCAT(u.name, ', ') FROM users u WHERE LOWER(u.role) = 'manager' AND LOWER(u.office_state) = LOWER(t.state) AND u.approval_status = 'Approved' AND u.is_active = 1) AS approved_manager
+       FROM tenders t
+       GROUP BY t.state
+       ORDER BY tender_count DESC, t.state ASC`
+    );
 
-            // Query 6: Recent activities (logs)
-            db.query("SELECT id, name, created_at FROM tenders ORDER BY id DESC LIMIT 3", [], (err, recentTenders) => {
-              if (err) return res.status(500).json({ message: err.message });
-
-              db.query("SELECT id, username, name, created_at FROM users ORDER BY id DESC LIMIT 3", [], (err, recentUsers) => {
-                if (err) return res.status(500).json({ message: err.message });
-
-                const recentActivity = [];
-                recentTenders.forEach(t => {
-                  recentActivity.push({
-                    type: "tender_created",
-                    message: `Tender "${t.name}" was published.`,
-                    time: t.created_at
-                  });
-                });
-                recentUsers.forEach(u => {
-                  recentActivity.push({
-                    type: "user_registered",
-                    message: `User "${u.name || u.username}" registered.`,
-                    time: u.created_at
-                  });
-                });
-
-                // Sort activity by time desc
-                recentActivity.sort((a, b) => new Date(b.time) - new Date(a.time));
-
-                return res.json({
-                  tendersCount: tendersRes[0].count,
-                  usersCount: usersRes[0].count,
-                  savedCount: savedRes[0].count,
-                  totalBudget: budgetRes[0].total || 0,
-                  averageBudget: budgetRes[0].avg || 0,
-                  categoryStats: catStats,
-                  recentActivity: recentActivity.slice(0, 5)
-                });
-              });
-            });
-          });
-        });
-      });
+    // Applications summary
+    const allApps = await db.queryAsync("SELECT application_status, outcome FROM applications");
+    const applicationsSummary = {
+      total: allApps.length,
+      won: 0,
+      notAwarded: 0,
+      underReview: 0,
+      submitted: 0,
+      pending: 0,
+      withdrawn: 0
+    };
+    allApps.forEach((a) => {
+      const st = (a.application_status || "").trim();
+      const out = (a.outcome || "").trim();
+      if (st === "Won" || out === "Won") applicationsSummary.won++;
+      else if (["Not Awarded", "Rejected"].includes(st) || ["Not Awarded", "Rejected"].includes(out)) applicationsSummary.notAwarded++;
+      else if (st === "Withdrawn" || out === "Withdrawn") applicationsSummary.withdrawn++;
+      else {
+        applicationsSummary.pending++;
+        if (st === "Under Review") applicationsSummary.underReview++;
+        else applicationsSummary.submitted++;
+      }
     });
-  });
-});
 
-// 2. Get User/Contractor List
-router.get("/users", checkAdmin, (req, res) => {
-  db.query(
-    "SELECT id, username, user_code, name, company, department, email, role, created_at FROM users ORDER BY id ASC",
-    [],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: err.message });
-      return res.json(results);
-    }
-  );
-});
+    // Inquiries summary
+    const allInquiries = await db.queryAsync("SELECT status, assignment_status FROM inquiries");
+    const inquiriesSummary = {
+      total: allInquiries.length,
+      pending: 0,
+      inProgress: 0,
+      resolved: 0,
+      unassigned: 0
+    };
+    allInquiries.forEach((i) => {
+      const st = (i.status || "").toLowerCase();
+      if (st === "resolved") inquiriesSummary.resolved++;
+      else if (st === "in progress" || st === "awaiting user response") inquiriesSummary.inProgress++;
+      else inquiriesSummary.pending++;
 
-// 3. Create Tender
-router.post("/tenders", checkAdmin, (req, res) => {
-  const { name, department, category, budget, location, deadline, eligibility, required_documents, description, source_url } = req.body;
+      if ((i.assignment_status || "").toLowerCase().includes("unassigned")) {
+        inquiriesSummary.unassigned++;
+      }
+    });
 
-  if (!name || !department || !category || !budget || !location || !deadline || !eligibility || !description) {
-    return res.status(400).json({ message: "All tender parameters are required" });
+    // Manager-wise performance comparison
+    const managerPerformance = await db.queryAsync(
+      `SELECT
+        u.id,
+        u.user_code,
+        u.username,
+        u.name,
+        u.email,
+        u.office_state,
+        u.approval_status,
+        u.is_active,
+        u.created_at,
+        (SELECT COUNT(*) FROM tenders t WHERE LOWER(t.state) = LOWER(u.office_state)) AS state_tenders_count,
+        (SELECT COUNT(*) FROM activity_logs al WHERE al.actor_user_id = u.id AND al.action_type IN ('tender_created', 'tender_updated')) AS tender_updates_count,
+        (SELECT COUNT(*) FROM inquiry_messages im WHERE im.sender_user_id = u.id AND LOWER(im.sender_role) = 'manager') AS inquiry_responses_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE i.assigned_manager_id = u.id) AS assigned_inquiries_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE i.assigned_manager_id = u.id AND LOWER(i.status) = 'resolved') AS resolved_inquiries_count,
+        (SELECT COUNT(*) FROM applications a WHERE a.evaluator_id = u.id) AS evaluated_applications_count
+       FROM users u
+       WHERE LOWER(u.role) = 'manager'
+       ORDER BY u.approval_status ASC, tender_updates_count DESC, inquiry_responses_count DESC, u.id ASC`
+    );
+
+    // Recent platform activity logs
+    const recentActivity = await db.queryAsync(
+      `SELECT al.*, u.name AS actor_name, u.username AS actor_username, u.user_code AS actor_code
+       FROM activity_logs al
+       LEFT JOIN users u ON al.actor_user_id = u.id
+       ORDER BY al.created_at DESC, al.id DESC
+       LIMIT 20`
+    );
+
+    return res.json({
+      tendersCount: tendersCountRow ? tendersCountRow.count : 0,
+      maxTenders: MAX_DEMO_TENDERS,
+      usersCount: contractorsRow ? contractorsRow.count : 0,
+      contractorsCount: contractorsRow ? contractorsRow.count : 0,
+      approvedManagersCount: approvedMgrRow ? approvedMgrRow.count : 0,
+      pendingManagersCount: pendingMgrRow ? pendingMgrRow.count : 0,
+      totalManagersCount: totalMgrRow ? totalMgrRow.count : 0,
+      totalViews: viewsRow ? viewsRow.totalViews : 0,
+      savedCount: savedRow ? savedRow.count : 0,
+      totalBudget: budgetRow ? budgetRow.total : 0,
+      averageBudget: budgetRow ? budgetRow.avg : 0,
+      applicationsSummary,
+      inquiriesSummary,
+      categoryStats,
+      stateStats,
+      managerPerformance,
+      recentActivity
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
+});
 
-  const docString = Array.isArray(required_documents) 
-    ? JSON.stringify(required_documents) 
-    : JSON.stringify([]);
+// 2. Get all 12 tenders nationwide with monitoring metrics
+router.get("/tenders", async (req, res) => {
+  try {
+    const rows = await db.queryAsync(
+      `SELECT t.*,
+        u.name AS updated_by_name,
+        (SELECT COUNT(*) FROM applications a WHERE a.tender_id = t.id) AS applications_count,
+        (SELECT COUNT(*) FROM saved_tenders s WHERE s.tender_id = t.id) AS saved_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE i.related_tender_id = t.id) AS inquiries_count
+       FROM tenders t
+       LEFT JOIN users u ON t.updated_by = u.id
+       ORDER BY t.id ASC`
+    );
 
-  db.query(
-    `INSERT INTO tenders (name, department, category, budget, location, deadline, eligibility, required_documents, description, source_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [name, department, category, parseFloat(budget), location, deadline, eligibility, docString, description, source_url || "https://eprocure.gov.in/eprocure/app"],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: err.message });
+    const tenders = rows.map((t) => {
+      try {
+        t.required_documents = JSON.parse(t.required_documents || "[]");
+      } catch (e) {
+        t.required_documents = [];
+      }
+      return t;
+    });
 
-      // Create a notification for all users that a new tender was published
-      db.query(
-        `INSERT INTO notifications (user_id, title, message)
-         SELECT id, ?, ? FROM users WHERE role != 'admin'`,
-        ["New Tender Alert!", `A new tender "${name}" under the ${category} category has been published.`],
-        () => {}
+    return res.json(tenders);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// 3. Enforce 12-tender cap even on Admin tender creation endpoint
+router.post("/tenders", async (req, res) => {
+  try {
+    const countRow = await db.getAsync("SELECT COUNT(*) AS count FROM tenders");
+    if (countRow && countRow.count >= MAX_DEMO_TENDERS) {
+      return res.status(400).json({
+        code: "TENDER_LIMIT_REACHED",
+        message: `Tender limit reached: TenderKart demonstration platform strictly maintains ${MAX_DEMO_TENDERS} tenders.`
+      });
+    }
+
+    const { name, department, category, budget, location, state, deadline, eligibility, required_documents, description, source_url } = req.body;
+    const cleanState = normalizeState(state || location || "");
+    if (!name || !department || !category || !budget || !location || !cleanState || !deadline || !eligibility || !description) {
+      return res.status(400).json({ message: "All tender parameters including state are required." });
+    }
+    if (!ALLOWED_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}` });
+    }
+
+    const docString = Array.isArray(required_documents) ? JSON.stringify(required_documents) : JSON.stringify([]);
+    const result = await db.queryAsync(
+      `INSERT INTO tenders (name, department, category, budget, location, state, deadline, status, eligibility, required_documents, description, source_url, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'Open', ?, ?, ?, ?, ?, ?)`,
+      [name, department, category, parseFloat(budget), location, cleanState, deadline, eligibility, docString, description, source_url || "https://eprocure.gov.in/eprocure/app", req.user.id, req.user.id]
+    );
+    return res.status(201).json({ id: result.insertId, message: "Tender created successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// 4. Get Registered Users & Contractor/Manager Activity
+router.get("/users", async (req, res) => {
+  try {
+    const users = await db.queryAsync(
+      `SELECT
+        u.id, u.username, u.user_code, u.name, u.company, u.department, u.office_state,
+        u.email, u.role, u.approval_status, u.is_active, u.created_at,
+        (SELECT COUNT(*) FROM applications a WHERE a.contractor_id = u.id) AS applications_count,
+        (SELECT COUNT(*) FROM applications a WHERE a.contractor_id = u.id AND a.outcome = 'Won') AS won_count,
+        (SELECT COUNT(*) FROM saved_tenders s WHERE s.user_id = u.id) AS saved_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE i.sender_user_id = u.id) AS inquiries_count,
+        (SELECT COUNT(*) FROM activity_logs al WHERE al.actor_user_id = u.id AND al.action_type IN ('tender_created', 'tender_updated')) AS tender_updates_count,
+        (SELECT COUNT(*) FROM inquiry_messages im WHERE im.sender_user_id = u.id AND LOWER(im.sender_role) = 'manager') AS inquiry_responses_count
+       FROM users u
+       ORDER BY u.id ASC`
+    );
+    return res.json(users);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// 5. Get All Managers (Pending, Approved, Rejected, Active, Inactive)
+router.get("/managers", async (req, res) => {
+  try {
+    const managers = await db.queryAsync(
+      `SELECT
+        u.id, u.username, u.user_code, u.name, u.email, u.department, u.office_state,
+        u.approval_status, u.is_active, u.approved_at, u.created_at,
+        (SELECT COUNT(*) FROM tenders t WHERE LOWER(t.state) = LOWER(u.office_state)) AS state_tenders_count,
+        (SELECT COUNT(*) FROM activity_logs al WHERE al.actor_user_id = u.id AND al.action_type IN ('tender_created', 'tender_updated')) AS tender_updates_count,
+        (SELECT COUNT(*) FROM inquiry_messages im WHERE im.sender_user_id = u.id AND LOWER(im.sender_role) = 'manager') AS inquiry_responses_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE i.assigned_manager_id = u.id) AS assigned_inquiries_count,
+        (SELECT COUNT(*) FROM inquiries i WHERE i.assigned_manager_id = u.id AND LOWER(i.status) = 'resolved') AS resolved_inquiries_count
+       FROM users u
+       WHERE LOWER(u.role) = 'manager'
+       ORDER BY
+         CASE WHEN u.approval_status = 'Pending' THEN 0 WHEN u.approval_status = 'Approved' THEN 1 ELSE 2 END,
+         u.created_at DESC`
+    );
+    return res.json(managers);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// 6. Approve Pending Manager Registration
+router.patch("/managers/:id/approve", async (req, res) => {
+  try {
+    const managerId = parseInt(req.params.id, 10);
+    const mgr = await db.getAsync(
+      "SELECT id, name, username, role, office_state, approval_status FROM users WHERE id = ? AND LOWER(role) = 'manager' LIMIT 1",
+      [managerId]
+    );
+    if (!mgr) {
+      return res.status(404).json({ message: "Manager account not found." });
+    }
+
+    await db.queryAsync(
+      `UPDATE users
+       SET approval_status = 'Approved', is_active = 1, approved_by = ?, approved_at = datetime('now'), updated_at = datetime('now')
+       WHERE id = ?`,
+      [req.user.id, managerId]
+    );
+
+    // Route any pending unassigned inquiries for this state to the newly approved manager
+    let assignedCount = 0;
+    if (mgr.office_state) {
+      const unassigned = await db.queryAsync(
+        `SELECT id, ticket_number FROM inquiries
+         WHERE LOWER(state) = LOWER(?) AND assigned_manager_id IS NULL AND assignment_status = 'Unassigned / Pending Admin Assignment'`,
+        [mgr.office_state]
       );
-
-      return res.status(201).json({ id: result.insertId, message: "Tender created successfully" });
+      if (unassigned.length > 0) {
+        await db.queryAsync(
+          `UPDATE inquiries
+           SET assigned_manager_id = ?, assignment_status = 'Assigned', assigned_to = ?, updated_at = datetime('now')
+           WHERE LOWER(state) = LOWER(?) AND assigned_manager_id IS NULL AND assignment_status = 'Unassigned / Pending Admin Assignment'`,
+          [mgr.id, mgr.username, mgr.office_state]
+        );
+        assignedCount = unassigned.length;
+      }
     }
-  );
-});
 
-// 4. Update Tender
-router.put("/tenders/:id", checkAdmin, (req, res) => {
-  const { name, department, category, budget, location, deadline, eligibility, required_documents, description, source_url } = req.body;
+    await db.queryAsync(
+      "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+      [
+        mgr.id,
+        "Manager Account Approved",
+        `Your account for ${mgr.office_state} has been approved by Central Admin. You can now access your State Manager Dashboard.`
+      ]
+    );
 
-  if (!name || !department || !category || !budget || !location || !deadline || !eligibility || !description) {
-    return res.status(400).json({ message: "All fields are required" });
+    db.logActivity({
+      actor_user_id: req.user.id,
+      actor_role: "admin",
+      action_type: "manager_approved",
+      entity_type: "user",
+      entity_id: mgr.id,
+      state: mgr.office_state,
+      details: `Central Admin approved Manager "${mgr.name}" for ${mgr.office_state}` + (assignedCount ? ` (${assignedCount} pending state inquiries auto-assigned)` : "")
+    });
+
+    return res.json({
+      success: true,
+      assignedInquiriesCount: assignedCount,
+      message: `Manager ${mgr.name} (${mgr.office_state}) has been approved.`
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
+});
 
-  const docString = Array.isArray(required_documents)
-    ? JSON.stringify(required_documents)
-    : JSON.stringify([]);
-
-  db.query(
-    `UPDATE tenders 
-     SET name = ?, department = ?, category = ?, budget = ?, location = ?, deadline = ?, eligibility = ?, required_documents = ?, description = ?, source_url = ?
-     WHERE id = ?`,
-    [name, department, category, parseFloat(budget), location, deadline, eligibility, docString, description, source_url || "https://eprocure.gov.in/eprocure/app", req.params.id],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (result.affectedRows === 0) return res.status(404).json({ message: "Tender not found" });
-      return res.json({ message: "Tender updated successfully" });
+// 7. Reject Manager Registration
+router.patch("/managers/:id/reject", async (req, res) => {
+  try {
+    const managerId = parseInt(req.params.id, 10);
+    const mgr = await db.getAsync(
+      "SELECT id, name, office_state FROM users WHERE id = ? AND LOWER(role) = 'manager' LIMIT 1",
+      [managerId]
+    );
+    if (!mgr) {
+      return res.status(404).json({ message: "Manager account not found." });
     }
-  );
+
+    await db.queryAsync(
+      `UPDATE users
+       SET approval_status = 'Rejected', is_active = 0, approved_by = ?, approved_at = datetime('now'), updated_at = datetime('now')
+       WHERE id = ?`,
+      [req.user.id, managerId]
+    );
+
+    db.logActivity({
+      actor_user_id: req.user.id,
+      actor_role: "admin",
+      action_type: "manager_rejected",
+      entity_type: "user",
+      entity_id: mgr.id,
+      state: mgr.office_state,
+      details: `Central Admin rejected Manager registration for "${mgr.name}" (${mgr.office_state})`
+    });
+
+    return res.json({ success: true, message: `Manager ${mgr.name} has been rejected.` });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// 5. Delete Tender
-router.delete("/tenders/:id", checkAdmin, (req, res) => {
-  db.query("DELETE FROM tenders WHERE id = ?", [req.params.id], (err, result) => {
-    if (err) return res.status(500).json({ message: err.message });
-    if (result.affectedRows === 0) return res.status(404).json({ message: "Tender not found" });
-    return res.json({ message: "Tender deleted successfully" });
-  });
+// 8. Activate or Deactivate Manager Account
+router.patch("/managers/:id/status", async (req, res) => {
+  try {
+    const managerId = parseInt(req.params.id, 10);
+    const { is_active } = req.body;
+
+    if (is_active === undefined) {
+      return res.status(400).json({ message: "is_active (true/false or 1/0) is required." });
+    }
+
+    const activeFlag = is_active === true || is_active === 1 || is_active === "1" ? 1 : 0;
+    const mgr = await db.getAsync(
+      "SELECT id, name, office_state, approval_status FROM users WHERE id = ? AND LOWER(role) = 'manager' LIMIT 1",
+      [managerId]
+    );
+    if (!mgr) {
+      return res.status(404).json({ message: "Manager account not found." });
+    }
+
+    if (mgr.approval_status !== "Approved" && activeFlag === 1) {
+      return res.status(400).json({ message: "Only approved managers can be activated. Approve the manager first." });
+    }
+
+    await db.queryAsync(
+      "UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?",
+      [activeFlag, managerId]
+    );
+
+    db.logActivity({
+      actor_user_id: req.user.id,
+      actor_role: "admin",
+      action_type: activeFlag ? "manager_activated" : "manager_deactivated",
+      entity_type: "user",
+      entity_id: mgr.id,
+      state: mgr.office_state,
+      details: `Central Admin ${activeFlag ? "activated" : "deactivated"} Manager "${mgr.name}" (${mgr.office_state})`
+    });
+
+    return res.json({
+      success: true,
+      is_active: activeFlag,
+      message: `Manager ${mgr.name} has been ${activeFlag ? "activated" : "deactivated"}.`
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// 6. Get All Applications for Manager Review
-router.get("/applications", checkAdmin, (req, res) => {
-  const query = `
-    SELECT 
-      a.id,
-      a.application_code,
-      a.contractor_id,
-      a.tender_id,
-      a.applied_on,
-      a.bid_amount,
-      a.application_status,
-      a.outcome,
-      a.proposal_notes,
-      a.missing_documents,
-      a.evaluation_notes,
-      a.evaluator_id,
-      a.evaluated_at,
-      a.created_at,
-      u.name AS contractor_name,
-      u.company AS contractor_company,
-      u.user_code AS contractor_code,
-      u.email AS contractor_email,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      t.department AS tender_department,
-      t.budget AS tender_budget,
-      t.deadline AS tender_deadline
-    FROM applications a
-    JOIN users u ON a.contractor_id = u.id
-    JOIN tenders t ON a.tender_id = t.id
-    ORDER BY a.applied_on DESC, a.id DESC
-  `;
+// 9. Nationwide Applications Monitor (Admin Supervisory View)
+router.get("/applications", async (req, res) => {
+  try {
+    const rows = await db.queryAsync(
+      `SELECT
+        a.*,
+        u.name AS contractor_name,
+        u.company AS contractor_company,
+        u.user_code AS contractor_code,
+        u.email AS contractor_email,
+        t.name AS tender_name,
+        t.category AS tender_category,
+        t.department AS tender_department,
+        t.state AS tender_state,
+        t.location AS tender_location,
+        t.budget AS tender_budget,
+        t.deadline AS tender_deadline,
+        ev.name AS evaluator_name
+       FROM applications a
+       JOIN users u ON a.contractor_id = u.id
+       JOIN tenders t ON a.tender_id = t.id
+       LEFT JOIN users ev ON a.evaluator_id = ev.id
+       ORDER BY a.applied_on DESC, a.id DESC`
+    );
 
-  db.query(query, [], (err, results) => {
-    if (err) return res.status(500).json({ message: err.message });
-    const apps = results.map(row => {
+    const apps = rows.map((row) => {
       try {
         row.missing_documents = JSON.parse(row.missing_documents || "[]");
       } catch (e) {
-        row.missing_documents = row.missing_documents ? [row.missing_documents] : [];
+        row.missing_documents = [];
       }
       return row;
     });
+
     return res.json(apps);
-  });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// 7. Update Application Evaluation (Manager Feedback & Outcome)
-router.put("/applications/:id/evaluate", checkAdmin, (req, res) => {
-  const { application_status, outcome, evaluation_notes, missing_documents } = req.body;
+// 10. Nationwide Inquiries Monitor
+router.get("/inquiries", async (req, res) => {
+  try {
+    const { state, category, status, assignment_status, search } = req.query;
 
-  const validStatuses = ["Submitted", "Under Review", "Won", "Not Awarded", "Withdrawn"];
-  if (application_status && !validStatuses.includes(application_status)) {
-    return res.status(400).json({ message: "Invalid application status." });
-  }
+    let baseSql = `
+      SELECT
+        i.*,
+        t.name AS tender_name,
+        t.category AS tender_category,
+        t.state AS tender_state,
+        m.name AS assigned_manager_name,
+        m.office_state AS assigned_manager_state,
+        (SELECT COUNT(*) FROM inquiry_messages msg WHERE msg.inquiry_id = i.id) AS message_count,
+        (SELECT MAX(created_at) FROM inquiry_messages msg WHERE msg.inquiry_id = i.id) AS last_activity_at
+      FROM inquiries i
+      LEFT JOIN tenders t ON i.related_tender_id = t.id
+      LEFT JOIN users m ON i.assigned_manager_id = m.id
+      WHERE 1=1
+    `;
+    const params = [];
 
-  const missingDocsStr = Array.isArray(missing_documents)
-    ? JSON.stringify(missing_documents)
-    : (typeof missing_documents === "string" && missing_documents.trim() ? JSON.stringify(missing_documents.split(",").map(s => s.trim()).filter(Boolean)) : JSON.stringify([]));
-
-  db.query(
-    `UPDATE applications 
-     SET application_status = ?, outcome = ?, evaluation_notes = ?, missing_documents = ?, 
-         evaluator_id = ?, evaluated_at = datetime('now'), updated_at = datetime('now')
-     WHERE id = ?`,
-    [
-      application_status || "Under Review",
-      outcome || "Pending",
-      evaluation_notes || null,
-      missingDocsStr,
-      req.user.id,
-      req.params.id
-    ],
-    (err, result) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (result.affectedRows === 0) return res.status(404).json({ message: "Application not found" });
-
-      // Notify contractor about evaluation update
-      db.query("SELECT contractor_id, application_code FROM applications WHERE id = ?", [req.params.id], (sErr, sRes) => {
-        if (!sErr && sRes && sRes.length > 0) {
-          db.query(
-            `INSERT INTO notifications (user_id, title, message, created_at)
-             VALUES (?, 'Application Status Updated', ?, datetime('now'))`,
-            [sRes[0].contractor_id, `Your application ${sRes[0].application_code} status has been updated to "${application_status}".`]
-          );
-        }
-      });
-
-      return res.json({ message: "Application evaluation updated successfully." });
+    if (state) {
+      baseSql += " AND LOWER(i.state) = LOWER(?)";
+      params.push(state);
     }
-  );
-});
-
-// Middleware strictly for main website Admin (excludes ordinary managers)
-function checkMainAdminOnly(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "Access denied. Please login first." });
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).json({ message: "Session expired. Please login again." });
-    const r = (decoded.role || "").toLowerCase();
-    if (r !== "admin") {
-      return res.status(403).json({ message: "Access denied. Main Administrator privileges required." });
+    if (category) {
+      baseSql += " AND i.inquiry_category = ?";
+      params.push(category);
     }
-    req.user = decoded;
-    next();
-  });
-}
+    if (status) {
+      baseSql += " AND LOWER(i.status) = LOWER(?)";
+      params.push(status);
+    }
+    if (assignment_status) {
+      baseSql += " AND LOWER(i.assignment_status) LIKE LOWER(?)";
+      params.push(`%${assignment_status}%`);
+    }
+    if (search && search.trim()) {
+      baseSql += " AND (i.ticket_number LIKE ? OR i.sender_name LIKE ? OR i.sender_email LIKE ? OR i.subject LIKE ? OR i.organization_name LIKE ? OR i.description LIKE ?)";
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term, term, term, term);
+    }
 
-// Admin Central Helpdesk Queue
-router.get("/inquiries", checkMainAdminOnly, (req, res) => {
-  const { role, category, status, priority, search } = req.query;
+    baseSql += " ORDER BY i.created_at DESC, i.id DESC";
+    const rows = await db.queryAsync(baseSql, params);
 
-  let baseSql = `
-    SELECT 
-      i.*,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      (SELECT COUNT(*) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS message_count,
-      (SELECT MAX(created_at) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS last_activity_at
-    FROM inquiries i
-    LEFT JOIN tenders t ON i.related_tender_id = t.id
-    WHERE 1=1
-  `;
-  const params = [];
+    const allInq = await db.queryAsync("SELECT status, assignment_status FROM inquiries");
+    const summary = {
+      totalInquiries: allInq.length,
+      countPending: 0,
+      countInProgress: 0,
+      countResolved: 0,
+      countUnassigned: 0
+    };
+    allInq.forEach((r) => {
+      const st = (r.status || "").toLowerCase();
+      if (st === "resolved") summary.countResolved++;
+      else if (st === "in progress" || st === "awaiting user response") summary.countInProgress++;
+      else summary.countPending++;
 
-  if (role) {
-    baseSql += " AND LOWER(i.sender_role) = LOWER(?)";
-    params.push(role);
-  }
-  if (category) {
-    baseSql += " AND i.inquiry_category = ?";
-    params.push(category);
-  }
-  if (status) {
-    baseSql += " AND LOWER(i.status) = LOWER(?)";
-    params.push(status);
-  }
-  if (priority) {
-    baseSql += " AND LOWER(i.priority) = LOWER(?)";
-    params.push(priority);
-  }
-  if (search) {
-    baseSql += " AND (i.ticket_number LIKE ? OR i.sender_name LIKE ? OR i.sender_email LIKE ? OR i.subject LIKE ? OR i.organization_name LIKE ?)";
-    const term = `%${search.trim()}%`;
-    params.push(term, term, term, term, term);
-  }
-
-  baseSql += " ORDER BY i.created_at DESC";
-
-  db.query(baseSql, params, (err, rows) => {
-    if (err) return res.status(500).json({ message: err.message });
-
-    db.query(
-      `SELECT 
-        COUNT(*) AS total,
-        SUM(CASE WHEN LOWER(status) = 'new' THEN 1 ELSE 0 END) AS count_new,
-        SUM(CASE WHEN LOWER(status) = 'in progress' THEN 1 ELSE 0 END) AS count_in_progress,
-        SUM(CASE WHEN LOWER(status) = 'awaiting user response' THEN 1 ELSE 0 END) AS count_awaiting_user,
-        SUM(CASE WHEN LOWER(status) = 'resolved' THEN 1 ELSE 0 END) AS count_resolved
-       FROM inquiries`,
-      [],
-      (sumErr, sumRows) => {
-        if (sumErr) return res.status(500).json({ message: sumErr.message });
-
-        const s = sumRows[0] || {};
-        return res.json({
-          summary: {
-            totalInquiries: s.total || 0,
-            countNew: s.count_new || 0,
-            countInProgress: s.count_in_progress || 0,
-            countAwaitingUser: s.count_awaiting_user || 0,
-            countResolved: s.count_resolved || 0
-          },
-          inquiries: rows || []
-        });
+      if ((r.assignment_status || "").toLowerCase().includes("unassigned")) {
+        summary.countUnassigned++;
       }
-    );
-  });
-});
+    });
 
-// Admin updates priority/status
-router.patch("/inquiries/:id", checkMainAdminOnly, (req, res) => {
-  const inquiryId = req.params.id;
-  const { status, priority } = req.body;
-
-  db.query(
-    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
-    [inquiryId, inquiryId],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
-
-      const ticket = rows[0];
-      const newStatus = status || ticket.status;
-      const newPriority = priority || ticket.priority;
-      const resolvedAt = (newStatus === "Resolved") ? new Date().toISOString().replace("T", " ").substring(0, 19) : null;
-
-      db.query(
-        `UPDATE inquiries 
-         SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
-         WHERE id = ?`,
-        [newStatus, newPriority, resolvedAt, ticket.id],
-        (updateErr) => {
-          if (updateErr) return res.status(500).json({ message: updateErr.message });
-
-          return res.json({
-            success: true,
-            message: `Ticket ${ticket.ticket_number} updated to status "${newStatus}" and priority "${newPriority}".`,
-            ticket: {
-              ...ticket,
-              status: newStatus,
-              priority: newPriority,
-              resolved_at: resolvedAt
-            }
-          });
-        }
-      );
-    }
-  );
-});
-
-// Admin posts reply
-router.post("/inquiries/:id/reply", checkMainAdminOnly, (req, res) => {
-  const inquiryId = req.params.id;
-  const { message_body, status, priority } = req.body;
-
-  if (!message_body || !message_body.trim()) {
-    return res.status(400).json({ message: "Admin reply body cannot be empty." });
+    return res.json({ summary, inquiries: rows });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
+});
 
-  db.query(
-    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
-    [inquiryId, inquiryId],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
+// 11. Admin updates inquiry status/priority
+router.patch("/inquiries/:id", async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const { status, priority } = req.body;
 
-      const ticket = rows[0];
-      const newStatus = status || "Awaiting User Response";
-      const newPriority = priority || ticket.priority;
-      const resolvedAt = (newStatus === "Resolved") ? new Date().toISOString().replace("T", " ").substring(0, 19) : null;
+    const ticket = await db.getAsync(
+      "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+      [inquiryId, inquiryId]
+    );
+    if (!ticket) return res.status(404).json({ message: "Inquiry not found." });
 
-      db.query(
-        `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
-         VALUES (?, ?, 'Admin', ?, datetime('now'))`,
-        [ticket.id, req.user.id, message_body.trim()],
-        (msgErr, msgRes) => {
-          if (msgErr) return res.status(500).json({ message: msgErr.message });
+    const newStatus = status && INQUIRY_STATUSES.includes(status) ? status : ticket.status;
+    const newPriority = priority || ticket.priority;
+    const resolvedAt = newStatus === "Resolved"
+      ? new Date().toISOString().replace("T", " ").substring(0, 19)
+      : null;
 
-          db.query(
-            `UPDATE inquiries
-             SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
-             WHERE id = ?`,
-            [newStatus, newPriority, resolvedAt, ticket.id],
-            (updateErr) => {
-              if (updateErr) return res.status(500).json({ message: updateErr.message });
+    await db.queryAsync(
+      "UPDATE inquiries SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now') WHERE id = ?",
+      [newStatus, newPriority, resolvedAt, ticket.id]
+    );
 
-              db.query(
-                `INSERT INTO notifications (user_id, title, message)
-                 VALUES (?, ?, ?)`,
-                [
-                  ticket.sender_user_id,
-                  `Official Admin Response on Ticket ${ticket.ticket_number}`,
-                  `Central Admin: "${message_body.trim().slice(0, 90)}..."`
-                ],
-                () => {}
-              );
+    return res.json({ success: true, status: newStatus, priority: newPriority });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
 
-              return res.json({
-                success: true,
-                message: "Admin response saved and dispatched to sender dashboard.",
-                message_id: msgRes.insertId,
-                status: newStatus,
-                priority: newPriority
-              });
-            }
-          );
-        }
-      );
+// 12. Admin supervisory reply (for unassigned inquiries or oversight)
+router.post("/inquiries/:id/reply", async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const { message_body, status, priority } = req.body;
+
+    if (!message_body || !message_body.trim()) {
+      return res.status(400).json({ message: "Reply body cannot be empty." });
     }
-  );
+
+    const ticket = await db.getAsync(
+      "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+      [inquiryId, inquiryId]
+    );
+    if (!ticket) return res.status(404).json({ message: "Inquiry not found." });
+
+    const newStatus = status && INQUIRY_STATUSES.includes(status) ? status : "In Progress";
+    const newPriority = priority || ticket.priority;
+    const resolvedAt = newStatus === "Resolved"
+      ? new Date().toISOString().replace("T", " ").substring(0, 19)
+      : null;
+
+    const msgRes = await db.queryAsync(
+      `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
+       VALUES (?, ?, 'Admin', ?, datetime('now'))`,
+      [ticket.id, req.user.id, message_body.trim()]
+    );
+
+    await db.queryAsync(
+      "UPDATE inquiries SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now') WHERE id = ?",
+      [newStatus, newPriority, resolvedAt, ticket.id]
+    );
+
+    await db.queryAsync(
+      "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+      [ticket.sender_user_id, `Central Admin Response (${ticket.ticket_number})`, message_body.trim().slice(0, 100)]
+    );
+
+    db.logActivity({
+      actor_user_id: req.user.id,
+      actor_role: "admin",
+      action_type: "inquiry_replied",
+      entity_type: "inquiry",
+      entity_id: ticket.id,
+      state: ticket.state,
+      details: `Central Admin replied to ${ticket.ticket_number} (${newStatus})`
+    });
+
+    return res.json({ success: true, message_id: msgRes.insertId, status: newStatus });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// 13. Full Platform Activity Logs
+router.get("/activity", async (req, res) => {
+  try {
+    const logs = await db.queryAsync(
+      `SELECT al.*, u.name AS actor_name, u.username AS actor_username, u.user_code AS actor_code
+       FROM activity_logs al
+       LEFT JOIN users u ON al.actor_user_id = u.id
+       ORDER BY al.created_at DESC, al.id DESC
+       LIMIT 100`
+    );
+    return res.json(logs);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;

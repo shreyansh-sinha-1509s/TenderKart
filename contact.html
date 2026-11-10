@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TenderKart - Contact & Procurement Helpdesk</title>
-  <meta name="description" content="Get in touch with TenderKart procurement coordinators for tender verification, NIT document queries, and contractor support." />
+  <title>TenderKart - Contact & Tender Inquiries</title>
+  <meta name="description" content="General support details, platform guidance, and state-routed tender inquiry desk for verified contractors." />
   <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Contact Page Single-Viewport & High-Fidelity Layout */
     .contact-page-main {
       flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 1.15rem 0 1.65rem 0;
+      padding: 1.5rem 0 2.5rem 0;
       position: relative;
     }
 
@@ -23,8 +22,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 5px;
-      margin-bottom: 1.1rem;
+      gap: 6px;
+      margin-bottom: 1.5rem;
     }
 
     .contact-split-grid {
@@ -38,11 +37,12 @@
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 18px;
-      padding: 1.5rem 1.75rem;
+      padding: 1.75rem;
       box-shadow: var(--shadow-sm);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      gap: 1rem;
       transition: var(--transition-smooth);
     }
 
@@ -51,16 +51,10 @@
       box-shadow: var(--shadow-md);
     }
 
-    .form-grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.85rem;
-    }
-
     .form-field {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
     .form-field-label {
@@ -75,9 +69,9 @@
       background-color: var(--bg-primary);
       border: 1.5px solid var(--border-color);
       border-radius: 10px;
-      padding: 0.55rem 0.85rem;
+      padding: 0.6rem 0.85rem;
       color: var(--text-primary);
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       transition: var(--transition-smooth);
       width: 100%;
       box-sizing: border-box;
@@ -89,7 +83,6 @@
       background-color: var(--bg-card);
     }
 
-    /* Right Support Info & 3D Command Center Column */
     .contact-info-col {
       display: flex;
       flex-direction: column;
@@ -97,7 +90,6 @@
       justify-content: space-between;
     }
 
-    /* --- 3D GovTech Secretariat & Procurement Telemetry Command Center --- */
     .command-center-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -112,12 +104,6 @@
       overflow: hidden;
     }
 
-    .command-center-card:hover {
-      border-color: rgba(56, 189, 248, 0.5);
-      box-shadow: 0 16px 36px -8px rgba(37, 99, 235, 0.22), 0 0 0 1px rgba(56, 189, 248, 0.2);
-      transform: translateY(-2px);
-    }
-
     .command-stage-wrapper {
       position: relative;
       width: 100%;
@@ -130,54 +116,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transform-style: preserve-3d;
-      perspective: 1200px;
-    }
-
-    .road-flow-line {
-      animation: flowRoad 1.2s linear infinite;
-    }
-    @keyframes flowRoad {
-      0% { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: -20; }
-    }
-
-    .pulse-node {
-      animation: pulseGlow 2s infinite;
-    }
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 0.4; r: 3; }
-      50% { opacity: 1; r: 4.5; }
-    }
-
-    .blink-node {
-      animation: blink 1.5s infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
-    }
-
-    .float-pin-hq { animation: floatHQ 3.2s ease-in-out infinite; }
-    .float-pin-delhi { animation: floatHQ 3.6s ease-in-out infinite 0.4s; }
-    .float-pin-mumbai { animation: floatHQ 3.0s ease-in-out infinite 0.8s; }
-    .float-pin-desk { animation: floatHQ 3.4s ease-in-out infinite 1.2s; }
-
-    @keyframes floatHQ {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-
-    .satellite-orbit {
-      animation: satOrbit 12s linear infinite;
-    }
-
-    .cmd-interactive {
-      cursor: pointer;
-      transition: opacity 0.2s ease, filter 0.2s ease;
-    }
-    .cmd-interactive:hover {
-      filter: brightness(1.3) drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));
     }
 
     .contact-channels-grid {
@@ -190,16 +128,10 @@
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 14px;
-      padding: 0.65rem 0.8rem;
+      padding: 0.7rem 0.85rem;
       display: flex;
       align-items: center;
       gap: 0.7rem;
-      transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-
-    .channel-box:hover {
-      transform: translateY(-2px);
-      border-color: var(--color-primary);
     }
 
     .channel-icon {
@@ -241,7 +173,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 14px;
-      padding: 0.55rem 0.95rem;
+      padding: 0.6rem 0.95rem;
       display: flex;
       align-items: center;
       justify-content: space-around;
@@ -261,15 +193,15 @@
       text-transform: uppercase;
     }
 
-    /* Responsive adjustments */
+    .faq-item {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
     @media (max-width: 960px) {
       .contact-split-grid {
-        grid-template-columns: 1fr;
-      }
-      .contact-page-main {
-        padding: 2rem 0;
-      }
-      .form-grid-2 {
         grid-template-columns: 1fr;
       }
       .contact-channels-grid {
@@ -280,426 +212,263 @@
 </head>
 <body style="min-height: 100vh; display: flex; flex-direction: column;">
 
-  <!-- Sticky Glassmorphic Navbar -->
+  <!-- Sticky Navbar -->
   <div id="navbar-placeholder"></div>
 
-  <!-- Main Contact Section (Fitted in One Page) -->
+  <!-- Main Contact Section -->
   <main class="contact-page-main">
     <div class="container" style="max-width: 1180px;">
-      
-      <!-- Section Header (Styled identically to Home & About) -->
+
       <div class="contact-header">
         <div class="hero-kicker-badge" style="margin-bottom: 2px;">
           <span class="live-ping-dot"></span>
-          <span class="kicker-lead">GovTech Helpdesk</span>
+          <span class="kicker-lead">State-Routed Support Desk</span>
           <span class="kicker-sep">•</span>
           <span class="kicker-sub">Pan-India Tender Coordination</span>
         </div>
-        
+
         <h1 class="hero-headline" style="font-size: 2.15rem; margin: 0;">
-          Get in Touch with <span class="hero-title-accent">TenderKart Desk</span>
+          Contact &amp; <span class="hero-title-accent">Tender Inquiry Desk</span>
         </h1>
-        
-        <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 580px; margin: 0; line-height: 1.45;">
-          Direct coordination for tender eligibility, NIT document verification, and contractor support.
+
+        <p style="font-size: 0.95rem; color: var(--text-secondary); max-width: 620px; margin: 0; line-height: 1.45;">
+          General platform guidance, support contacts, and state-routed tender clarifications for verified contractors.
         </p>
       </div>
 
-      <!-- Split Layout (Left: Inquiry Form | Right: Headquarters & Multi-Channel Support) -->
       <div class="contact-split-grid">
-        
-        <!-- Left: Official Inquiry Form -->
+
+        <!-- Left Column: Role-Aware View -->
         <div class="contact-card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(var(--primary-rgb), 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </div>
-              <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">Centralized Admin Helpdesk</h2>
+              <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;" id="contact-card-title">Platform Support &amp; Tender Inquiries</h2>
             </div>
-            <span class="badge badge-blue" id="contact-role-badge" style="font-size: 0.72rem; padding: 3px 10px; text-transform: uppercase;">Authenticated Helpdesk</span>
+            <span class="badge badge-blue" id="contact-role-badge" style="font-size: 0.72rem; padding: 3px 10px;">Public Visitor</span>
           </div>
 
-          <!-- Dynamic submission result card -->
-          <div id="contact-success-banner" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-              <span style="color: var(--color-success); font-size: 1.25rem;">✅</span>
-              <strong style="color: var(--color-success); font-size: 0.95rem;" id="success-ticket-header">Inquiry Ticket Registered</strong>
+          <!-- VIEW 1: Public Visitor View (Not Logged In) -->
+          <div id="contact-public-visitor-view" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="background: rgba(var(--primary-rgb), 0.06); border: 1px solid rgba(var(--primary-rgb), 0.25); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary);">Contractor Login Required for Tender Inquiries</strong>
+              <p style="font-size: 0.86rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">
+                Tender-related inquiries are automatically routed to the approved State Manager overseeing the selected tender's state. Please log in or register as a contractor to submit a tender inquiry.
+              </p>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="login.html" class="btn btn-primary" style="font-size: 0.85rem; padding: 8px 18px;">Login</a>
+                <a href="register.html?type=contractor" class="btn btn-outline" style="font-size: 0.85rem; padding: 8px 18px;">Register as Contractor</a>
+              </div>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 10px 0;" id="success-ticket-msg">
-              Your inquiry has been stored and routed to the TenderKart Admin.
-            </p>
-            <div style="display: flex; gap: 10px; align-items: center;">
-              <a href="#" id="success-view-ticket-btn" class="btn btn-primary" style="font-size: 0.8rem; padding: 6px 14px;">
-                View Ticket in My Dashboard
-              </a>
-              <button type="button" onclick="document.getElementById('contact-success-banner').style.display='none'; document.getElementById('contact-form').style.display='flex';" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px;">
-                Submit Another Inquiry
-              </button>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); margin: 0;">Platform Guidance &amp; FAQs</h3>
+              <div class="faq-item">
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">How do contractors explore and apply for tenders?</strong>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 4px 0 0 0; line-height: 1.45;">
+                  Browse all 12 active urban infrastructure tenders across India in the Browse Tenders catalog, filter by state or category, generate AI digests, and record bids in your Contractor Dashboard.
+                </p>
+              </div>
+              <div class="faq-item">
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">How are tender inquiries handled?</strong>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 4px 0 0 0; line-height: 1.45;">
+                  Authenticated contractors select a specific tender and inquiry category. TenderKart automatically identifies the tender's state and routes the inquiry directly to the approved State Manager.
+                </p>
+              </div>
+              <div class="faq-item">
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">How do State Managers join the platform?</strong>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 4px 0 0 0; line-height: 1.45;">
+                  Department officers can register via the Manager registration tab by selecting their assigned Indian state. Accounts become active after Central Admin approval.
+                </p>
+              </div>
             </div>
           </div>
 
-          <form id="contact-form" style="display: flex; flex-direction: column; gap: 12px;">
-            <!-- Row 1: Organization & Sender Name -->
-            <div class="form-grid-2">
-              <div class="form-field">
-                <label for="contact-org" class="form-field-label">Company / Organization Name</label>
-                <input type="text" id="contact-org" class="form-ctrl" placeholder="e.g. Mehta Infrastructure Works" required />
+          <!-- VIEW 2: Logged-in Manager or Central Admin View (Cannot use contractor inquiry form) -->
+          <div id="contact-non-contractor-view" style="display: none; flex-direction: column; gap: 16px;">
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <strong style="font-size: 0.98rem; color: var(--text-primary);" id="non-contractor-title">Contractor-Only Inquiry Form</strong>
+              <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 0; line-height: 1.5;" id="non-contractor-desc">
+                The tender inquiry submission form is available exclusively for contractor accounts. Use your workspace to monitor or respond to state-routed contractor inquiries.
+              </p>
+              <div>
+                <a href="manager.html" id="non-contractor-dashboard-link" class="btn btn-primary" style="font-size: 0.85rem; padding: 9px 18px;">Open Workspace</a>
               </div>
-              <div class="form-field">
-                <label for="contact-name" class="form-field-label">Sender Name</label>
-                <input type="text" id="contact-name" class="form-ctrl" placeholder="e.g. Rajesh Mehta" required />
+            </div>
+          </div>
+
+          <!-- VIEW 3: Logged-in Contractor Compact Inquiry Form -->
+          <div id="contact-contractor-view" style="display: none; flex-direction: column; gap: 14px;">
+            <!-- Auto-fetched contractor details strip (read-only display, no re-entry needed) -->
+            <div id="contractor-identity-strip" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 0.82rem;">
+              <div>
+                <span style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Full Name</span>
+                <strong id="auto-contractor-name" style="color: var(--text-primary);">--</strong>
+              </div>
+              <div>
+                <span style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Company Name</span>
+                <strong id="auto-contractor-company" style="color: var(--text-primary);">--</strong>
+              </div>
+              <div>
+                <span style="display: block; font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Email Address</span>
+                <strong id="auto-contractor-email" style="color: var(--text-primary); word-break: break-word;">--</strong>
               </div>
             </div>
 
-            <!-- Row 2: Official Email & Detected Sender Role -->
-            <div class="form-grid-2">
-              <div class="form-field">
-                <label for="contact-email" class="form-field-label">Official Email Address</label>
-                <input type="email" id="contact-email" class="form-ctrl" placeholder="e.g. rajesh.mehta@demo.tenderkart.in" required />
+            <!-- Dynamic submission result banner -->
+            <div id="contact-success-banner" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1rem;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                <span style="color: var(--color-success); font-size: 1.25rem;">✅</span>
+                <strong style="color: var(--color-success); font-size: 0.95rem;" id="success-ticket-header">Inquiry Submitted</strong>
               </div>
-              <div class="form-field">
-                <label for="contact-role" class="form-field-label">Sender Role (System Verified)</label>
-                <input type="text" id="contact-role" class="form-ctrl" style="background-color: var(--bg-secondary); cursor: not-allowed; font-weight: 700;" readonly value="Contractor" />
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 10px 0;" id="success-ticket-msg"></p>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a href="dashboard.html?tab=helpdesk" id="success-view-ticket-btn" class="btn btn-primary" style="font-size: 0.8rem; padding: 6px 14px;">
+                  View in My Inquiries
+                </a>
+                <button type="button" onclick="resetContractorInquiryForm()" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px;">
+                  Submit Another Inquiry
+                </button>
               </div>
             </div>
 
-            <!-- Row 3: Inquiry Classification & Related Tender ID -->
-            <div class="form-grid-2">
+            <!-- Compact 3-field Contractor Inquiry Form -->
+            <form id="contact-form" style="display: flex; flex-direction: column; gap: 14px;">
               <div class="form-field">
-                <label for="contact-category" class="form-field-label">Inquiry Classification</label>
+                <label for="contact-tender-id" class="form-field-label">1. Related Tender *</label>
+                <select id="contact-tender-id" class="form-ctrl" style="cursor: pointer;" required>
+                  <option value="">Select a tender from active catalog...</option>
+                </select>
+                <span id="contact-tender-state-hint" style="font-size: 0.76rem; color: var(--color-primary); font-weight: 600; display: none;"></span>
+              </div>
+
+              <div class="form-field">
+                <label for="contact-category" class="form-field-label">2. Inquiry Category *</label>
                 <select id="contact-category" class="form-ctrl" style="cursor: pointer;" required>
-                  <option value="Technical / Platform Support">Technical / Platform Support</option>
-                  <option value="Tender Information / NIT Clarification">Tender Information / NIT Clarification</option>
-                  <option value="Account & Login">Account & Login</option>
-                  <option value="Application / Bid Tracking">Application / Bid Tracking</option>
-                  <option value="AI Tender Summary Feedback">AI Tender Summary Feedback</option>
-                  <option value="Manager Dashboard / Tender Management">Manager Dashboard / Tender Management</option>
-                  <option value="Data Correction">Data Correction</option>
-                  <option value="General Inquiry">General Inquiry</option>
-                  <option value="Feedback & Suggestions">Feedback & Suggestions</option>
+                  <option value="Tender Clarification">Tender Clarification</option>
+                  <option value="Deadline Related">Deadline Related</option>
+                  <option value="Document Related">Document Related</option>
+                  <option value="Technical Issue">Technical Issue</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
+
               <div class="form-field">
-                <label for="contact-tender-id" class="form-field-label">Related Tender ID (Optional)</label>
-                <input type="number" id="contact-tender-id" class="form-ctrl" placeholder="e.g. 1, 2, or tender ID" />
+                <label for="contact-message" class="form-field-label">3. Message *</label>
+                <textarea id="contact-message" class="form-ctrl" rows="4" placeholder="Write your tender question or clarification request..." required style="resize: vertical;"></textarea>
               </div>
-            </div>
 
-            <!-- Row 4: Phone & Subject -->
-            <div class="form-grid-2">
-              <div class="form-field">
-                <label for="contact-phone" class="form-field-label">Contact Number (Optional)</label>
-                <input type="tel" id="contact-phone" class="form-ctrl" placeholder="e.g. +91 98765 43210" />
+              <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 8px 12px; font-size: 0.78rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
+                Your inquiry is automatically routed to the approved State Manager overseeing the selected tender's state (or Central Admin if no state manager is currently assigned).
               </div>
-              <div class="form-field">
-                <label for="contact-subject" class="form-field-label">Inquiry Subject</label>
-                <input type="text" id="contact-subject" class="form-ctrl" placeholder="e.g. Unable to save a bridge tender" required />
-              </div>
-            </div>
 
-            <!-- Message Area -->
-            <div class="form-field">
-              <label for="contact-message" class="form-field-label">Inquiry Details / Scope Clarification</label>
-              <textarea id="contact-message" class="form-ctrl" rows="3" placeholder="Describe the issue, affected tender ID, or assistance required..." required style="resize: none;"></textarea>
-            </div>
-
-            <!-- Note about Admin Review & Dashboard Tracking -->
-            <div style="background-color: var(--bg-secondary); border-radius: 8px; padding: 8px 12px; font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              <span>Your inquiry will be reviewed by the TenderKart Admin. Replies and status updates will appear in your dashboard.</span>
-            </div>
-
-            <!-- Submit Button & Trust Footer -->
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 2px;">
-              <button type="submit" id="contact-submit-btn" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <span>Submit Inquiry to Admin Helpdesk</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              <button type="submit" id="contact-submit-btn" class="btn btn-primary" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 700; border-radius: 10px;">
+                <span>Submit Tender Inquiry</span>
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
 
-        <!-- Right: Multi-Channel Support & 3D GovTech Secretariat Command Center -->
+        <!-- Right: Support Channels & 3D GovTech Command Center -->
         <div class="contact-info-col">
-          
-          <!-- Bespoke 3D GovTech Secretariat & Procurement Telemetry Command Center -->
           <div class="command-center-card">
             <div class="command-stage-wrapper">
               <svg viewBox="0 0 500 320" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="overflow: visible;">
                 <defs>
-                  <!-- 3D Gradients & Filters -->
                   <linearGradient id="cmdHqLeftGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stop-color="#0284C7" stop-opacity="0.9" />
                     <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95" />
                   </linearGradient>
-
                   <linearGradient id="cmdHqRightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.95" />
                     <stop offset="100%" stop-color="#0369A1" stop-opacity="0.95" />
                   </linearGradient>
-
-                  <linearGradient id="cmdDelhiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#10B981" stop-opacity="0.85" />
-                    <stop offset="100%" stop-color="#064E3B" stop-opacity="0.9" />
-                  </linearGradient>
-
-                  <linearGradient id="cmdMumbaiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.85" />
-                    <stop offset="100%" stop-color="#78350F" stop-opacity="0.9" />
-                  </linearGradient>
-
-                  <linearGradient id="cmdBlrGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.85" />
-                    <stop offset="100%" stop-color="#3B0764" stop-opacity="0.9" />
-                  </linearGradient>
-
-                  <linearGradient id="laserBeamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#10B981" />
-                    <stop offset="50%" stop-color="#38BDF8" />
-                    <stop offset="100%" stop-color="#F59E0B" />
-                  </linearGradient>
-
-                  <filter id="neonGlowCmd" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="3.5" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
                 </defs>
-
-                <!-- 1. Background Isometric Base Grid -->
-                <g opacity="0.18" stroke="#38BDF8" stroke-width="1">
+                <g opacity="0.2" stroke="#38BDF8" stroke-width="1">
                   <path d="M 0,160 L 250,290 L 500,160 L 250,30 Z" fill="none" stroke-width="1.5" />
-                  <path d="M 50,160 L 250,250 L 450,160" fill="none" />
-                  <path d="M 100,160 L 250,210 L 400,160" fill="none" />
                   <path d="M 0,160 L 500,160 M 250,30 L 250,290" fill="none" stroke-dasharray="4 4" />
                 </g>
-
-                <!-- 2. Concentric Holographic Ground Rings around HQ -->
-                <ellipse cx="250" cy="225" rx="80" ry="26" fill="none" stroke="#2563EB" stroke-width="1" stroke-opacity="0.35" stroke-dasharray="4 4" />
-                <ellipse cx="250" cy="225" rx="50" ry="16" fill="none" stroke="#38BDF8" stroke-width="1.2" stroke-opacity="0.5" />
-                <ellipse cx="250" cy="225" rx="22" ry="7" fill="rgba(56, 189, 248, 0.25)" stroke="#38BDF8" stroke-width="1.5" />
-
-                <!-- 3. Fiber-Optic Mesh Telemetry Laser Lines -->
-                <!-- Delhi to HQ -->
-                <path d="M 100,125 Q 175,70 250,85" fill="none" stroke="#10B981" stroke-width="2" stroke-dasharray="5 4" class="road-flow-line" filter="url(#neonGlowCmd)" />
-                <!-- HQ to Mumbai -->
-                <path d="M 250,85 Q 325,65 400,120" fill="none" stroke="#F59E0B" stroke-width="2" stroke-dasharray="5 4" class="road-flow-line" filter="url(#neonGlowCmd)" />
-                <!-- Bengaluru to HQ -->
-                <path d="M 310,185 Q 280,135 250,85" fill="none" stroke="#8B5CF6" stroke-width="1.8" stroke-dasharray="4 4" class="road-flow-line" opacity="0.8" />
-                <!-- Delhi to Mumbai Horizon Link -->
-                <path d="M 100,125 Q 250,140 400,120" fill="none" stroke="#38BDF8" stroke-width="1" stroke-dasharray="3 4" opacity="0.4" />
-
-                <!-- 4. Front S-Curved Data Highway Corridor -->
-                <g class="cmd-interactive">
-                  <path d="M 25,275 Q 140,195 250,230 T 475,190" fill="none" stroke="rgba(15, 23, 42, 0.75)" stroke-width="20" stroke-linecap="round" />
-                  <path d="M 25,275 Q 140,195 250,230 T 475,190" fill="none" stroke="var(--border-color)" stroke-width="22" stroke-linecap="round" opacity="0.4" />
-                  <!-- Center neon dashed flow line -->
-                  <path d="M 25,275 Q 140,195 250,230 T 475,190" fill="none" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="6 6" class="road-flow-line" />
-                  
-                  <!-- Flowing Vehicle / Data Packets -->
-                  <circle r="3.5" fill="#00F2FE" style="filter: drop-shadow(0 0 5px #00F2FE);">
-                    <animateMotion dur="5.5s" repeatCount="indefinite" path="M 25,275 Q 140,195 250,230 T 475,190" />
-                  </circle>
-                  <circle r="3" fill="#EC4899" style="filter: drop-shadow(0 0 5px #EC4899);">
-                    <animateMotion dur="7.5s" begin="2s" repeatCount="indefinite" path="M 25,275 Q 140,195 250,230 T 475,190" />
-                  </circle>
-                  <circle r="3" fill="#10B981" style="filter: drop-shadow(0 0 4px #10B981);">
-                    <animateMotion dur="10s" begin="4s" repeatCount="indefinite" path="M 25,275 Q 140,195 250,230 T 475,190" />
-                  </circle>
-                </g>
-
-                <!-- 5. 3D Architecture: North Node (Delhi Ministry Wing - Left) -->
-                <g class="cmd-interactive">
-                  <!-- Tower Left Face -->
-                  <path d="M 75,140 L 100,125 L 100,215 L 75,225 Z" fill="url(#cmdDelhiGrad)" stroke="#10B981" stroke-width="1.2" />
-                  <!-- Tower Right Face -->
-                  <path d="M 100,125 L 125,140 L 125,225 L 100,215 Z" fill="#065F46" stroke="#10B981" stroke-width="1.2" />
-                  <!-- Tower Roof Cap -->
-                  <polygon points="75,140 100,125 125,140 100,152" fill="#34D399" />
-                  <!-- Antenna Spire -->
-                  <line x1="100" y1="125" x2="100" y2="100" stroke="#10B981" stroke-width="2" />
-                  <circle cx="100" cy="100" r="3" fill="#10B981" class="pulse-node" style="filter: drop-shadow(0 0 6px #10B981);" />
-                  <!-- Windows slits -->
-                  <line x1="83" y1="155" x2="94" y2="148" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                  <line x1="106" y1="148" x2="117" y2="155" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                  <line x1="83" y1="180" x2="94" y2="173" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                  <line x1="106" y1="173" x2="117" y2="180" stroke="#10B981" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                </g>
-
-                <!-- 6. 3D Architecture: West Node (Mumbai Gateway - Right) -->
-                <g class="cmd-interactive">
-                  <!-- Tower Left Face -->
-                  <path d="M 375,135 L 400,120 L 400,210 L 375,220 Z" fill="url(#cmdMumbaiGrad)" stroke="#F59E0B" stroke-width="1.2" />
-                  <!-- Tower Right Face -->
-                  <path d="M 400,120 L 425,135 L 425,220 L 400,210 Z" fill="#92400E" stroke="#F59E0B" stroke-width="1.2" />
-                  <!-- Tower Roof Cap -->
-                  <polygon points="375,135 400,120 425,135 400,147" fill="#FBBF24" />
-                  <!-- Antenna Spire -->
-                  <line x1="400" y1="120" x2="400" y2="95" stroke="#F59E0B" stroke-width="2" />
-                  <circle cx="400" cy="95" r="3" fill="#F59E0B" class="pulse-node" style="filter: drop-shadow(0 0 6px #F59E0B);" />
-                  <!-- Windows slits -->
-                  <line x1="383" y1="150" x2="394" y2="143" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                  <line x1="406" y1="143" x2="417" y2="150" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                  <line x1="383" y1="175" x2="394" y2="168" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                  <line x1="406" y1="168" x2="417" y2="175" stroke="#F59E0B" stroke-width="1.2" opacity="0.8" class="blink-node" />
-                </g>
-
-                <!-- 7. 3D Architecture: South Node (Bengaluru Tech Cell - Sub-Center) -->
-                <g class="cmd-interactive">
-                  <path d="M 290,195 L 310,185 L 310,245 L 290,255 Z" fill="url(#cmdBlrGrad)" stroke="#8B5CF6" stroke-width="1.2" />
-                  <path d="M 310,185 L 330,195 L 330,255 L 310,245 Z" fill="#581C87" stroke="#8B5CF6" stroke-width="1.2" />
-                  <polygon points="290,195 310,185 330,195 310,203" fill="#C084FC" />
-                  <line x1="310" y1="185" x2="310" y2="170" stroke="#8B5CF6" stroke-width="1.5" />
-                  <circle cx="310" cy="170" r="2.5" fill="#8B5CF6" />
-                </g>
-
-                <!-- 8. 3D Architecture: Central HQ Command Secretariat Tower (Kolkata Sector V) -->
-                <g class="cmd-interactive">
-                  <!-- Main Glass Hexagonal Tower (Left Facet) -->
-                  <path d="M 215,100 L 250,82 L 250,225 L 215,238 Z" fill="url(#cmdHqLeftGrad)" stroke="#0284C7" stroke-width="1.5" />
-                  <!-- Main Glass Hexagonal Tower (Right Facet) -->
-                  <path d="M 250,82 L 285,100 L 285,238 L 250,225 Z" fill="url(#cmdHqRightGrad)" stroke="#38BDF8" stroke-width="1.5" />
-                  <!-- Penthouse Cap Platform -->
-                  <polygon points="215,100 250,82 285,100 250,114" fill="#60A5FA" stroke="#38BDF8" stroke-width="1.2" />
-                  
-                  <!-- Central Glowing Ridge Spine -->
-                  <line x1="250" y1="82" x2="250" y2="225" stroke="#FFFFFF" stroke-width="1.5" opacity="0.9" />
-
-                  <!-- Facade Modern Architectural Window Slits -->
-                  <line x1="225" y1="120" x2="242" y2="111" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="258" y1="111" x2="275" y2="120" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="225" y1="145" x2="242" y2="136" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="258" y1="136" x2="275" y2="145" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="225" y1="170" x2="242" y2="161" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="258" y1="161" x2="275" y2="170" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="225" y1="195" x2="242" y2="186" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-                  <line x1="258" y1="186" x2="275" y2="195" stroke="#38BDF8" stroke-width="1.5" opacity="0.9" class="blink-node" />
-
-                  <!-- Spire & Satellite Radar Antenna on Penthouse -->
-                  <line x1="250" y1="82" x2="250" y2="48" stroke="#38BDF8" stroke-width="2.5" />
-                  <circle cx="250" cy="48" r="4.5" fill="#38BDF8" stroke="#FFFFFF" stroke-width="1.5" style="filter: drop-shadow(0 0 8px #38BDF8);" class="pulse-node" />
-                  <ellipse cx="250" cy="58" rx="9" ry="3.5" fill="none" stroke="#60A5FA" stroke-width="1.2" />
-                </g>
-
-                <!-- 9. Orbital Telemetry Satellite with Laser Transmission Link -->
+                <path d="M 100,125 Q 175,70 250,85" fill="none" stroke="#10B981" stroke-width="2" stroke-dasharray="5 4" />
+                <path d="M 250,85 Q 325,65 400,120" fill="none" stroke="#F59E0B" stroke-width="2" stroke-dasharray="5 4" />
+                <path d="M 310,185 Q 280,135 250,85" fill="none" stroke="#8B5CF6" stroke-width="1.8" stroke-dasharray="4 4" />
                 <g>
-                  <!-- Orbit Path -->
-                  <path d="M 50,60 Q 250,15 450,60" fill="none" stroke="#38BDF8" stroke-width="0.75" stroke-dasharray="3 4" opacity="0.35" />
-                  
-                  <!-- Satellite Body & Solar Panels -->
-                  <g class="satellite-orbit">
-                    <path d="M 50,60 Q 250,15 450,60">
-                      <animateMotion dur="14s" repeatCount="indefinite" path="M 50,60 Q 250,15 450,60" />
-                    </path>
-                    <rect x="-8" y="-3" width="16" height="6" rx="1.5" fill="#FFFFFF" stroke="#0284C7" stroke-width="1" />
-                    <rect x="-18" y="-4" width="8" height="8" rx="1" fill="#0284C7" stroke="#38BDF8" stroke-width="0.8" />
-                    <rect x="10" y="-4" width="8" height="8" rx="1" fill="#0284C7" stroke="#38BDF8" stroke-width="0.8" />
-                    <circle cx="0" cy="0" r="2" fill="#10B981" />
-                  </g>
+                  <path d="M 215,100 L 250,82 L 250,225 L 215,238 Z" fill="url(#cmdHqLeftGrad)" stroke="#0284C7" stroke-width="1.5" />
+                  <path d="M 250,82 L 285,100 L 285,238 L 250,225 Z" fill="url(#cmdHqRightGrad)" stroke="#38BDF8" stroke-width="1.5" />
+                  <polygon points="215,100 250,82 285,100 250,114" fill="#60A5FA" stroke="#38BDF8" stroke-width="1.2" />
                 </g>
-
-                <!-- 10. Floating 3D Holographic Status Pins (Themed for Helpdesk & Secretariat) -->
-                
-                <!-- Pin 1: Central HQ Command (Top-Center) -->
-                <g transform="translate(250, 22)">
-                  <g class="float-pin-hq">
-                    <rect x="-65" y="-11" width="130" height="22" rx="7" fill="rgba(15, 23, 42, 0.94)" stroke="#38BDF8" stroke-width="1.5" filter="url(#neonGlowCmd)" />
-                    <circle cx="-50" cy="0" r="3.2" fill="#38BDF8" class="pulse-node" />
-                    <text x="-40" y="3.5" fill="#FFFFFF" font-size="8.2" font-weight="850" letter-spacing="0.4px">HQ Secretariat (Kolkata)</text>
-                  </g>
+                <g transform="translate(250, 26)">
+                  <rect x="-72" y="-11" width="144" height="22" rx="7" fill="rgba(15, 23, 42, 0.94)" stroke="#38BDF8" stroke-width="1.5" />
+                  <text x="0" y="3.5" text-anchor="middle" fill="#FFFFFF" font-size="8.2" font-weight="800">Central Admin Supervision</text>
                 </g>
-
-                <!-- Pin 2: Delhi Nodal (Left) -->
-                <g transform="translate(100, 80)">
-                  <g class="float-pin-delhi">
-                    <rect x="-48" y="-10" width="96" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#10B981" stroke-width="1.5" />
-                    <circle cx="-36" cy="0" r="3" fill="#10B981" class="pulse-node" />
-                    <text x="-27" y="3.5" fill="#FFFFFF" font-size="8" font-weight="800" letter-spacing="0.3px">Delhi Nodal Cell</text>
-                  </g>
+                <g transform="translate(100, 92)">
+                  <rect x="-48" y="-10" width="96" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#10B981" stroke-width="1.5" />
+                  <text x="0" y="3.5" text-anchor="middle" fill="#FFFFFF" font-size="8" font-weight="800">Gujarat Desk</text>
                 </g>
-
-                <!-- Pin 3: Mumbai Gateway (Right) -->
-                <g transform="translate(400, 75)">
-                  <g class="float-pin-mumbai">
-                    <rect x="-48" y="-10" width="96" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#F59E0B" stroke-width="1.5" />
-                    <circle cx="-36" cy="0" r="3" fill="#F59E0B" class="pulse-node" />
-                    <text x="-27" y="3.5" fill="#FFFFFF" font-size="8" font-weight="800" letter-spacing="0.3px">Mumbai Gateway</text>
-                  </g>
+                <g transform="translate(400, 92)">
+                  <rect x="-54" y="-10" width="108" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#F59E0B" stroke-width="1.5" />
+                  <text x="0" y="3.5" text-anchor="middle" fill="#FFFFFF" font-size="8" font-weight="800">Maharashtra Desk</text>
                 </g>
-
-                <!-- Pin 4: Helpdesk Active Desk (Bottom-Left over Data Corridor) -->
-                <g transform="translate(125, 235)">
-                  <g class="float-pin-desk">
-                    <rect x="-55" y="-10" width="110" height="20" rx="6" fill="rgba(15, 23, 42, 0.94)" stroke="#8B5CF6" stroke-width="1.5" />
-                    <circle cx="-42" cy="0" r="3" fill="#8B5CF6" class="pulse-node" />
-                    <text x="-32" y="3.5" fill="#FFFFFF" font-size="7.8" font-weight="800" letter-spacing="0.3px">24x7 Helpdesk Desk</text>
-                  </g>
+                <g transform="translate(310, 215)">
+                  <rect x="-54" y="-10" width="108" height="20" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#8B5CF6" stroke-width="1.5" />
+                  <text x="0" y="3.5" text-anchor="middle" fill="#FFFFFF" font-size="8" font-weight="800">MP State Desk</text>
                 </g>
               </svg>
-
-              <!-- Branding Tag Label -->
-              <div style="position: absolute; bottom: 8px; left: 10px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.7px; color: #38BDF8; text-transform: uppercase; display: flex; align-items: center; gap: 5px; background-color: rgba(15, 23, 42, 0.9); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); backdrop-filter: blur(4px); z-index: 10; pointer-events: none;">
-                <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background-color: #10B981;" class="pulse-node"></span>
-                GovTech Command & Procurement Coordination Desk
+              <div style="position: absolute; bottom: 8px; left: 10px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.7px; color: #38BDF8; text-transform: uppercase; background-color: rgba(15, 23, 42, 0.9); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                State-Wise Automated Inquiry Routing
               </div>
             </div>
           </div>
 
-          <!-- Multi-Channel Direct Contact Grid -->
           <div class="contact-channels-grid">
-            
             <div class="channel-box">
               <div class="channel-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               </div>
               <div class="channel-meta">
-                <span class="channel-tag">Direct Helpline</span>
+                <span class="channel-tag">Support Helpline</span>
                 <span class="channel-value">+91 (033) 2357-8900</span>
               </div>
             </div>
-
             <div class="channel-box">
               <div class="channel-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
               </div>
               <div class="channel-meta">
                 <span class="channel-tag">Official Support</span>
                 <span class="channel-value">support@tenderkart.gov</span>
               </div>
             </div>
-
             <div class="channel-box">
               <div class="channel-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </div>
               <div class="channel-meta">
-                <span class="channel-tag">Desk Operating Hours</span>
+                <span class="channel-tag">Operating Hours</span>
                 <span class="channel-value">Mon–Sat: 09:00 – 18:00</span>
               </div>
             </div>
-
             <div class="channel-box">
               <div class="channel-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
               <div class="channel-meta">
-                <span class="channel-tag">NIT Compliance Cell</span>
-                <span class="channel-value">100% Certified Assist</span>
+                <span class="channel-tag">Routing Mode</span>
+                <span class="channel-value">Auto State Assignment</span>
               </div>
             </div>
-
           </div>
 
-          <!-- Trust Highlights Strip (Matches Home & About) -->
           <div class="contact-trust-strip">
             <div>
-              <div class="trust-stat-val">Central Admin</div>
-              <div class="trust-stat-lbl">Direct Helpdesk</div>
+              <div class="trust-stat-val">State-Wise</div>
+              <div class="trust-stat-lbl">Manager Routing</div>
             </div>
             <div style="width: 1px; height: 24px; background: var(--border-color);"></div>
             <div>
-              <div class="trust-stat-val">100%</div>
-              <div class="trust-stat-lbl">Tickets Logged</div>
+              <div class="trust-stat-val">12 Tenders</div>
+              <div class="trust-stat-lbl">Verified Catalog</div>
             </div>
             <div style="width: 1px; height: 24px; background: var(--border-color);"></div>
             <div>
@@ -707,15 +476,13 @@
               <div class="trust-stat-lbl">Dashboard Replies</div>
             </div>
           </div>
-
         </div>
-
       </div>
 
     </div>
   </main>
 
-  <!-- Sticky / Dark Footer Placeholder (rendered dynamically by app.js) -->
+  <!-- Footer -->
   <div id="footer-placeholder"></div>
 
   <!-- Toast overlay -->

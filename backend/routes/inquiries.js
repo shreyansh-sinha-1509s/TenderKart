@@ -1,566 +1,496 @@
 const express = require("express");
 const router = express.Router();
-const jwt = require("jsonwebtoken");
 const db = require("../db");
+const { INQUIRY_CATEGORIES, INQUIRY_STATUSES } = require("../constants");
+const { authenticateUser, requireContractor, requireManagerOrAdmin } = require("../middleware/auth");
 
-const JWT_SECRET = "student_secret_key_12345";
-
-// Middleware to check if user is logged in
-function checkAuth(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Access denied. Please login first." });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: "Session expired. Please login again." });
-    }
-    req.user = decoded;
-    next();
-  });
+function normalizeStatusBucket(statusStr) {
+  const s = (statusStr || "").trim().toLowerCase();
+  if (s === "resolved") return "resolved";
+  if (s === "in progress" || s === "awaiting user response") return "inProgress";
+  return "pending";
 }
 
-// Middleware strictly for main website Admin (excludes ordinary managers and contractors)
-function checkAdminOnly(req, res, next) {
-  checkAuth(req, res, () => {
-    const roleLower = (req.user.role || "").toLowerCase();
-    if (roleLower !== "admin") {
-      return res.status(403).json({
-        message: "Access denied. Main Administrator privileges required. Managers and contractors cannot access the central helpdesk queue."
+// 1. Submit a new Tender Inquiry (Contractors ONLY, with automatic State-Based Routing)
+router.post("/", requireContractor, async (req, res) => {
+  try {
+    const {
+      related_tender_id,
+      inquiry_category,
+      message,
+      description,
+      subject
+    } = req.body;
+
+    const tenderId = parseInt(related_tender_id, 10);
+    const cleanCategory = (inquiry_category || "").trim();
+    const cleanMessage = (message || description || "").trim();
+
+    if (!tenderId || isNaN(tenderId)) {
+      return res.status(400).json({ message: "Please select a related tender from the list." });
+    }
+
+    if (!cleanCategory || !INQUIRY_CATEGORIES.includes(cleanCategory)) {
+      return res.status(400).json({
+        message: `Invalid inquiry category. Must be one of: ${INQUIRY_CATEGORIES.join(", ")}.`
       });
     }
-    next();
-  });
-}
 
-// -------------------------------------------------------------
-// SENDER & USER ENDPOINTS (Contractors & Managers)
-// -------------------------------------------------------------
+    if (!cleanMessage) {
+      return res.status(400).json({ message: "Inquiry message cannot be empty." });
+    }
 
-// 1. Submit a new Inquiry (Contractors or Managers)
-router.post("/", checkAuth, (req, res) => {
-  const {
-    subject,
-    description,
-    inquiry_category,
-    related_tender_id,
-    contact_number,
-    organization_name
-  } = req.body;
+    // Fetch selected tender and its state from DB
+    const tender = await db.getAsync(
+      "SELECT id, name, state, category, location FROM tenders WHERE id = ? LIMIT 1",
+      [tenderId]
+    );
+    if (!tender) {
+      return res.status(404).json({ message: "Selected tender does not exist in the active catalog." });
+    }
 
-  if (!subject || !subject.trim() || !description || !description.trim() || !inquiry_category) {
-    return res.status(400).json({ message: "Subject, classification category, and description are required." });
-  }
+    const tenderState = (tender.state || "").trim();
 
-  // Fetch full verified profile for authenticated user
-  db.query(
-    "SELECT id, username, email, role, name, company, department FROM users WHERE id = ? LIMIT 1",
-    [req.user.id],
-    (userErr, userRows) => {
-      if (userErr) return res.status(500).json({ message: userErr.message });
-      if (!userRows || userRows.length === 0) return res.status(404).json({ message: "User account not found." });
+    // Auto-fetch authenticated contractor's details directly from DB
+    const contractor = req.user;
+    const senderName = contractor.name || contractor.username;
+    const senderEmail = contractor.email;
+    const orgName = contractor.company || "Independent Contractor";
 
-      const user = userRows[0];
-      const roleCapitalized = user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase();
-      const org = organization_name || user.company || user.department || "Independent";
-      const senderName = user.name || user.username;
-      const senderEmail = user.email;
+    // Find approved & active manager assigned to that state
+    const approvedManager = tenderState
+      ? await db.getAsync(
+          `SELECT id, name, username, user_code, email, office_state
+           FROM users
+           WHERE LOWER(role) = 'manager'
+             AND LOWER(office_state) = LOWER(?)
+             AND approval_status = 'Approved'
+             AND is_active = 1
+           ORDER BY id ASC LIMIT 1`,
+          [tenderState]
+        )
+      : null;
 
-      // Generate deterministic unique ticket number: TKT-2026-XXX
-      db.query("SELECT COUNT(*) as count FROM inquiries", [], (countErr, countRows) => {
-        if (countErr) return res.status(500).json({ message: countErr.message });
+    const assignedManagerId = approvedManager ? approvedManager.id : null;
+    const assignmentStatus = approvedManager ? "Assigned" : "Unassigned / Pending Admin Assignment";
+    const assignedTo = approvedManager ? (approvedManager.user_code || approvedManager.name) : "admin";
 
-        const count = (countRows[0] && countRows[0].count) || 0;
-        const nextNum = (count + 1).toString().padStart(3, "0");
-        const ticketNumber = `TKT-2026-${nextNum}`;
+    // Generate deterministic unique ticket number using MAX(id)
+    const maxRow = await db.getAsync("SELECT MAX(id) AS maxId FROM inquiries");
+    const nextNum = ((maxRow && maxRow.maxId ? maxRow.maxId : 0) + 1).toString().padStart(3, "0");
+    const ticketNumber = `TKT-2026-${nextNum}`;
 
-        const tenderId = related_tender_id ? parseInt(related_tender_id, 10) : null;
+    const finalSubject = (subject && subject.trim())
+      ? subject.trim()
+      : `${cleanCategory} — ${tender.name.slice(0, 75)}`;
 
-        db.query(
-          `INSERT INTO inquiries (
-            ticket_number, sender_user_id, sender_role, organization_name,
-            sender_name, sender_email, contact_number, inquiry_category,
-            related_tender_id, subject, description, assigned_to,
-            priority, status, created_at, updated_at, demo_record
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'admin', 'Medium', 'New', datetime('now'), datetime('now'), 0)`,
+    const insertRes = await db.queryAsync(
+      `INSERT INTO inquiries (
+        ticket_number, sender_user_id, sender_role, organization_name,
+        sender_name, sender_email, contact_number, inquiry_category,
+        related_tender_id, state, assigned_manager_id, assignment_status,
+        subject, description, assigned_to, priority, status,
+        created_at, updated_at, demo_record
+      ) VALUES (?, ?, 'Contractor', ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 'Medium', 'Pending', datetime('now'), datetime('now'), 0)`,
+      [
+        ticketNumber,
+        contractor.id,
+        orgName,
+        senderName,
+        senderEmail,
+        cleanCategory,
+        tender.id,
+        tenderState,
+        assignedManagerId,
+        assignmentStatus,
+        finalSubject,
+        cleanMessage,
+        assignedTo
+      ]
+    );
+
+    const inquiryId = insertRes.insertId;
+
+    await db.queryAsync(
+      `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
+       VALUES (?, ?, 'Contractor', ?, datetime('now'))`,
+      [inquiryId, contractor.id, cleanMessage]
+    );
+
+    // Notify contractor
+    await db.queryAsync(
+      "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+      [
+        contractor.id,
+        `Inquiry Registered (${ticketNumber})`,
+        approvedManager
+          ? `Your inquiry on "${tender.name.slice(0, 50)}" (${tenderState}) was routed to ${approvedManager.name} (${tenderState} Manager).`
+          : `Your inquiry on "${tender.name.slice(0, 50)}" (${tenderState || "N/A"}) was logged as Unassigned / Pending Admin Assignment.`
+      ]
+    );
+
+    // Notify assigned state manager OR Central Admin if unassigned
+    if (approvedManager) {
+      await db.queryAsync(
+        "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+        [
+          approvedManager.id,
+          `New ${tenderState} Inquiry (${ticketNumber})`,
+          `${senderName} (${orgName}) submitted a ${cleanCategory} inquiry for "${tender.name.slice(0, 55)}".`
+        ]
+      );
+    } else {
+      const adminUser = await db.getAsync("SELECT id FROM users WHERE LOWER(role) = 'admin' LIMIT 1");
+      if (adminUser) {
+        await db.queryAsync(
+          "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
           [
-            ticketNumber, user.id, roleCapitalized, org,
-            senderName, senderEmail, contact_number || null, inquiry_category,
-            tenderId, subject.trim(), description.trim()
-          ],
-          (insertErr, insertRes) => {
-            if (insertErr) return res.status(500).json({ message: insertErr.message });
-
-            const inquiryId = insertRes.insertId;
-
-            // Insert the initial message into conversation thread
-            db.query(
-              `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
-               VALUES (?, ?, ?, ?, datetime('now'))`,
-              [inquiryId, user.id, roleCapitalized, description.trim()],
-              (msgErr) => {
-                if (msgErr) console.warn("Could not insert initial message:", msgErr.message);
-
-                // Add confirmation notification
-                db.query(
-                  `INSERT INTO notifications (user_id, title, message)
-                   VALUES (?, ?, ?)`,
-                  [
-                    user.id,
-                    `Helpdesk Ticket Registered (${ticketNumber})`,
-                    `Your inquiry "${subject.trim()}" has been dispatched to TenderKart Central Admin.`
-                  ],
-                  () => {}
-                );
-
-                return res.status(201).json({
-                  success: true,
-                  ticket_number: ticketNumber,
-                  inquiry_id: inquiryId,
-                  message: `Helpdesk inquiry ${ticketNumber} created successfully and assigned to Central Admin.`
-                });
-              }
-            );
-          }
+            adminUser.id,
+            `Unassigned Inquiry (${ticketNumber})`,
+            `No approved manager exists for ${tenderState || "unknown state"}. Inquiry from ${senderName} requires Central Admin review.`
+          ]
         );
-      });
+      }
     }
-  );
+
+    db.logActivity({
+      actor_user_id: contractor.id,
+      actor_role: "contractor",
+      action_type: "inquiry_submitted",
+      entity_type: "inquiry",
+      entity_id: inquiryId,
+      state: tenderState,
+      details: approvedManager
+        ? `Inquiry ${ticketNumber} (${cleanCategory}) routed to ${tenderState} Manager (${approvedManager.name})`
+        : `Inquiry ${ticketNumber} (${cleanCategory}) logged as Unassigned / Pending Admin Assignment (${tenderState})`
+    });
+
+    return res.status(201).json({
+      success: true,
+      ticket_number: ticketNumber,
+      inquiry_id: inquiryId,
+      state: tenderState,
+      assignment_status: assignmentStatus,
+      assigned_manager_id: assignedManagerId,
+      assigned_manager_name: approvedManager ? approvedManager.name : null,
+      status: "Pending",
+      message: approvedManager
+        ? `Inquiry ${ticketNumber} submitted and automatically routed to the ${tenderState} Manager (${approvedManager.name}).`
+        : `Inquiry ${ticketNumber} submitted and stored as Unassigned / Pending Admin Assignment (no approved manager for ${tenderState}).`
+    });
+  } catch (err) {
+    console.error("Inquiry creation error:", err);
+    return res.status(500).json({ message: err.message || "Failed to submit inquiry." });
+  }
 });
 
-// 2. Get tickets submitted by current authenticated user (Contractor or Manager)
-router.get("/mine", checkAuth, (req, res) => {
-  const userId = req.user.id;
+// 2. Get inquiries submitted by current authenticated contractor
+router.get("/mine", requireContractor, async (req, res) => {
+  try {
+    const rows = await db.queryAsync(
+      `SELECT
+        i.*,
+        t.name AS tender_name,
+        t.category AS tender_category,
+        t.state AS tender_state,
+        m.name AS assigned_manager_name,
+        m.office_state AS assigned_manager_state,
+        (SELECT COUNT(*) FROM inquiry_messages msg WHERE msg.inquiry_id = i.id) AS message_count,
+        (SELECT MAX(created_at) FROM inquiry_messages msg WHERE msg.inquiry_id = i.id) AS last_activity_at,
+        (SELECT message_body FROM inquiry_messages msg WHERE msg.inquiry_id = i.id AND LOWER(msg.sender_role) IN ('manager', 'admin') ORDER BY msg.id DESC LIMIT 1) AS latest_response
+       FROM inquiries i
+       LEFT JOIN tenders t ON i.related_tender_id = t.id
+       LEFT JOIN users m ON i.assigned_manager_id = m.id
+       WHERE i.sender_user_id = ?
+       ORDER BY i.created_at DESC, i.id DESC`,
+      [req.user.id]
+    );
 
-  const sql = `
-    SELECT 
-      i.*,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      (SELECT COUNT(*) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS message_count,
-      (SELECT MAX(created_at) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS last_activity_at
-    FROM inquiries i
-    LEFT JOIN tenders t ON i.related_tender_id = t.id
-    WHERE i.sender_user_id = ?
-    ORDER BY i.created_at DESC
-  `;
-
-  db.query(sql, [userId], (err, rows) => {
-    if (err) return res.status(500).json({ message: err.message });
-
-    const totalTickets = rows.length;
-    let awaitingAdmin = 0;
-    let adminReplied = 0;
+    let pending = 0;
+    let inProgress = 0;
     let resolved = 0;
-
-    rows.forEach(t => {
-      const st = (t.status || "").toLowerCase();
-      if (st === "resolved") {
-        resolved++;
-      } else if (st === "awaiting user response") {
-        adminReplied++;
-      } else {
-        awaitingAdmin++;
-      }
+    rows.forEach((r) => {
+      const b = normalizeStatusBucket(r.status);
+      if (b === "resolved") resolved++;
+      else if (b === "inProgress") inProgress++;
+      else pending++;
     });
 
     return res.json({
       summary: {
-        totalTickets,
-        awaitingAdmin,
-        adminReplied,
-        resolved
+        totalTickets: rows.length,
+        pending,
+        inProgress,
+        resolved,
+        awaitingAdmin: pending,
+        adminReplied: inProgress
       },
       tickets: rows
     });
-  });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// 3. Get specific ticket with conversation thread
-router.get("/:id", checkAuth, (req, res) => {
-  const inquiryId = req.params.id;
-  const user = req.user;
-  const roleLower = (user.role || "").toLowerCase();
+// 3. Get specific inquiry with conversation thread (Strict role & state isolation)
+router.get("/:id", authenticateUser, async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const user = req.user;
 
-  const ticketSql = `
-    SELECT 
-      i.*,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      t.department AS tender_authority,
-      t.location AS tender_location,
-      t.deadline AS tender_deadline
-    FROM inquiries i
-    LEFT JOIN tenders t ON i.related_tender_id = t.id
-    WHERE i.id = ? OR i.ticket_number = ?
-    LIMIT 1
-  `;
+    const ticket = await db.getAsync(
+      `SELECT
+        i.*,
+        t.name AS tender_name,
+        t.category AS tender_category,
+        t.department AS tender_authority,
+        t.location AS tender_location,
+        t.state AS tender_state,
+        t.deadline AS tender_deadline,
+        m.name AS assigned_manager_name,
+        m.office_state AS assigned_manager_state
+       FROM inquiries i
+       LEFT JOIN tenders t ON i.related_tender_id = t.id
+       LEFT JOIN users m ON i.assigned_manager_id = m.id
+       WHERE i.id = ? OR i.ticket_number = ?
+       LIMIT 1`,
+      [inquiryId, inquiryId]
+    );
 
-  db.query(ticketSql, [inquiryId, inquiryId], (err, rows) => {
-    if (err) return res.status(500).json({ message: err.message });
-    if (!rows || rows.length === 0) return res.status(404).json({ message: "Helpdesk ticket not found." });
-
-    const ticket = rows[0];
-
-    // Authorization & isolation check
-    if (roleLower !== "admin" && ticket.sender_user_id !== user.id) {
-      return res.status(403).json({
-        message: "Access denied. You can only view and manage your own helpdesk tickets."
-      });
+    if (!ticket) {
+      return res.status(404).json({ message: "Inquiry ticket not found." });
     }
 
-    // Fetch chronological messages
-    db.query(
-      `SELECT m.*, u.name AS sender_name_cached, u.username AS sender_username
+    if (user.role === "contractor" && ticket.sender_user_id !== user.id) {
+      return res.status(403).json({ message: "Access denied. You can only view your own inquiries." });
+    }
+
+    if (user.role === "manager") {
+      const sameManager = ticket.assigned_manager_id === user.id;
+      const sameState = (ticket.state || "").toLowerCase() === (user.office_state || "").toLowerCase();
+      if (!sameManager || !sameState) {
+        return res.status(403).json({
+          message: "Access denied. You can only access inquiries assigned to your state."
+        });
+      }
+    }
+
+    const messages = await db.queryAsync(
+      `SELECT m.*, u.name AS sender_name_cached, u.username AS sender_username, u.office_state AS sender_office_state
        FROM inquiry_messages m
        LEFT JOIN users u ON m.sender_user_id = u.id
        WHERE m.inquiry_id = ?
-       ORDER BY m.created_at ASC`,
-      [ticket.id],
-      (msgErr, messages) => {
-        if (msgErr) return res.status(500).json({ message: msgErr.message });
-
-        return res.json({
-          ticket,
-          messages: messages || []
-        });
-      }
+       ORDER BY m.created_at ASC, m.id ASC`,
+      [ticket.id]
     );
-  });
+
+    return res.json({ ticket, messages: messages || [] });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// 4. Send a follow-up reply message to a ticket
-router.post("/:id/messages", checkAuth, (req, res) => {
-  const inquiryId = req.params.id;
-  const { message_body, new_status, new_priority } = req.body;
-  const user = req.user;
-  const roleLower = (user.role || "").toLowerCase();
+// 4. Send a reply/follow-up message on an inquiry thread
+router.post("/:id/messages", authenticateUser, async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const { message_body, new_status, status } = req.body;
+    const user = req.user;
 
-  if (!message_body || !message_body.trim()) {
-    return res.status(400).json({ message: "Message body cannot be empty." });
-  }
+    if (!message_body || !message_body.trim()) {
+      return res.status(400).json({ message: "Message body cannot be empty." });
+    }
 
-  db.query(
-    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
-    [inquiryId, inquiryId],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
+    const ticket = await db.getAsync(
+      "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+      [inquiryId, inquiryId]
+    );
+    if (!ticket) {
+      return res.status(404).json({ message: "Inquiry ticket not found." });
+    }
 
-      const ticket = rows[0];
+    if (user.role === "contractor" && ticket.sender_user_id !== user.id) {
+      return res.status(403).json({ message: "Access denied. You cannot reply to another contractor's inquiry." });
+    }
 
-      // Security check: Only Admin or the ticket's owner can reply
-      if (roleLower !== "admin" && ticket.sender_user_id !== user.id) {
+    if (user.role === "manager") {
+      const sameManager = ticket.assigned_manager_id === user.id;
+      const sameState = (ticket.state || "").toLowerCase() === (user.office_state || "").toLowerCase();
+      if (!sameManager || !sameState) {
         return res.status(403).json({
-          message: "Access denied. You cannot reply to another user's ticket."
+          message: "Access denied. You cannot reply to inquiries outside your assigned state."
         });
       }
-
-      // Determine sender role strictly
-      const isSenderAdmin = roleLower === "admin";
-      const messageSenderRole = isSenderAdmin ? "Admin" : ticket.sender_role;
-
-      db.query(
-        `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
-         VALUES (?, ?, ?, ?, datetime('now'))`,
-        [ticket.id, user.id, messageSenderRole, message_body.trim()],
-        (msgErr, msgRes) => {
-          if (msgErr) return res.status(500).json({ message: msgErr.message });
-
-          // Update ticket status & timestamps
-          let updatedStatus = ticket.status;
-          let updatedPriority = ticket.priority;
-          let resolvedAt = ticket.resolved_at;
-
-          if (isSenderAdmin) {
-            if (new_status) updatedStatus = new_status;
-            else if (ticket.status === "New") updatedStatus = "In Progress";
-
-            if (new_priority) updatedPriority = new_priority;
-
-            if (updatedStatus === "Resolved") {
-              resolvedAt = new Date().toISOString().replace("T", " ").substring(0, 19);
-            } else {
-              resolvedAt = null;
-            }
-          } else {
-            // User reply: if awaiting user response, flip to In Progress
-            if (ticket.status === "Awaiting User Response") {
-              updatedStatus = "In Progress";
-            } else if (ticket.status === "Resolved") {
-              // Reopening ticket
-              updatedStatus = "In Progress";
-              resolvedAt = null;
-            }
-          }
-
-          db.query(
-            `UPDATE inquiries
-             SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
-             WHERE id = ?`,
-            [updatedStatus, updatedPriority, resolvedAt, ticket.id],
-            (updateErr) => {
-              if (updateErr) return res.status(500).json({ message: updateErr.message });
-
-              // Send in-app notification to the other party
-              const notifyTargetId = isSenderAdmin ? ticket.sender_user_id : null;
-              if (notifyTargetId) {
-                db.query(
-                  `INSERT INTO notifications (user_id, title, message)
-                   VALUES (?, ?, ?)`,
-                  [
-                    notifyTargetId,
-                    `Admin Replied to Ticket ${ticket.ticket_number}`,
-                    `Central Admin has responded: "${message_body.trim().slice(0, 80)}..."`
-                  ],
-                  () => {}
-                );
-              }
-
-              return res.json({
-                success: true,
-                message: "Message dispatched successfully.",
-                message_id: msgRes.insertId,
-                updated_status: updatedStatus,
-                updated_priority: updatedPriority
-              });
-            }
-          );
-        }
-      );
     }
-  );
-});
 
-// 5. Reopen a resolved ticket
-router.patch("/:id/reopen", checkAuth, (req, res) => {
-  const inquiryId = req.params.id;
-  const user = req.user;
-  const roleLower = (user.role || "").toLowerCase();
+    const messageSenderRole =
+      user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : "Contractor";
 
-  db.query(
-    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
-    [inquiryId, inquiryId],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
-
-      const ticket = rows[0];
-      if (roleLower !== "admin" && ticket.sender_user_id !== user.id) {
-        return res.status(403).json({ message: "Access denied." });
-      }
-
-      db.query(
-        `UPDATE inquiries
-         SET status = 'In Progress', resolved_at = NULL, updated_at = datetime('now')
-         WHERE id = ?`,
-        [ticket.id],
-        (updateErr) => {
-          if (updateErr) return res.status(500).json({ message: updateErr.message });
-
-          // Post a system note in conversation
-          db.query(
-            `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
-             VALUES (?, ?, ?, ?, datetime('now'))`,
-            [ticket.id, user.id, roleLower === "admin" ? "Admin" : ticket.sender_role, "[Action] Ticket reopened for further assistance."],
-            () => {}
-          );
-
-          return res.json({ success: true, message: `Ticket ${ticket.ticket_number} has been reopened.` });
-        }
-      );
-    }
-  );
-});
-
-// -------------------------------------------------------------
-// CENTRAL ADMIN QUEUE ENDPOINTS (Role 'admin' ONLY)
-// -------------------------------------------------------------
-
-// 6. Get Central Helpdesk Queue (All inquiries from Contractors and Managers)
-router.get("/admin/all", checkAdminOnly, (req, res) => {
-  const { role, category, status, priority, search } = req.query;
-
-  let baseSql = `
-    SELECT 
-      i.*,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      (SELECT COUNT(*) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS message_count,
-      (SELECT MAX(created_at) FROM inquiry_messages m WHERE m.inquiry_id = i.id) AS last_activity_at
-    FROM inquiries i
-    LEFT JOIN tenders t ON i.related_tender_id = t.id
-    WHERE 1=1
-  `;
-  const params = [];
-
-  if (role) {
-    baseSql += " AND LOWER(i.sender_role) = LOWER(?)";
-    params.push(role);
-  }
-  if (category) {
-    baseSql += " AND i.inquiry_category = ?";
-    params.push(category);
-  }
-  if (status) {
-    baseSql += " AND LOWER(i.status) = LOWER(?)";
-    params.push(status);
-  }
-  if (priority) {
-    baseSql += " AND LOWER(i.priority) = LOWER(?)";
-    params.push(priority);
-  }
-  if (search) {
-    baseSql += " AND (i.ticket_number LIKE ? OR i.sender_name LIKE ? OR i.sender_email LIKE ? OR i.subject LIKE ? OR i.organization_name LIKE ?)";
-    const term = `%${search.trim()}%`;
-    params.push(term, term, term, term, term);
-  }
-
-  baseSql += " ORDER BY i.created_at DESC";
-
-  db.query(baseSql, params, (err, rows) => {
-    if (err) return res.status(500).json({ message: err.message });
-
-    // Fetch summary breakdown of ALL inquiries in the database
-    db.query(
-      `SELECT 
-        COUNT(*) AS total,
-        SUM(CASE WHEN LOWER(status) = 'new' THEN 1 ELSE 0 END) AS count_new,
-        SUM(CASE WHEN LOWER(status) = 'in progress' THEN 1 ELSE 0 END) AS count_in_progress,
-        SUM(CASE WHEN LOWER(status) = 'awaiting user response' THEN 1 ELSE 0 END) AS count_awaiting_user,
-        SUM(CASE WHEN LOWER(status) = 'resolved' THEN 1 ELSE 0 END) AS count_resolved
-       FROM inquiries`,
-      [],
-      (sumErr, sumRows) => {
-        if (sumErr) return res.status(500).json({ message: sumErr.message });
-
-        const s = sumRows[0] || {};
-        return res.json({
-          summary: {
-            totalInquiries: s.total || 0,
-            countNew: s.count_new || 0,
-            countInProgress: s.count_in_progress || 0,
-            countAwaitingUser: s.count_awaiting_user || 0,
-            countResolved: s.count_resolved || 0
-          },
-          inquiries: rows || []
-        });
-      }
+    const msgRes = await db.queryAsync(
+      `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`,
+      [ticket.id, user.id, messageSenderRole, message_body.trim()]
     );
-  });
-});
 
-// 7. Admin updates priority and/or status of an inquiry
-router.patch("/admin/:id", checkAdminOnly, (req, res) => {
-  const inquiryId = req.params.id;
-  const { status, priority } = req.body;
+    let updatedStatus = ticket.status;
+    let resolvedAt = ticket.resolved_at;
+    const requestedStatus = new_status || status;
 
-  db.query(
-    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
-    [inquiryId, inquiryId],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
-
-      const ticket = rows[0];
-      const newStatus = status || ticket.status;
-      const newPriority = priority || ticket.priority;
-      let resolvedAt = ticket.resolved_at;
-
-      if (newStatus === "Resolved") {
-        resolvedAt = new Date().toISOString().replace("T", " ").substring(0, 19);
-      } else {
+    if (user.role === "manager" || user.role === "admin") {
+      if (requestedStatus && INQUIRY_STATUSES.includes(requestedStatus)) {
+        updatedStatus = requestedStatus;
+      } else if (normalizeStatusBucket(ticket.status) === "pending") {
+        updatedStatus = "In Progress";
+      }
+      resolvedAt = updatedStatus === "Resolved"
+        ? new Date().toISOString().replace("T", " ").substring(0, 19)
+        : null;
+    } else {
+      if (ticket.status === "Resolved") {
+        updatedStatus = "In Progress";
         resolvedAt = null;
       }
+    }
 
-      db.query(
-        `UPDATE inquiries 
-         SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
-         WHERE id = ?`,
-        [newStatus, newPriority, resolvedAt, ticket.id],
-        (updateErr) => {
-          if (updateErr) return res.status(500).json({ message: updateErr.message });
+    await db.queryAsync(
+      `UPDATE inquiries SET status = ?, resolved_at = ?, updated_at = datetime('now') WHERE id = ?`,
+      [updatedStatus, resolvedAt, ticket.id]
+    );
 
-          return res.json({
-            success: true,
-            message: `Ticket ${ticket.ticket_number} updated to status "${newStatus}" and priority "${newPriority}".`,
-            ticket: {
-              ...ticket,
-              status: newStatus,
-              priority: newPriority,
-              resolved_at: resolvedAt
-            }
-          });
-        }
+    if (user.role === "manager" || user.role === "admin") {
+      await db.queryAsync(
+        "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+        [
+          ticket.sender_user_id,
+          `${user.role === "manager" ? `${user.office_state} Manager` : "Central Admin"} Responded (${ticket.ticket_number})`,
+          `${user.name}: "${message_body.trim().slice(0, 90)}"`
+        ]
+      );
+
+      db.logActivity({
+        actor_user_id: user.id,
+        actor_role: user.role,
+        action_type: "inquiry_replied",
+        entity_type: "inquiry",
+        entity_id: ticket.id,
+        state: ticket.state,
+        details: `${user.role === "manager" ? `${user.office_state} Manager` : "Admin"} responded to ${ticket.ticket_number} (Status: ${updatedStatus})`
+      });
+    } else if (ticket.assigned_manager_id) {
+      await db.queryAsync(
+        "INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)",
+        [
+          ticket.assigned_manager_id,
+          `Contractor Follow-Up (${ticket.ticket_number})`,
+          `${user.name} replied on ${ticket.ticket_number}: "${message_body.trim().slice(0, 80)}"`
+        ]
       );
     }
-  );
+
+    return res.json({
+      success: true,
+      message: "Message sent successfully.",
+      message_id: msgRes.insertId,
+      updated_status: updatedStatus
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
-// 8. Admin direct reply to an inquiry
-router.post("/admin/:id/reply", checkAdminOnly, (req, res) => {
-  const inquiryId = req.params.id;
-  const { message_body, status, priority } = req.body;
+// 5. Update status on inquiry (Assigned State Manager or Central Admin)
+router.patch("/:id/status", requireManagerOrAdmin, async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const { status } = req.body;
 
-  if (!message_body || !message_body.trim()) {
-    return res.status(400).json({ message: "Admin reply body cannot be empty." });
-  }
-
-  db.query(
-    "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
-    [inquiryId, inquiryId],
-    (err, rows) => {
-      if (err) return res.status(500).json({ message: err.message });
-      if (!rows || rows.length === 0) return res.status(404).json({ message: "Ticket not found." });
-
-      const ticket = rows[0];
-      const newStatus = status || "Awaiting User Response";
-      const newPriority = priority || ticket.priority;
-      const resolvedAt = (newStatus === "Resolved") ? new Date().toISOString().replace("T", " ").substring(0, 19) : null;
-
-      db.query(
-        `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
-         VALUES (?, ?, 'Admin', ?, datetime('now'))`,
-        [ticket.id, req.user.id, message_body.trim()],
-        (msgErr, msgRes) => {
-          if (msgErr) return res.status(500).json({ message: msgErr.message });
-
-          db.query(
-            `UPDATE inquiries
-             SET status = ?, priority = ?, resolved_at = ?, updated_at = datetime('now')
-             WHERE id = ?`,
-            [newStatus, newPriority, resolvedAt, ticket.id],
-            (updateErr) => {
-              if (updateErr) return res.status(500).json({ message: updateErr.message });
-
-              // Notify the original contractor / manager
-              db.query(
-                `INSERT INTO notifications (user_id, title, message)
-                 VALUES (?, ?, ?)`,
-                [
-                  ticket.sender_user_id,
-                  `Official Admin Response on Ticket ${ticket.ticket_number}`,
-                  `Central Admin: "${message_body.trim().slice(0, 90)}..."`
-                ],
-                () => {}
-              );
-
-              return res.json({
-                success: true,
-                message: "Admin response saved and dispatched to sender dashboard.",
-                message_id: msgRes.insertId,
-                status: newStatus,
-                priority: newPriority
-              });
-            }
-          );
-        }
-      );
+    if (!status || !INQUIRY_STATUSES.includes(status)) {
+      return res.status(400).json({ message: `Status must be one of: ${INQUIRY_STATUSES.join(", ")}.` });
     }
-  );
+
+    const ticket = await db.getAsync(
+      "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+      [inquiryId, inquiryId]
+    );
+    if (!ticket) {
+      return res.status(404).json({ message: "Inquiry ticket not found." });
+    }
+
+    if (req.user.role === "manager") {
+      const sameManager = ticket.assigned_manager_id === req.user.id;
+      const sameState = (ticket.state || "").toLowerCase() === (req.user.office_state || "").toLowerCase();
+      if (!sameManager || !sameState) {
+        return res.status(403).json({
+          message: "Access denied. You cannot modify inquiries outside your assigned state."
+        });
+      }
+    }
+
+    const resolvedAt = status === "Resolved"
+      ? new Date().toISOString().replace("T", " ").substring(0, 19)
+      : null;
+
+    await db.queryAsync(
+      "UPDATE inquiries SET status = ?, resolved_at = ?, updated_at = datetime('now') WHERE id = ?",
+      [status, resolvedAt, ticket.id]
+    );
+
+    db.logActivity({
+      actor_user_id: req.user.id,
+      actor_role: req.user.role,
+      action_type: "inquiry_status_updated",
+      entity_type: "inquiry",
+      entity_id: ticket.id,
+      state: ticket.state,
+      details: `Inquiry ${ticket.ticket_number} status updated to "${status}"`
+    });
+
+    return res.json({ success: true, status, message: `Inquiry status updated to "${status}".` });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+});
+
+// 6. Reopen a resolved inquiry (Owner contractor, assigned manager, or Admin)
+router.patch("/:id/reopen", authenticateUser, async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const user = req.user;
+
+    const ticket = await db.getAsync(
+      "SELECT * FROM inquiries WHERE id = ? OR ticket_number = ? LIMIT 1",
+      [inquiryId, inquiryId]
+    );
+    if (!ticket) {
+      return res.status(404).json({ message: "Inquiry ticket not found." });
+    }
+
+    if (user.role === "contractor" && ticket.sender_user_id !== user.id) {
+      return res.status(403).json({ message: "Access denied." });
+    }
+    if (
+      user.role === "manager" &&
+      (ticket.assigned_manager_id !== user.id || (ticket.state || "").toLowerCase() !== (user.office_state || "").toLowerCase())
+    ) {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    await db.queryAsync(
+      "UPDATE inquiries SET status = 'In Progress', resolved_at = NULL, updated_at = datetime('now') WHERE id = ?",
+      [ticket.id]
+    );
+
+    const roleLabel = user.role === "admin" ? "Admin" : user.role === "manager" ? "Manager" : "Contractor";
+    await db.queryAsync(
+      `INSERT INTO inquiry_messages (inquiry_id, sender_user_id, sender_role, message_body, created_at)
+       VALUES (?, ?, ?, ?, datetime('now'))`,
+      [ticket.id, user.id, roleLabel, "[Action] Inquiry reopened for further assistance."]
+    );
+
+    return res.json({ success: true, message: `Inquiry ${ticket.ticket_number} has been reopened.` });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;
