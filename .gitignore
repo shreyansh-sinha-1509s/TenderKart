@@ -25,3 +25,6 @@ dist-ssr
 .vercel
 .env
 .env.*
+TenderKart_Demo_Credentials.txt
+*.bak
+*.backup.db

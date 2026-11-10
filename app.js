@@ -1,7 +1,7 @@
 // TenderKart - Frontend Application Logic (app.js)
 // Traditional student-friendly coding style
 
-const API_BASE = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && window.location.port !== "" && window.location.port !== "5000"
+const API_BASE = window.location.protocol === "file:" || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && ["5500", "5501", "5502", "5503"].includes(window.location.port))
   ? "http://localhost:5000/api"
   : "/api";
 

@@ -6,9 +6,11 @@
  */
 
 const assert = require("assert");
+const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const bcrypt = require("bcryptjs");
 
 const dbPath = path.join(__dirname, "tenderkart.db");
 const backupPath = path.join(os.tmpdir(), `tenderkart_backup_${Date.now()}.db`);
@@ -60,6 +62,20 @@ async function runTests() {
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
+    // Capture baseline DB counts & set ephemeral runtime passwords on disposable snapshot
+    const baselineContractors = await db.getAsync("SELECT COUNT(*) AS c FROM users WHERE LOWER(role) = 'contractor'");
+    const baselineApps = await db.getAsync("SELECT COUNT(*) AS c FROM applications");
+    const initialContractorsCount = baselineContractors ? baselineContractors.c : 0;
+    const initialAppsCount = baselineApps ? baselineApps.c : 0;
+
+    const ephAdminPass = process.env.TEST_ADMIN_PASSWORD || `Adm#${crypto.randomBytes(6).toString("hex")}`;
+    const ephMgrPass = process.env.TEST_MANAGER_PASSWORD || `Mgr#${crypto.randomBytes(6).toString("hex")}`;
+    const ephConPass = process.env.TEST_CONTRACTOR_PASSWORD || `Con#${crypto.randomBytes(6).toString("hex")}`;
+
+    await db.queryAsync("UPDATE users SET password = ? WHERE username = 'admin'", [bcrypt.hashSync(ephAdminPass, 10)]);
+    await db.queryAsync("UPDATE users SET password = ? WHERE username = 'MGR2002'", [bcrypt.hashSync(ephMgrPass, 10)]);
+    await db.queryAsync("UPDATE users SET password = ? WHERE username = 'CON1001'", [bcrypt.hashSync(ephConPass, 10)]);
+
     let adminToken = null;
     let gujMgrToken = null;
     let conToken = null;
@@ -207,7 +223,7 @@ async function runTests() {
 
     await record("6 & 16a. Central Admin manual login + approves, rejects, deactivates, reactivates manager accounts", async () => {
       const admLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "admin", password: "Admin@1001" },
+        body: { usernameOrEmail: "admin", password: ephAdminPass },
       });
       assert.strictEqual(admLogin.status, 200);
       assert.strictEqual(admLogin.body.user.role, "admin");
@@ -274,7 +290,7 @@ async function runTests() {
 
     await record("7 & 16b. Gujarat Manager logs in manually, views/edits only Gujarat tenders, blocked from Maharashtra tenders & state change", async () => {
       const mLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "MGR2002", password: "Manager@2002" },
+        body: { usernameOrEmail: "MGR2002", password: ephMgrPass },
       });
       assert.strictEqual(mLogin.status, 200);
       assert.strictEqual(mLogin.body.user.role, "manager");
@@ -310,7 +326,7 @@ async function runTests() {
 
     await record("8 & 16c. Contractor manual login searches/filters tenders across all states, views details (+views_count), summarizes & saves", async () => {
       const cLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "CON1001", password: "Contractor@1001" },
+        body: { usernameOrEmail: "CON1001", password: ephConPass },
       });
       assert.strictEqual(cLogin.status, 200);
       assert.strictEqual(cLogin.body.user.role, "contractor");
@@ -426,7 +442,7 @@ async function runTests() {
       const s = statsRes.body;
       assert.strictEqual(s.tendersCount, 12);
       assert.strictEqual(s.maxTenders, 12);
-      assert(s.contractorsCount >= 11, "Expected contractorsCount >= 11 after test registration");
+      assert.strictEqual(s.contractorsCount, initialContractorsCount + 1, "Expected contractorsCount to increase by 1 after test registration");
       assert(s.approvedManagersCount >= 7, "Expected approvedManagersCount >= 7");
       assert(s.totalViews >= 2, "Expected real view counter >= 2");
 
@@ -434,7 +450,7 @@ async function runTests() {
       assert.strictEqual(catTotal, 12, "Category stats must sum to 12");
       const stateTotal = s.stateStats.reduce((sum, st) => sum + st.tender_count, 0);
       assert.strictEqual(stateTotal, 12, "State stats must sum to 12");
-      assert.strictEqual(s.applicationsSummary.total, 18, "Applications summary total must match DB (18)");
+      assert.strictEqual(s.applicationsSummary.total, initialAppsCount, "Applications summary total must match DB baseline");
       assert(s.inquiriesSummary.total >= 7, "Inquiries summary total should include newly routed inquiries");
 
       const gujMgrPerf = s.managerPerformance.find((m) => m.username === "MGR2002");
