@@ -2145,21 +2145,22 @@ async function populateAdminStateFormDropdown() {
     states.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
 }
 
-async function fetchAdminWorkspace() {
-  try {
-    await Promise.all([fetchAdminStats(), fetchAdminTenders()]);
-  } catch {
-    showToast("Error loading Central Admin workspace", "error");
+function computeCategoryDistributionFromTenders(tenders) {
+  const countsMap = new Map();
+  for (const t of tenders || []) {
+    countsMap.set(t.category, (countsMap.get(t.category) || 0) + 1);
   }
+  return PERMITTED_CATEGORIES.map((category) => ({
+    category,
+    count: countsMap.get(category) || 0
+  }));
 }
 
-async function fetchAdminStats() {
-  const res = await fetchNoCache(`${API_BASE}/admin/stats`, { headers: getAuthHeaders() });
-  if (!res.ok) return;
-  const stats = await res.json();
+function applyAdminWorkspaceData(tenders) {
+  adminTendersList = Array.isArray(tenders) ? tenders : [];
 
-  const total = stats.totalTenders ?? 0;
-  const dist = Array.isArray(stats.categoryDistribution) ? stats.categoryDistribution : [];
+  const total = adminTendersList.length;
+  const dist = computeCategoryDistributionFromTenders(adminTendersList);
 
   const totalEl = document.getElementById("admin-total-tenders");
   if (totalEl) totalEl.textContent = total;
@@ -2167,6 +2168,40 @@ async function fetchAdminStats() {
   if (badgeEl) badgeEl.textContent = `Total: ${total} Tender${total === 1 ? "" : "s"}`;
 
   renderAdminCategoryPieChart(dist, total);
+
+  const stateSel = document.getElementById("admin-filter-state");
+  if (stateSel) {
+    const prev = stateSel.value;
+    const states = [...new Set(adminTendersList.map((t) => t.state).filter(Boolean))].sort();
+    stateSel.innerHTML =
+      '<option value="">All States</option>' +
+      states.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    if (prev && states.includes(prev)) stateSel.value = prev;
+  }
+
+  renderAdminTendersTable();
+}
+
+async function syncAdminAfterMutation(data) {
+  if (data && Array.isArray(data.tenders)) {
+    applyAdminWorkspaceData(data.tenders);
+    return;
+  }
+  await fetchAdminWorkspace();
+}
+
+async function fetchAdminWorkspace() {
+  try {
+    const res = await fetchNoCache(`${API_BASE}/admin/tenders`, { headers: getAuthHeaders() });
+    if (!res.ok) {
+      showToast("Error loading Central Admin workspace", "error");
+      return;
+    }
+    const tenders = await res.json();
+    applyAdminWorkspaceData(tenders);
+  } catch {
+    showToast("Error loading Central Admin workspace", "error");
+  }
 }
 
 function renderAdminCategoryPieChart(distribution, totalCount) {
@@ -2216,8 +2251,13 @@ function renderAdminCategoryPieChart(distribution, totalCount) {
   const borderColor = isDark ? "#111827" : "#FFFFFF";
 
   if (adminPieChartInstance) {
-    adminPieChartInstance.destroy();
-    adminPieChartInstance = null;
+    adminPieChartInstance.data.labels = labels;
+    adminPieChartInstance.data.datasets[0].data = values;
+    adminPieChartInstance.data.datasets[0].backgroundColor = colors;
+    adminPieChartInstance.data.datasets[0].borderColor = borderColor;
+    adminPieChartInstance.options.plugins.legend.labels.color = textColor;
+    adminPieChartInstance.update();
+    return;
   }
 
   adminPieChartInstance = new window.Chart(canvas.getContext("2d"), {
@@ -2250,7 +2290,8 @@ function renderAdminCategoryPieChart(distribution, totalCount) {
           callbacks: {
             label: (ctx) => {
               const count = ctx.parsed || 0;
-              const pct = totalCount > 0 ? ((count / totalCount) * 100).toFixed(1) : "0.0";
+              const datasetTotal = (ctx.dataset?.data || []).reduce((sum, val) => sum + (Number(val) || 0), 0);
+              const pct = datasetTotal > 0 ? ((count / datasetTotal) * 100).toFixed(1) : "0.0";
               return ` ${ctx.label}: ${count} (${pct}%)`;
             }
           }
@@ -2266,24 +2307,6 @@ function updateAdminChartTheme() {
   adminPieChartInstance.data.datasets[0].borderColor = isDark ? "#111827" : "#FFFFFF";
   adminPieChartInstance.options.plugins.legend.labels.color = isDark ? "#CBD5E1" : "#334155";
   adminPieChartInstance.update();
-}
-
-async function fetchAdminTenders() {
-  const res = await fetchNoCache(`${API_BASE}/admin/tenders`, { headers: getAuthHeaders() });
-  if (!res.ok) return;
-  adminTendersList = await res.json();
-
-  const stateSel = document.getElementById("admin-filter-state");
-  if (stateSel) {
-    const prev = stateSel.value;
-    const states = [...new Set(adminTendersList.map((t) => t.state).filter(Boolean))].sort();
-    stateSel.innerHTML =
-      '<option value="">All States</option>' +
-      states.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
-    if (prev && states.includes(prev)) stateSel.value = prev;
-  }
-
-  renderAdminTendersTable();
 }
 
 window.resetAdminTenderFilters = () => {
@@ -2556,7 +2579,7 @@ window.handleAdminTenderSubmit = async (e) => {
     if (res.ok) {
       showToast(data.message || "Tender saved successfully", "success");
       closeAdminTenderModal();
-      await fetchAdminWorkspace();
+      await syncAdminAfterMutation(data);
     } else {
       showFormErr(data.message || "Could not save tender");
     }
@@ -2581,7 +2604,7 @@ window.handleAdminCloseTender = async (tenderId) => {
     const data = await res.json();
     if (res.ok) {
       showToast(data.message || "Tender closed", "info");
-      await fetchAdminWorkspace();
+      await syncAdminAfterMutation(data);
     } else {
       showToast(data.message || "Failed to close tender", "error");
     }
@@ -2614,7 +2637,7 @@ window.handleAdminReopenTender = async (tenderId) => {
     const data = await res.json();
     if (res.ok) {
       showToast(data.message || "Tender reopened", "success");
-      await fetchAdminWorkspace();
+      await syncAdminAfterMutation(data);
     } else {
       showToast(data.message || "Could not reopen tender", "error");
     }
@@ -2644,7 +2667,7 @@ window.confirmAdminReopenWithDeadline = async (e) => {
     if (res.ok) {
       showToast(data.message || "Tender reopened", "success");
       closeAdminReopenModal();
-      await fetchAdminWorkspace();
+      await syncAdminAfterMutation(data);
     } else {
       showToast(data.message || "Could not reopen tender", "error");
     }
@@ -2686,7 +2709,7 @@ window.confirmAdminDeleteTender = async () => {
     if (res.ok) {
       showToast(data.message || "Tender removed successfully", "info");
       closeAdminDeleteModal();
-      await fetchAdminWorkspace();
+      await syncAdminAfterMutation(data);
     } else {
       showToast(data.message || "Could not remove tender", "error");
     }

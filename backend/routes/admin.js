@@ -150,23 +150,33 @@ function validateTenderPayload(body = {}, existing = null) {
   };
 }
 
+async function buildAdminDashboardSnapshot() {
+  const rows = await db.queryAsync("SELECT * FROM tenders ORDER BY id DESC");
+  const tenders = (rows || []).map(formatAdminTender);
+
+  const countsMap = new Map();
+  for (const t of tenders) {
+    countsMap.set(t.category, (countsMap.get(t.category) || 0) + 1);
+  }
+  const categoryDistribution = ALLOWED_CATEGORIES.map((category) => ({
+    category,
+    count: countsMap.get(category) || 0
+  }));
+
+  return {
+    tenders,
+    totalTenders: tenders.length,
+    categoryDistribution
+  };
+}
+
 // 1. Admin Dashboard Summary: Total Tenders & Live Category Distribution for Pie Chart
 router.get(["/stats", "/analytics"], async (req, res) => {
   try {
-    const [countRow, catRows] = await Promise.all([
-      db.getAsync("SELECT COUNT(*) AS count FROM tenders"),
-      db.queryAsync("SELECT category, COUNT(*) AS count FROM tenders GROUP BY category")
-    ]);
-
-    const countsMap = new Map((catRows || []).map((r) => [r.category, r.count]));
-    const categoryDistribution = ALLOWED_CATEGORIES.map((category) => ({
-      category,
-      count: countsMap.get(category) || 0
-    }));
-
+    const snapshot = await buildAdminDashboardSnapshot();
     return res.json({
-      totalTenders: countRow ? countRow.count : 0,
-      categoryDistribution
+      totalTenders: snapshot.totalTenders,
+      categoryDistribution: snapshot.categoryDistribution
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -261,9 +271,13 @@ router.post("/tenders", async (req, res) => {
     );
 
     const createdRow = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [result.insertId]);
+    const snapshot = await buildAdminDashboardSnapshot();
     return res.status(201).json({
       message: "Tender created successfully",
-      tender: formatAdminTender(createdRow)
+      tender: formatAdminTender(createdRow),
+      tenders: snapshot.tenders,
+      totalTenders: snapshot.totalTenders,
+      categoryDistribution: snapshot.categoryDistribution
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -332,9 +346,13 @@ router.put("/tenders/:id", async (req, res) => {
     );
 
     const updatedRow = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
+    const snapshot = await buildAdminDashboardSnapshot();
     return res.json({
       message: "Tender updated successfully",
-      tender: formatAdminTender(updatedRow)
+      tender: formatAdminTender(updatedRow),
+      tenders: snapshot.tenders,
+      totalTenders: snapshot.totalTenders,
+      categoryDistribution: snapshot.categoryDistribution
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -363,9 +381,13 @@ router.patch("/tenders/:id/status", async (req, res) => {
         [req.user.id, tenderId]
       );
       const updated = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
+      const snapshot = await buildAdminDashboardSnapshot();
       return res.json({
         message: "Tender closed successfully.",
-        tender: formatAdminTender(updated)
+        tender: formatAdminTender(updated),
+        tenders: snapshot.tenders,
+        totalTenders: snapshot.totalTenders,
+        categoryDistribution: snapshot.categoryDistribution
       });
     }
 
@@ -394,9 +416,13 @@ router.patch("/tenders/:id/status", async (req, res) => {
         [targetDeadline, recomputedStatus, req.user.id, tenderId]
       );
       const updated = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
+      const snapshot = await buildAdminDashboardSnapshot();
       return res.json({
         message: `Tender reopened with status "${recomputedStatus}".`,
-        tender: formatAdminTender(updated)
+        tender: formatAdminTender(updated),
+        tenders: snapshot.tenders,
+        totalTenders: snapshot.totalTenders,
+        categoryDistribution: snapshot.categoryDistribution
       });
     }
 
@@ -420,9 +446,13 @@ router.delete("/tenders/:id", async (req, res) => {
     }
 
     await db.queryAsync("DELETE FROM tenders WHERE id = ?", [tenderId]);
+    const snapshot = await buildAdminDashboardSnapshot();
     return res.json({
       success: true,
-      message: `Tender "${existing.name}" removed successfully.`
+      message: `Tender "${existing.name}" removed successfully.`,
+      tenders: snapshot.tenders,
+      totalTenders: snapshot.totalTenders,
+      categoryDistribution: snapshot.categoryDistribution
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
