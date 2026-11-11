@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - About TenderKart</title>
+  <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .about-list {
+      margin: 0;
+      padding-left: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 0.94rem;
+      line-height: 1.6;
+    }
+    .about-list li strong {
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <div id="navbar-placeholder"></div>
+
+  <main style="flex: 1; padding: 3.5rem 0 4.5rem 0;">
+    <div class="container" style="display: flex; flex-direction: column; gap: 2rem; max-width: 960px;">
+
+      <!-- Page Header -->
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 10px; max-width: 740px; margin: 0 auto;">
+        <span class="badge badge-blue" style="width: fit-content; align-self: center;">ABOUT TENDERKART</span>
+        <h1 style="font-size: 2.35rem; font-weight: 850; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2; margin: 0;">
+          About TenderKart
+        </h1>
+        <p style="font-size: 1rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+          Centralized urban infrastructure tender discovery, AI-assisted understanding, and personal application tracking.
+        </p>
+      </div>
+
+      <!-- What is TenderKart & Problem We Address -->
+      <section class="grid-2" style="gap: 1.5rem;">
+        <div class="card" style="padding: 1.85rem; display: flex; flex-direction: column; gap: 10px;">
+          <span class="badge badge-blue" style="width: fit-content;">Overview</span>
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0;">What is TenderKart?</h2>
+          <p style="font-size: 0.94rem; color: var(--text-secondary); line-height: 1.65; margin: 0;">
+            TenderKart is a centralized tender discovery and tracking platform designed to help contractors and businesses discover urban infrastructure tender opportunities more conveniently.
+          </p>
+        </div>
+
+        <div class="card" style="padding: 1.85rem; display: flex; flex-direction: column; gap: 10px;">
+          <span class="badge badge-orange" style="width: fit-content;">Background</span>
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin: 0;">Problem we address</h2>
+          <p style="font-size: 0.94rem; color: var(--text-secondary); line-height: 1.65; margin: 0;">
+            Infrastructure tender information can be scattered across different sources. Finding suitable opportunities and keeping track of application details can be difficult.
+          </p>
+        </div>
+      </section>
+
+      <!-- Our Solution -->
+      <section class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 12px;">
+        <span class="badge badge-green" style="width: fit-content;">Capabilities</span>
+        <h2 style="font-size: 1.3rem; font-weight: 850; color: var(--text-primary); margin: 0;">Our solution</h2>
+        <p style="font-size: 0.94rem; color: var(--text-secondary); margin: 0;">TenderKart helps users:</p>
+        <ul class="about-list">
+          <li>Discover infrastructure tenders.</li>
+          <li>Search by location and state.</li>
+          <li>Filter by category and other tender details.</li>
+          <li>Understand lengthy tender descriptions through AI-assisted summaries.</li>
+          <li>Save interesting tenders.</li>
+          <li>Record and track applications submitted through official procurement portals.</li>
+        </ul>
+      </section>
+
+      <!-- Who Uses TenderKart -->
+      <section style="display: flex; flex-direction: column; gap: 1rem;">
+        <h2 style="font-size: 1.3rem; font-weight: 850; color: var(--text-primary); margin: 0;">Who uses TenderKart?</h2>
+        <div class="grid-2" style="gap: 1.5rem;">
+          <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 8px;">
+            <span class="badge badge-orange" style="width: fit-content;">Central Admin</span>
+            <h3 style="font-size: 1.12rem; font-weight: 800; color: var(--text-primary); margin: 0;">Central Admin</h3>
+            <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+              Manages tender information — adding new tenders, updating details, controlling Open/Closed status, removing outdated notices, and reviewing category distribution.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 8px;">
+            <span class="badge badge-blue" style="width: fit-content;">Contractors</span>
+            <h3 style="font-size: 1.12rem; font-weight: 800; color: var(--text-primary); margin: 0;">Contractors</h3>
+            <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+              Discover tenders across states and categories, bookmark relevant notices, review AI-assisted summaries, and maintain their own application records in the Dashboard.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Important Disclaimer -->
+      <section class="card" style="padding: 2rem; background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06) 0%, var(--bg-card) 100%); border: 1px solid rgba(var(--primary-rgb), 0.25); display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.35rem;">ℹ️</span>
+          <h2 style="font-size: 1.15rem; font-weight: 850; color: var(--text-primary); margin: 0;">Important disclaimer</h2>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.65; margin: 0; font-weight: 600;">
+          TenderKart is a tender discovery and tracking platform. It is not a government e-procurement portal.
+        </p>
+        <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.65; margin: 0;">
+          Actual bid submission, document verification, procurement decisions and tender awards take place through the relevant official government procurement portals and authorities.
+        </p>
+      </section>
+
+      <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <a href="tenders.html" class="btn btn-primary" style="border: none;">Browse Tenders</a>
+        <a href="about.html" class="btn btn-outline">How It Works</a>
+        <a href="register.html" class="btn btn-secondary">Contractor Registration</a>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="footer-placeholder"></div>
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

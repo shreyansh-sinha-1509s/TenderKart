@@ -16,6 +16,25 @@
     {
       "source": "/contact.html",
       "destination": "/"
+    },
+    {
+      "source": "/applications.html",
+      "destination": "/dashboard.html"
+    },
+    {
+      "source": "/about-tenderkart",
+      "destination": "/about-tenderkart.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate"
+        }
+      ]
     }
   ],
   "rewrites": [

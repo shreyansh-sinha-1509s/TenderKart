@@ -53,6 +53,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
+// Helper to bypass browser/proxy HTTP cache for live SQLite-backed API reads
+function fetchNoCache(url, options = {}) {
+  return fetch(url, { ...options, cache: "no-store" });
+}
+
 // Helper to escape HTML safely
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
@@ -272,15 +277,15 @@ function renderNavbar() {
     ];
   } else if (role === "contractor") {
     navItems = [
-      { label: "Dashboard", href: "dashboard.html", active: activePath === "dashboard.html" && !activeHash },
+      { label: "Dashboard", href: "dashboard.html", active: activePath === "dashboard.html" },
       { label: "Browse Tenders", href: "tenders.html", active: activePath === "tenders.html" || activePath === "tenderDetails.html" },
       { label: "Saved Tenders", href: "saved.html", active: activePath === "saved.html" },
-      { label: "My Applications", href: "dashboard.html#applications-section", active: activePath === "dashboard.html" && activeHash === "#applications-section" },
       { label: "How It Works", href: "about.html", active: activePath === "about.html" }
     ];
   } else {
     navItems = [
       { label: "Home", href: "index.html", active: activePath === "index.html" || activePath === "" },
+      { label: "About", href: "about-tenderkart.html", active: activePath === "about-tenderkart.html" },
       { label: "Browse Tenders", href: "tenders.html", active: activePath === "tenders.html" || activePath === "tenderDetails.html" },
       { label: "How It Works", href: "about.html", active: activePath === "about.html" }
     ];
@@ -396,6 +401,7 @@ function renderFooter() {
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           <h4 style="font-size: 0.8rem; font-weight: 800; color: #F1F5F9; text-transform: uppercase; letter-spacing: 1px;">Platform</h4>
           <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px;">
+            <li><a href="about-tenderkart.html" class="footer-link">About TenderKart</a></li>
             <li><a href="tenders.html" class="footer-link">Browse Tenders</a></li>
             <li><a href="about.html" class="footer-link">How It Works</a></li>
             <li><a href="${dashboardHref}" class="footer-link">Dashboard</a></li>
@@ -461,7 +467,7 @@ function initHomepage() {
 
   setupStatsScrollTrigger();
 
-  fetch(`${API_BASE}/tenders`)
+  fetchNoCache(`${API_BASE}/tenders`)
     .then((res) => (res.ok ? res.json() : Promise.reject(new Error("API error"))))
     .then((tenders) => {
       categories.forEach((cat) => {
@@ -841,6 +847,45 @@ function syncQuickStateChips() {
   });
 }
 
+function populateBrowseFilterOptions(allTenders) {
+  if (!Array.isArray(allTenders) || allTenders.length === 0) return;
+
+  const states = [...new Set(allTenders.map((t) => t.state).filter(Boolean))].sort();
+  const locations = [...new Set(allTenders.map((t) => t.location).filter(Boolean))].sort();
+
+  const stateSelect = document.getElementById("filter-state");
+  if (stateSelect && states.length > 0) {
+    const prevState = stateSelect.value;
+    stateSelect.innerHTML =
+      '<option value="">All States</option>' +
+      states.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+    if (prevState && states.includes(prevState)) {
+      stateSelect.value = prevState;
+    }
+  }
+
+  const locList = document.getElementById("location-datalist");
+  if (locList && locations.length > 0) {
+    locList.innerHTML = locations
+      .map((loc) => `<option value="${escapeHtml(loc)}">`)
+      .join("");
+  }
+
+  const chipsWrap = document.getElementById("quick-state-chips");
+  if (chipsWrap && states.length > 0) {
+    chipsWrap.innerHTML =
+      '<span style="color: var(--text-muted); font-weight: 600;">Filter by State:</span>' +
+      '<button type="button" class="location-chip" data-state="" onclick="applyQuickState(\'\')">All States</button>' +
+      states
+        .map(
+          (s) =>
+            `<button type="button" class="location-chip" data-state="${escapeHtml(s)}" onclick="applyQuickState('${escapeHtml(s).replace(/'/g, "\\'")}')">📍 ${escapeHtml(s)}</button>`
+        )
+        .join("");
+  }
+  syncQuickStateChips();
+}
+
 async function initTendersPage() {
   const urlParams = new URLSearchParams(window.location.search);
 
@@ -867,38 +912,10 @@ async function initTendersPage() {
 
   // Populate states, quick chips, and location suggestions dynamically from actual tenders in database
   try {
-    const allRes = await fetch(`${API_BASE}/tenders`);
+    const allRes = await fetchNoCache(`${API_BASE}/tenders`);
     if (allRes.ok) {
       const allTenders = await allRes.json();
-      const states = [...new Set(allTenders.map((t) => t.state).filter(Boolean))].sort();
-      const locations = [...new Set(allTenders.map((t) => t.location).filter(Boolean))].sort();
-
-      const stateSelect = document.getElementById("filter-state");
-      if (stateSelect && states.length > 0) {
-        stateSelect.innerHTML =
-          '<option value="">All States</option>' +
-          states.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
-      }
-
-      const locList = document.getElementById("location-datalist");
-      if (locList && locations.length > 0) {
-        locList.innerHTML = locations
-          .map((loc) => `<option value="${escapeHtml(loc)}">`)
-          .join("");
-      }
-
-      const chipsWrap = document.getElementById("quick-state-chips");
-      if (chipsWrap && states.length > 0) {
-        chipsWrap.innerHTML =
-          '<span style="color: var(--text-muted); font-weight: 600;">Filter by State:</span>' +
-          '<button type="button" class="location-chip" data-state="" onclick="applyQuickState(\'\')">All States</button>' +
-          states
-            .map(
-              (s) =>
-                `<button type="button" class="location-chip" data-state="${escapeHtml(s)}" onclick="applyQuickState('${escapeHtml(s).replace(/'/g, "\\'")}')">📍 ${escapeHtml(s)}</button>`
-            )
-            .join("");
-      }
+      populateBrowseFilterOptions(allTenders);
     }
   } catch {
     // Keep default options if network lookup fails
@@ -912,7 +929,7 @@ async function initTendersPage() {
   const activeUser = getSafeStoredUser();
   if (activeUser && activeUser.role === "contractor") {
     try {
-      const res = await fetch(`${API_BASE}/saved`, { headers: getAuthHeaders() });
+      const res = await fetchNoCache(`${API_BASE}/saved`, { headers: getAuthHeaders() });
       if (res.ok) {
         const savedData = await res.json();
         savedTendersGlobalList = savedData.map((t) => t.id);
@@ -960,6 +977,12 @@ async function initTendersPage() {
   if (resetBtn) {
     resetBtn.onclick = () => window.viewAllTenders();
   }
+
+  window.addEventListener("pageshow", (ev) => {
+    if (ev.persisted) {
+      searchAndFilterTenders();
+    }
+  });
 
   await searchAndFilterTenders();
 }
@@ -1019,13 +1042,18 @@ async function searchAndFilterTenders() {
   if (deadline) q.append("deadline", deadline);
 
   try {
-    const res = await fetch(`${API_BASE}/tenders?${q.toString()}`);
+    const qs = q.toString();
+    const res = await fetchNoCache(qs ? `${API_BASE}/tenders?${qs}` : `${API_BASE}/tenders`);
     const data = await res.json();
     if (reqId !== activeSearchReqId) return;
 
     if (!res.ok) {
       showToast("Error loading tenders", "error");
       return;
+    }
+
+    if (!qs) {
+      populateBrowseFilterOptions(data);
     }
 
     const countBox = document.getElementById("results-count");
@@ -1178,7 +1206,7 @@ async function initTenderDetailsPage() {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/tenders/${tenderId}`);
+    const res = await fetchNoCache(`${API_BASE}/tenders/${tenderId}`);
     if (!res.ok) {
       showToast("Tender details not found", "error");
       setTimeout(() => {
@@ -1264,7 +1292,7 @@ async function checkTrackButtonState(tenderId) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/applications/my`, { headers: getAuthHeaders() });
+    const res = await fetchNoCache(`${API_BASE}/applications/my`, { headers: getAuthHeaders() });
     if (res.ok) {
       const data = await res.json();
       const existing = (data.applications || []).find((a) => a.tender_id === parseInt(tenderId, 10));
@@ -1406,7 +1434,7 @@ async function checkSaveButtonState(tenderId) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/saved`, { headers: getAuthHeaders() });
+    const res = await fetchNoCache(`${API_BASE}/saved`, { headers: getAuthHeaders() });
     if (res.ok) {
       const data = await res.json();
       const isSaved = data.some((t) => t.id === parseInt(tenderId, 10));
@@ -1524,7 +1552,7 @@ async function initSavedPage() {
   if (!listEl) return;
 
   try {
-    const res = await fetch(`${API_BASE}/saved`, { headers: getAuthHeaders() });
+    const res = await fetchNoCache(`${API_BASE}/saved`, { headers: getAuthHeaders() });
     if (!res.ok) {
       listEl.innerHTML = '<p style="color: var(--color-danger);">Could not load saved tenders.</p>';
       return;
@@ -1606,7 +1634,7 @@ let contractorAvailableTenders = [];
 
 async function loadContractorTendersForModal() {
   try {
-    const res = await fetch(`${API_BASE}/tenders`);
+    const res = await fetchNoCache(`${API_BASE}/tenders`);
     if (res.ok) {
       contractorAvailableTenders = await res.json();
     }
@@ -1825,6 +1853,13 @@ async function initDashboardPage() {
   const codeEl = document.getElementById("profile-code");
   if (codeEl) codeEl.textContent = user.user_code || "CONTRACTOR";
 
+  window.addEventListener("pageshow", (ev) => {
+    if (ev.persisted) {
+      fetchDashboardData();
+      loadContractorTendersForModal();
+    }
+  });
+
   await Promise.all([fetchDashboardData(), loadContractorTendersForModal()]);
   const addAppParam = urlParams.get("addApp");
   if (addAppParam) {
@@ -1836,8 +1871,8 @@ async function fetchDashboardData() {
   const headers = getAuthHeaders();
   try {
     const [appsRes, savedRes] = await Promise.all([
-      fetch(`${API_BASE}/applications/my`, { headers }),
-      fetch(`${API_BASE}/saved`, { headers })
+      fetchNoCache(`${API_BASE}/applications/my`, { headers }),
+      fetchNoCache(`${API_BASE}/saved`, { headers })
     ]);
 
     if (appsRes.ok) {
@@ -2062,6 +2097,7 @@ window.closeAnalysisModal = () => {
 /* ---------------- CENTRAL ADMIN WORKSPACE (admin.html) ---------------- */
 let adminTendersList = [];
 let adminPieChartInstance = null;
+let isAdminTenderSubmitting = false;
 
 async function initAdminPage() {
   await populateAdminStateFormDropdown();
@@ -2080,6 +2116,12 @@ async function initAdminPage() {
   }
   [catSel, stateSel, statusSel].forEach((sel) => {
     if (sel) sel.onchange = () => renderAdminTendersTable();
+  });
+
+  window.addEventListener("pageshow", (ev) => {
+    if (ev.persisted) {
+      fetchAdminWorkspace();
+    }
   });
 
   await fetchAdminWorkspace();
@@ -2112,7 +2154,7 @@ async function fetchAdminWorkspace() {
 }
 
 async function fetchAdminStats() {
-  const res = await fetch(`${API_BASE}/admin/stats`, { headers: getAuthHeaders() });
+  const res = await fetchNoCache(`${API_BASE}/admin/stats`, { headers: getAuthHeaders() });
   if (!res.ok) return;
   const stats = await res.json();
 
@@ -2227,7 +2269,7 @@ function updateAdminChartTheme() {
 }
 
 async function fetchAdminTenders() {
-  const res = await fetch(`${API_BASE}/admin/tenders`, { headers: getAuthHeaders() });
+  const res = await fetchNoCache(`${API_BASE}/admin/tenders`, { headers: getAuthHeaders() });
   if (!res.ok) return;
   adminTendersList = await res.json();
 
@@ -2418,6 +2460,7 @@ window.closeAdminTenderModal = () => {
 
 window.handleAdminTenderSubmit = async (e) => {
   e.preventDefault();
+  if (isAdminTenderSubmitting) return;
   const errBox = document.getElementById("admin-tender-form-error");
   const showFormErr = (msg) => {
     if (errBox) {
@@ -2495,6 +2538,7 @@ window.handleAdminTenderSubmit = async (e) => {
 
   const submitBtn = document.getElementById("tender-form-submit-btn");
   const origLabel = submitBtn ? submitBtn.textContent : "Save Tender";
+  isAdminTenderSubmitting = true;
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = tenderId ? "Saving..." : "Publishing...";
@@ -2519,6 +2563,7 @@ window.handleAdminTenderSubmit = async (e) => {
   } catch {
     showFormErr("Network error while saving tender");
   } finally {
+    isAdminTenderSubmitting = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = origLabel;

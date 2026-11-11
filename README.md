@@ -35,6 +35,7 @@
 ```text
 TenderKart/
 ├── index.html             # Homepage & quick category search
+├── about-tenderkart.html  # About TenderKart, scope & platform disclaimer
 ├── tenders.html           # Search & filter tender catalog
 ├── tenderDetails.html     # Tender specs, official portal link, AI summary & Record Application
 ├── saved.html             # Dedicated contractor Saved Tenders page
@@ -83,6 +84,7 @@ node backend/server.js
 
 Local URLs:
 - **Home:** `http://localhost:5000/`
+- **About TenderKart:** `http://localhost:5000/about-tenderkart.html`
 - **Login:** `http://localhost:5000/login.html`
 - **Register (Contractor):** `http://localhost:5000/register.html`
 - **Browse Tenders:** `http://localhost:5000/tenders.html`

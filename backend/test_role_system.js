@@ -453,6 +453,7 @@ async function runTests() {
 
       const activePages = [
         "index.html",
+        "about-tenderkart.html",
         "login.html",
         "register.html",
         "tenders.html",
@@ -467,7 +468,7 @@ async function runTests() {
         assert.strictEqual(res.status, 200, `${page} did not return 200`);
       }
 
-      for (const deadPage of ["contact.html", "manager.html", "analytics.html"]) {
+      for (const deadPage of ["contact.html", "manager.html", "analytics.html", "applications.html"]) {
         const res = await fetch(`${baseUrl}/${deadPage}`, { redirect: "manual" });
         assert.strictEqual(res.status, 301, `${deadPage} expected 301 redirect, got ${res.status}`);
       }

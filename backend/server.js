@@ -9,6 +9,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Prevent browser/proxy/CDN caching on live SQLite-backed API responses
+app.use("/api", (req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
+
 // API Routes (Two-Role System: Central Admin & Contractor)
 app.use("/api/users", require("./routes/users"));
 app.use("/api/tenders", require("./routes/tenders"));
@@ -16,9 +24,15 @@ app.use("/api/saved", require("./routes/saved"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/applications", require("./routes/applications"));
 
-// Gracefully redirect obsolete page requests to homepage
+// Gracefully redirect obsolete or convenience page paths
 app.get(["/analytics.html", "/analytics", "/manager.html", "/contact.html"], (req, res) => {
   res.redirect(301, "/");
+});
+app.get("/applications.html", (req, res) => {
+  res.redirect(301, "/dashboard.html");
+});
+app.get(["/about-tenderkart", "/about-us", "/about-us.html"], (req, res) => {
+  res.redirect(301, "/about-tenderkart.html");
 });
 
 // Serve static frontend files from the root directory
