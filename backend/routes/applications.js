@@ -2,6 +2,117 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const { authenticateUser, requireContractor } = require("../middleware/auth");
+const {
+  CONTRACTOR_APPLICATION_STATUSES,
+  mapApplicationOutcome,
+  summarizeApplications
+} = require("../constants");
+
+const APPLICATION_SELECT_FIELDS = `
+  a.id,
+  a.application_code,
+  a.contractor_id,
+  a.tender_id,
+  a.applied_on,
+  a.bid_amount,
+  a.portal_name,
+  a.reference_number,
+  a.application_status,
+  a.outcome,
+  a.proposal_notes,
+  a.missing_documents,
+  a.evaluation_notes,
+  a.evaluator_id,
+  a.evaluated_at,
+  a.created_at,
+  a.updated_at,
+  t.name AS tender_name,
+  t.category AS tender_category,
+  t.department AS tender_department,
+  t.location AS tender_location,
+  t.state AS tender_state,
+  t.budget AS tender_budget,
+  t.deadline AS tender_deadline,
+  t.eligibility AS tender_eligibility,
+  t.required_documents AS tender_required_docs,
+  t.source_url AS tender_source_url
+`;
+
+function validateApplicationFields(body, { isEdit = false } = {}) {
+  const {
+    tender_id,
+    applied_on,
+    portal_name,
+    reference_number,
+    application_status,
+    status,
+    bid_amount,
+    proposal_notes,
+    notes
+  } = body || {};
+
+  const parsedTenderId = tender_id !== undefined && tender_id !== null && String(tender_id).trim() !== ""
+    ? parseInt(tender_id, 10)
+    : null;
+  if (!isEdit && (!parsedTenderId || isNaN(parsedTenderId))) {
+    return { error: "Please select a valid tender." };
+  }
+  if (parsedTenderId !== null && (isNaN(parsedTenderId) || parsedTenderId <= 0)) {
+    return { error: "Selected tender ID is invalid." };
+  }
+
+  const cleanDate = (applied_on || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate) || isNaN(Date.parse(cleanDate))) {
+    return { error: "Please provide a valid application submission date (YYYY-MM-DD)." };
+  }
+
+  const cleanPortal = (portal_name || "").trim();
+  if (!cleanPortal) {
+    return { error: "Official Portal Name is required." };
+  }
+  if (cleanPortal.length > 160) {
+    return { error: "Official Portal Name must be 160 characters or fewer." };
+  }
+
+  const cleanRef = (reference_number || "").trim();
+  if (!cleanRef) {
+    return { error: "Application / Bid Reference Number is required." };
+  }
+  if (cleanRef.length > 120) {
+    return { error: "Reference Number must be 120 characters or fewer." };
+  }
+
+  const rawStatus = (application_status || status || "Submitted").trim();
+  if (!CONTRACTOR_APPLICATION_STATUSES.includes(rawStatus)) {
+    return {
+      error: `Invalid submission status. Allowed values: ${CONTRACTOR_APPLICATION_STATUSES.join(", ")}.`
+    };
+  }
+
+  let parsedBid = null;
+  if (bid_amount !== undefined && bid_amount !== null && String(bid_amount).trim() !== "") {
+    parsedBid = parseFloat(bid_amount);
+    if (isNaN(parsedBid) || parsedBid <= 0) {
+      return { error: "Bid Amount Quoted must be a positive number in INR." };
+    }
+  }
+
+  const rawNotes = proposal_notes !== undefined ? proposal_notes : notes;
+  const cleanNotes = rawNotes && String(rawNotes).trim() ? String(rawNotes).trim() : null;
+
+  return {
+    value: {
+      tender_id: parsedTenderId,
+      applied_on: cleanDate,
+      portal_name: cleanPortal,
+      reference_number: cleanRef,
+      application_status: rawStatus,
+      outcome: mapApplicationOutcome(rawStatus),
+      bid_amount: parsedBid,
+      proposal_notes: cleanNotes
+    }
+  };
+}
 
 // 1. GET /api/applications/my - Retrieve applications & performance stats for logged-in contractor
 router.get("/my", requireContractor, (req, res) => {
@@ -9,29 +120,7 @@ router.get("/my", requireContractor, (req, res) => {
 
   const query = `
     SELECT
-      a.id,
-      a.application_code,
-      a.contractor_id,
-      a.tender_id,
-      a.applied_on,
-      a.bid_amount,
-      a.application_status,
-      a.outcome,
-      a.proposal_notes,
-      a.missing_documents,
-      a.evaluation_notes,
-      a.evaluator_id,
-      a.evaluated_at,
-      a.created_at,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      t.department AS tender_department,
-      t.location AS tender_location,
-      t.state AS tender_state,
-      t.budget AS tender_budget,
-      t.deadline AS tender_deadline,
-      t.eligibility AS tender_eligibility,
-      t.required_documents AS tender_required_docs
+      ${APPLICATION_SELECT_FIELDS}
     FROM applications a
     JOIN tenders t ON a.tender_id = t.id
     WHERE a.contractor_id = ?
@@ -65,28 +154,12 @@ router.get("/my", requireContractor, (req, res) => {
       };
     });
 
-    const total = applications.length;
-    let won = 0;
-    let notAwarded = 0;
-    let pending = 0;
-    let withdrawn = 0;
-
+    const stats = summarizeApplications(applications);
     const categoryStatsMap = {};
 
     applications.forEach((app) => {
       const status = (app.application_status || "").trim();
       const outcome = (app.outcome || "").trim();
-
-      if (status === "Won" || outcome === "Won") {
-        won++;
-      } else if (status === "Not Awarded" || outcome === "Not Awarded" || status === "Rejected" || outcome === "Rejected") {
-        notAwarded++;
-      } else if (status === "Withdrawn" || outcome === "Withdrawn") {
-        withdrawn++;
-      } else {
-        pending++;
-      }
-
       const cat = app.tender_category || "Other";
       if (!categoryStatsMap[cat]) {
         categoryStatsMap[cat] = { category: cat, total: 0, won: 0, notAwarded: 0, pending: 0 };
@@ -94,35 +167,41 @@ router.get("/my", requireContractor, (req, res) => {
       categoryStatsMap[cat].total++;
       if (status === "Won" || outcome === "Won") {
         categoryStatsMap[cat].won++;
-      } else if (status === "Not Awarded" || outcome === "Not Awarded" || status === "Rejected" || outcome === "Rejected") {
+      } else if (["Lost", "Not Awarded", "Rejected"].includes(status) || ["Lost", "Not Awarded", "Rejected"].includes(outcome)) {
         categoryStatsMap[cat].notAwarded++;
       } else if (status !== "Withdrawn" && outcome !== "Withdrawn") {
         categoryStatsMap[cat].pending++;
       }
     });
 
-    const decided = won + notAwarded;
-    const winRate = decided > 0 ? parseFloat(((won / decided) * 100).toFixed(1)) : null;
+    const decided = stats.won + stats.lost;
+    const winRate = decided > 0 ? parseFloat(((stats.won / decided) * 100).toFixed(1)) : null;
     const winRateDisplay = winRate !== null ? `${winRate}%` : "Not enough completed outcomes to calculate win rate.";
     const categories = Object.values(categoryStatsMap);
 
     res.json({
-      totalApplications: total,
-      won,
-      notAwarded,
-      pending,
-      withdrawn,
+      totalApplications: stats.total,
+      submitted: stats.submitted,
+      underReview: stats.underReview,
+      won: stats.won,
+      lost: stats.lost,
+      notAwarded: stats.notAwarded,
+      pending: stats.pending,
+      withdrawn: stats.withdrawn,
       decidedApplications: decided,
       winRate,
       winRateDisplay,
       categories,
       categoryStats: categories,
       summary: {
-        total,
-        won,
-        notAwarded,
-        pending,
-        withdrawn,
+        total: stats.total,
+        submitted: stats.submitted,
+        underReview: stats.underReview,
+        won: stats.won,
+        lost: stats.lost,
+        notAwarded: stats.notAwarded,
+        pending: stats.pending,
+        withdrawn: stats.withdrawn,
         decided,
         winRate,
         winRateDisplay
@@ -141,29 +220,7 @@ router.get("/:id", authenticateUser, (req, res) => {
 
   const query = `
     SELECT
-      a.id,
-      a.application_code,
-      a.contractor_id,
-      a.tender_id,
-      a.applied_on,
-      a.bid_amount,
-      a.application_status,
-      a.outcome,
-      a.proposal_notes,
-      a.missing_documents,
-      a.evaluation_notes,
-      a.evaluator_id,
-      a.evaluated_at,
-      a.created_at,
-      t.name AS tender_name,
-      t.category AS tender_category,
-      t.department AS tender_department,
-      t.location AS tender_location,
-      t.state AS tender_state,
-      t.budget AS tender_budget,
-      t.deadline AS tender_deadline,
-      t.eligibility AS tender_eligibility,
-      t.required_documents AS tender_required_docs,
+      ${APPLICATION_SELECT_FIELDS},
       t.description AS tender_description,
       u.name AS evaluator_name,
       u.department AS evaluator_department
@@ -260,7 +317,7 @@ function buildFactualInsights(app) {
   if (app.applied_on && app.tender_deadline) {
     const applied = new Date(app.applied_on);
     const deadline = new Date(app.tender_deadline);
-    const diffDays = Math.ceil((deadline - applied) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((deadline.getTime() - applied.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays >= 0) {
       findings.push({
@@ -284,14 +341,14 @@ function buildFactualInsights(app) {
   if (app.evaluation_notes && app.evaluation_notes.trim()) {
     findings.push({
       factor: "Official Evaluator Review Notes",
-      type: outcome === "Won" ? "positive" : (outcome === "Not Awarded" || outcome === "Rejected" ? "danger" : "info"),
+      type: outcome === "Won" ? "positive" : (["Lost", "Not Awarded", "Rejected"].includes(outcome) ? "danger" : "info"),
       observation: `Procurement authority note: "${app.evaluation_notes.trim()}"`,
       whyItMatters: "Direct feedback from departmental technical review committees provides factual insight into compliance strengths or gaps.",
       recommendedAction: outcome === "Won"
         ? "Document the successful technical proposal structure as a reusable baseline for similar contracts."
         : "Address the specific committee remarks in pre-bid meetings for subsequent procurement cycles."
     });
-  } else if (outcome === "Not Awarded" || outcome === "Rejected") {
+  } else if (["Lost", "Not Awarded", "Rejected"].includes(outcome)) {
     findings.push({
       factor: "Outcome Assessment",
       type: "neutral",
@@ -317,36 +374,23 @@ function buildFactualInsights(app) {
 router.post("/", requireContractor, async (req, res) => {
   try {
     const contractorId = req.user.id;
-    const { tender_id, bid_amount, applied_on, proposal_notes } = req.body;
-
-    if (!tender_id) {
-      return res.status(400).json({ message: "Tender ID is required." });
+    const { error, value } = validateApplicationFields(req.body, { isEdit: false });
+    if (error) {
+      return res.status(400).json({ message: error });
     }
 
-    let parsedBid = null;
-    if (bid_amount !== undefined && bid_amount !== null && String(bid_amount).trim() !== "") {
-      parsedBid = parseFloat(bid_amount);
-      if (isNaN(parsedBid) || parsedBid <= 0) {
-        return res.status(400).json({ message: "Please provide a valid bid amount in INR." });
-      }
-    }
-
-    const submissionDate = applied_on && applied_on.trim()
-      ? applied_on.trim()
-      : new Date().toISOString().split("T")[0];
-
-    const tender = await db.getAsync("SELECT id, name, state FROM tenders WHERE id = ? LIMIT 1", [tender_id]);
+    const tender = await db.getAsync("SELECT id, name, state FROM tenders WHERE id = ? LIMIT 1", [value.tender_id]);
     if (!tender) {
-      return res.status(404).json({ message: "Tender does not exist." });
+      return res.status(404).json({ message: "Selected tender does not exist." });
     }
 
     const dup = await db.getAsync(
       "SELECT id, application_code, application_status FROM applications WHERE contractor_id = ? AND tender_id = ? LIMIT 1",
-      [contractorId, tender_id]
+      [contractorId, value.tender_id]
     );
     if (dup) {
       return res.status(409).json({
-        message: `You have already recorded an application (${dup.application_code}) for this tender with status "${dup.application_status}".`,
+        message: `You have already recorded an application (${dup.application_code}) for this tender with status "${dup.application_status}". You can edit it from My Applications.`,
         application: dup
       });
     }
@@ -357,15 +401,35 @@ router.post("/", requireContractor, async (req, res) => {
     const inResult = await db.queryAsync(
       `INSERT INTO applications (
         application_code, contractor_id, tender_id, applied_on, bid_amount,
-        application_status, outcome, proposal_notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'Submitted', 'Pending', ?, datetime('now'), datetime('now'))`,
-      [appCode, contractorId, tender_id, submissionDate, parsedBid, proposal_notes || null]
+        portal_name, reference_number, application_status, outcome, proposal_notes,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      [
+        appCode,
+        contractorId,
+        value.tender_id,
+        value.applied_on,
+        value.bid_amount,
+        value.portal_name,
+        value.reference_number,
+        value.application_status,
+        value.outcome,
+        value.proposal_notes
+      ]
+    );
+
+    const created = await db.getAsync(
+      `SELECT ${APPLICATION_SELECT_FIELDS}
+       FROM applications a
+       JOIN tenders t ON a.tender_id = t.id
+       WHERE a.id = ? LIMIT 1`,
+      [inResult.insertId]
     );
 
     await db.queryAsync(
       `INSERT INTO notifications (user_id, title, message, created_at)
        VALUES (?, 'Application Recorded', ?, datetime('now'))`,
-      [contractorId, `Application ${appCode} for "${tender.name}" was recorded successfully.`]
+      [contractorId, `Application ${appCode} (${value.reference_number}) for "${tender.name}" was recorded as ${value.application_status}.`]
     );
 
     // Notify assigned state manager if approved & active
@@ -378,7 +442,7 @@ router.post("/", requireContractor, async (req, res) => {
         await db.queryAsync(
           `INSERT INTO notifications (user_id, title, message, created_at)
            VALUES (?, 'New State Bid Application', ?, datetime('now'))`,
-          [stateManager.id, `${req.user.company || req.user.name} submitted ${appCode} for "${tender.name}" (${tender.state}).`]
+          [stateManager.id, `${req.user.company || req.user.name} recorded ${appCode} (Ref: ${value.reference_number}) for "${tender.name}" (${tender.state}).`]
         );
       }
     }
@@ -390,20 +454,12 @@ router.post("/", requireContractor, async (req, res) => {
       entity_type: "application",
       entity_id: inResult.insertId,
       state: tender.state,
-      details: `Application ${appCode} submitted for "${tender.name.slice(0, 60)}"`
+      details: `Application ${appCode} (${value.portal_name}, Ref: ${value.reference_number}) recorded as ${value.application_status} for "${tender.name.slice(0, 60)}"`
     });
 
     return res.status(201).json({
       message: "Application recorded successfully!",
-      application: {
-        id: inResult.insertId,
-        application_code: appCode,
-        tender_id,
-        applied_on: submissionDate,
-        bid_amount: parsedBid,
-        application_status: "Submitted",
-        outcome: "Pending"
-      }
+      application: created
     });
   } catch (err) {
     console.error("Error creating application:", err);
@@ -411,26 +467,124 @@ router.post("/", requireContractor, async (req, res) => {
   }
 });
 
-// 4. PUT /api/applications/:id/withdraw - Voluntary withdrawal by contractor
+// 4. PUT /api/applications/:id - Edit contractor's own recorded application
+router.put("/:id", requireContractor, async (req, res) => {
+  try {
+    const applicationId = parseInt(req.params.id, 10);
+    const contractorId = req.user.id;
+
+    if (isNaN(applicationId)) {
+      return res.status(400).json({ message: "Invalid application ID." });
+    }
+
+    const existing = await db.getAsync(
+      `SELECT a.*, t.state AS tender_state, t.name AS tender_name
+       FROM applications a
+       JOIN tenders t ON a.tender_id = t.id
+       WHERE a.id = ? LIMIT 1`,
+      [applicationId]
+    );
+    if (!existing) {
+      return res.status(404).json({ message: "Application not found." });
+    }
+    if (existing.contractor_id !== contractorId) {
+      return res.status(403).json({ message: "Access denied. You can only edit your own applications." });
+    }
+
+    const { error, value } = validateApplicationFields(req.body, { isEdit: true });
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const targetTenderId = value.tender_id || existing.tender_id;
+    const targetTender = await db.getAsync("SELECT id, name, state FROM tenders WHERE id = ? LIMIT 1", [targetTenderId]);
+    if (!targetTender) {
+      return res.status(404).json({ message: "Selected tender does not exist." });
+    }
+
+    if (targetTenderId !== existing.tender_id) {
+      const dup = await db.getAsync(
+        "SELECT id, application_code FROM applications WHERE contractor_id = ? AND tender_id = ? AND id != ? LIMIT 1",
+        [contractorId, targetTenderId, applicationId]
+      );
+      if (dup) {
+        return res.status(409).json({
+          message: `You already have another application (${dup.application_code}) recorded for the selected tender.`
+        });
+      }
+    }
+
+    await db.queryAsync(
+      `UPDATE applications
+       SET tender_id = ?, applied_on = ?, portal_name = ?, reference_number = ?,
+           application_status = ?, outcome = ?, bid_amount = ?, proposal_notes = ?,
+           updated_at = datetime('now')
+       WHERE id = ? AND contractor_id = ?`,
+      [
+        targetTenderId,
+        value.applied_on,
+        value.portal_name,
+        value.reference_number,
+        value.application_status,
+        value.outcome,
+        value.bid_amount,
+        value.proposal_notes,
+        applicationId,
+        contractorId
+      ]
+    );
+
+    const updated = await db.getAsync(
+      `SELECT ${APPLICATION_SELECT_FIELDS}
+       FROM applications a
+       JOIN tenders t ON a.tender_id = t.id
+       WHERE a.id = ? LIMIT 1`,
+      [applicationId]
+    );
+
+    db.logActivity({
+      actor_user_id: contractorId,
+      actor_role: "contractor",
+      action_type: "application_updated",
+      entity_type: "application",
+      entity_id: applicationId,
+      state: targetTender.state,
+      details: `Application ${existing.application_code} updated (${value.application_status}, Ref: ${value.reference_number})`
+    });
+
+    return res.json({
+      message: "Application updated successfully!",
+      application: updated
+    });
+  } catch (err) {
+    console.error("Error updating application:", err);
+    return res.status(500).json({ message: "Failed to update application: " + err.message });
+  }
+});
+
+// 5. PUT /api/applications/:id/withdraw - Voluntary withdrawal by contractor
 router.put("/:id/withdraw", requireContractor, async (req, res) => {
   try {
     const applicationId = req.params.id;
     const contractorId = req.user.id;
 
     const current = await db.getAsync(
-      `SELECT a.id, a.application_code, a.application_status, a.outcome, t.state
+      `SELECT a.id, a.contractor_id, a.application_code, a.application_status, a.outcome, t.state
        FROM applications a
        JOIN tenders t ON a.tender_id = t.id
-       WHERE a.id = ? AND a.contractor_id = ? LIMIT 1`,
-      [applicationId, contractorId]
+       WHERE a.id = ? LIMIT 1`,
+      [applicationId]
     );
 
     if (!current) {
-      return res.status(404).json({ message: "Application not found or unauthorized." });
+      return res.status(404).json({ message: "Application not found." });
+    }
+    if (current.contractor_id !== contractorId) {
+      return res.status(403).json({ message: "Access denied. You can only withdraw your own applications." });
     }
 
-    if (["Won", "Not Awarded", "Rejected"].includes(current.application_status)) {
-      return res.status(400).json({ message: "Cannot withdraw an application that has already reached a final decision." });
+    if (["Won", "Lost", "Not Awarded", "Rejected"].includes(current.application_status)) {
+      return res.status(400).json({ message: "Cannot withdraw an application that has already reached a final outcome." });
     }
 
     await db.queryAsync(

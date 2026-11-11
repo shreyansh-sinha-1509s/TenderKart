@@ -28,6 +28,55 @@ const INQUIRY_STATUSES = ["Pending", "In Progress", "Resolved"];
 
 const TENDER_STATUSES = ["Open", "Closing Soon", "Closed", "Under Evaluation", "Awarded"];
 
+const CONTRACTOR_APPLICATION_STATUSES = ["Submitted", "Under Review", "Won", "Lost"];
+
+const ALL_APPLICATION_STATUSES = [
+  "Submitted",
+  "Under Review",
+  "Won",
+  "Lost",
+  "Not Awarded",
+  "Rejected",
+  "Withdrawn"
+];
+
+function mapApplicationOutcome(status) {
+  const clean = (status || "").trim();
+  if (clean === "Won") return "Won";
+  if (["Lost", "Not Awarded", "Rejected", "Withdrawn"].includes(clean)) return clean;
+  return "Pending";
+}
+
+function summarizeApplications(rows = []) {
+  const stats = {
+    total: rows.length,
+    submitted: 0,
+    underReview: 0,
+    won: 0,
+    lost: 0,
+    notAwarded: 0,
+    pending: 0,
+    withdrawn: 0
+  };
+  for (const row of rows) {
+    const st = (row.application_status || "").trim();
+    const out = (row.outcome || "").trim();
+    if (st === "Won" || out === "Won") {
+      stats.won++;
+    } else if (["Lost", "Not Awarded", "Rejected"].includes(st) || ["Lost", "Not Awarded", "Rejected"].includes(out)) {
+      stats.lost++;
+      stats.notAwarded++;
+    } else if (st === "Withdrawn" || out === "Withdrawn") {
+      stats.withdrawn++;
+    } else {
+      stats.pending++;
+      if (st === "Under Review") stats.underReview++;
+      else stats.submitted++;
+    }
+  }
+  return stats;
+}
+
 const INDIAN_STATES = [
   "Andhra Pradesh",
   "Arunachal Pradesh",
@@ -101,6 +150,10 @@ module.exports = {
   INQUIRY_CATEGORIES,
   INQUIRY_STATUSES,
   TENDER_STATUSES,
+  CONTRACTOR_APPLICATION_STATUSES,
+  ALL_APPLICATION_STATUSES,
+  mapApplicationOutcome,
+  summarizeApplications,
   INDIAN_STATES,
   MAX_DEMO_TENDERS,
   normalizeState

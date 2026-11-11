@@ -1548,11 +1548,31 @@ async function checkTrackButtonState(tenderId) {
   }
 }
 
+function suggestPortalNameFromUrl(url) {
+  if (!url) return "";
+  const low = url.toLowerCase();
+  if (low.includes("eprocure.gov.in")) return "CPPP eProcurement Portal (eprocure.gov.in)";
+  if (low.includes("gem.gov.in")) return "GeM (Government e Marketplace)";
+  if (low.includes("mahatenders")) return "MahaTenders (mahatenders.gov.in)";
+  if (low.includes("nprocure")) return "Gujarat (n)Procure (nprocure.com)";
+  if (low.includes("mptenders")) return "MP Tenders (mptenders.gov.in)";
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 window.openTrackAppModal = () => {
   const userJson = localStorage.getItem("user");
   if (!userJson) {
     showToast("Please login as a contractor to track tender applications", "warning");
     setTimeout(() => { window.location.href = "login.html"; }, 1500);
+    return;
+  }
+  const user = JSON.parse(userJson);
+  if ((user.role || "").toLowerCase() !== "contractor") {
+    showToast("Only contractor accounts can record bid applications", "warning");
     return;
   }
 
@@ -1563,10 +1583,24 @@ window.openTrackAppModal = () => {
   if (titleEl) titleEl.textContent = currentTenderDetails.name;
 
   const budgetRefEl = document.getElementById("modal-tender-budget-ref");
-  if (budgetRefEl) budgetRefEl.textContent = `Estimated Budget Outlay: ${formatBudget(currentTenderDetails.budget)}`;
+  if (budgetRefEl) budgetRefEl.textContent = `Tender #${currentTenderDetails.id} • ${currentTenderDetails.state || "India"} • Estimated Budget: ${formatBudget(currentTenderDetails.budget)}`;
 
   const dateInp = document.getElementById("track-applied-date");
   if (dateInp) dateInp.value = new Date().toISOString().split("T")[0];
+
+  const portalInp = document.getElementById("track-portal-name");
+  if (portalInp && !portalInp.value) {
+    portalInp.value = suggestPortalNameFromUrl(currentTenderDetails.source_url);
+  }
+
+  const refInp = document.getElementById("track-ref-number");
+  if (refInp) refInp.value = "";
+  const statusInp = document.getElementById("track-status");
+  if (statusInp) statusInp.value = "Submitted";
+  const bidInp = document.getElementById("track-bid-amount");
+  if (bidInp) bidInp.value = "";
+  const notesInp = document.getElementById("track-proposal-notes");
+  if (notesInp) notesInp.value = "";
 
   modal.style.display = "block";
 };
@@ -1580,9 +1614,17 @@ window.handleTrackAppSubmit = async (e) => {
   e.preventDefault();
   if (!currentTenderDetails) return;
 
-  const bidAmount = document.getElementById("track-bid-amount")?.value;
   const appliedOn = document.getElementById("track-applied-date")?.value;
-  const proposalNotes = document.getElementById("track-proposal-notes")?.value;
+  const portalName = document.getElementById("track-portal-name")?.value.trim();
+  const referenceNumber = document.getElementById("track-ref-number")?.value.trim();
+  const applicationStatus = document.getElementById("track-status")?.value;
+  const bidAmount = document.getElementById("track-bid-amount")?.value;
+  const proposalNotes = document.getElementById("track-proposal-notes")?.value.trim();
+
+  if (!appliedOn || !portalName || !referenceNumber || !applicationStatus) {
+    showToast("Please complete all required submission fields", "warning");
+    return;
+  }
 
   const submitBtn = document.getElementById("btn-submit-track-app");
   if (submitBtn) {
@@ -1596,9 +1638,12 @@ window.handleTrackAppSubmit = async (e) => {
       headers: getAuthHeaders(),
       body: JSON.stringify({
         tender_id: currentTenderDetails.id,
-        bid_amount: bidAmount,
         applied_on: appliedOn,
-        proposal_notes: proposalNotes
+        portal_name: portalName,
+        reference_number: referenceNumber,
+        application_status: applicationStatus,
+        bid_amount: bidAmount || null,
+        proposal_notes: proposalNotes || null
       })
     });
 
@@ -1608,7 +1653,7 @@ window.handleTrackAppSubmit = async (e) => {
       closeTrackAppModal();
       setTimeout(() => {
         window.location.href = "dashboard.html";
-      }, 1000);
+      }, 900);
     } else {
       if (submitBtn) {
         submitBtn.disabled = false;
@@ -1746,6 +1791,210 @@ async function generateAISummary() {
 
 /* ---------------- CONTRACTOR DASHBOARD ---------------- */
 let currentAnalysisAppId = null;
+let contractorApplicationsList = [];
+let contractorAvailableTenders = [];
+
+async function loadContractorTendersForModal() {
+  if (contractorAvailableTenders.length > 0) return contractorAvailableTenders;
+  try {
+    const res = await fetch(`${API_BASE}/tenders`);
+    if (res.ok) {
+      contractorAvailableTenders = await res.json();
+    }
+  } catch (err) {
+    console.warn("Could not load tenders list for application form:", err);
+  }
+  return contractorAvailableTenders;
+}
+
+function populateApplicationTenderDropdown(selectedId) {
+  const selectEl = document.getElementById("app-form-tender");
+  if (!selectEl) return;
+  const currentVal = selectedId !== undefined && selectedId !== null ? String(selectedId) : selectEl.value;
+  selectEl.innerHTML =
+    '<option value="">-- Select from the 12 active tenders --</option>' +
+    contractorAvailableTenders
+      .map(
+        (t) =>
+          `<option value="${t.id}">#${t.id} — ${escapeHtml(t.name)} (${escapeHtml(t.state || "India")} • ${escapeHtml(t.category)})</option>`
+      )
+      .join("");
+  if (currentVal) selectEl.value = currentVal;
+}
+
+window.handleApplicationTenderChange = () => {
+  const tenderId = parseInt(document.getElementById("app-form-tender")?.value, 10);
+  const preview = document.getElementById("app-form-tender-preview");
+  const portalInp = document.getElementById("app-form-portal");
+  if (!preview) return;
+
+  const tender = contractorAvailableTenders.find((t) => t.id === tenderId);
+  if (!tender) {
+    preview.style.display = "none";
+    return;
+  }
+
+  document.getElementById("app-preview-id").textContent = `Tender #${tender.id}`;
+  document.getElementById("app-preview-state").textContent = tender.state || "India";
+  document.getElementById("app-preview-dept").textContent = tender.department || "";
+
+  const linkEl = document.getElementById("app-preview-portal-link");
+  if (linkEl) {
+    if (tender.source_url) {
+      linkEl.href = tender.source_url;
+      linkEl.style.display = "inline-block";
+    } else {
+      linkEl.style.display = "none";
+    }
+  }
+  preview.style.display = "flex";
+
+  // Pre-suggest official portal when adding a new record and input is empty
+  const isEditing = !!document.getElementById("app-form-id")?.value;
+  if (!isEditing && portalInp && !portalInp.value.trim() && tender.source_url) {
+    portalInp.value = suggestPortalNameFromUrl(tender.source_url);
+  }
+};
+
+window.openApplicationFormModal = async (preselectedTenderId = null) => {
+  const modal = document.getElementById("application-form-modal");
+  if (!modal) return;
+
+  await loadContractorTendersForModal();
+  populateApplicationTenderDropdown(preselectedTenderId);
+
+  const errBox = document.getElementById("app-form-error");
+  if (errBox) errBox.style.display = "none";
+
+  document.getElementById("app-form-id").value = "";
+  document.getElementById("app-modal-title").textContent = "Add Application";
+  document.getElementById("app-modal-subtitle").textContent = "Record an application submitted through an external government tender portal.";
+  document.getElementById("app-form-submit-btn").textContent = "Save Application";
+
+  const tenderSel = document.getElementById("app-form-tender");
+  if (tenderSel) {
+    tenderSel.disabled = false;
+    tenderSel.value = preselectedTenderId ? String(preselectedTenderId) : "";
+  }
+  document.getElementById("app-form-date").value = new Date().toISOString().split("T")[0];
+  document.getElementById("app-form-portal").value = "";
+  document.getElementById("app-form-ref").value = "";
+  document.getElementById("app-form-status").value = "Submitted";
+  document.getElementById("app-form-bid").value = "";
+  document.getElementById("app-form-notes").value = "";
+
+  handleApplicationTenderChange();
+  modal.style.display = "block";
+};
+
+window.openEditApplicationModal = async (appId) => {
+  const app = contractorApplicationsList.find((a) => a.id === appId);
+  const modal = document.getElementById("application-form-modal");
+  if (!app || !modal) return;
+
+  await loadContractorTendersForModal();
+  populateApplicationTenderDropdown(app.tender_id);
+
+  const errBox = document.getElementById("app-form-error");
+  if (errBox) errBox.style.display = "none";
+
+  document.getElementById("app-form-id").value = app.id;
+  document.getElementById("app-modal-title").textContent = `Edit Application (${app.application_code || ("APP-" + app.id)})`;
+  document.getElementById("app-modal-subtitle").textContent = "Update your recorded portal details, reference number, or official outcome status.";
+  document.getElementById("app-form-submit-btn").textContent = "Update Application";
+
+  const tenderSel = document.getElementById("app-form-tender");
+  if (tenderSel) {
+    tenderSel.value = String(app.tender_id);
+  }
+  document.getElementById("app-form-date").value = app.applied_on || new Date().toISOString().split("T")[0];
+  document.getElementById("app-form-portal").value =
+    app.portal_name || suggestPortalNameFromUrl(app.tender_source_url) || "";
+  document.getElementById("app-form-ref").value = app.reference_number || app.application_code || "";
+
+  const normalizedStatus = ["Submitted", "Under Review", "Won", "Lost"].includes(app.application_status)
+    ? app.application_status
+    : (["Not Awarded", "Rejected"].includes(app.application_status) ? "Lost" : "Submitted");
+  document.getElementById("app-form-status").value = normalizedStatus;
+  document.getElementById("app-form-bid").value = app.bid_amount || "";
+  document.getElementById("app-form-notes").value = app.proposal_notes || "";
+
+  handleApplicationTenderChange();
+  modal.style.display = "block";
+};
+
+window.closeApplicationFormModal = () => {
+  const modal = document.getElementById("application-form-modal");
+  if (modal) modal.style.display = "none";
+};
+
+window.handleApplicationFormSubmit = async (e) => {
+  e.preventDefault();
+  const errBox = document.getElementById("app-form-error");
+  const showFormError = (msg) => {
+    if (errBox) {
+      errBox.textContent = msg;
+      errBox.style.display = "block";
+    }
+    showToast(msg, "error");
+  };
+  if (errBox) errBox.style.display = "none";
+
+  const appId = document.getElementById("app-form-id")?.value.trim();
+  const tender_id = document.getElementById("app-form-tender")?.value;
+  const applied_on = document.getElementById("app-form-date")?.value;
+  const portal_name = document.getElementById("app-form-portal")?.value.trim();
+  const reference_number = document.getElementById("app-form-ref")?.value.trim();
+  const application_status = document.getElementById("app-form-status")?.value;
+  const bid_amount = document.getElementById("app-form-bid")?.value;
+  const proposal_notes = document.getElementById("app-form-notes")?.value.trim();
+
+  if (!tender_id || !applied_on || !portal_name || !reference_number || !application_status) {
+    showFormError("Please complete all required application fields.");
+    return;
+  }
+
+  const submitBtn = document.getElementById("app-form-submit-btn");
+  const origLabel = submitBtn ? submitBtn.textContent : "Save Application";
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = appId ? "Updating..." : "Saving...";
+  }
+
+  try {
+    const endpoint = appId ? `${API_BASE}/applications/${appId}` : `${API_BASE}/applications`;
+    const method = appId ? "PUT" : "POST";
+    const res = await fetch(endpoint, {
+      method,
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        tender_id: parseInt(tender_id, 10),
+        applied_on,
+        portal_name,
+        reference_number,
+        application_status,
+        bid_amount: bid_amount && String(bid_amount).trim() !== "" ? bid_amount : null,
+        proposal_notes: proposal_notes || null
+      })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      showToast(data.message || (appId ? "Application updated successfully!" : "Application recorded successfully!"), "success");
+      closeApplicationFormModal();
+      await fetchDashboardData();
+    } else {
+      showFormError(data.message || "Could not save application.");
+    }
+  } catch (err) {
+    showFormError("Server error while saving application.");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = origLabel;
+    }
+  }
+};
 
 async function initDashboardPage() {
   const userJson = localStorage.getItem("user");
@@ -1797,7 +2046,11 @@ async function initDashboardPage() {
   } else {
     switchTab("applications");
   }
-  await fetchDashboardData();
+  await Promise.all([fetchDashboardData(), loadContractorTendersForModal()]);
+  const addAppParam = urlParams.get("addApp");
+  if (addAppParam) {
+    openApplicationFormModal(parseInt(addAppParam, 10));
+  }
 }
 
 async function fetchDashboardData() {
@@ -2167,32 +2420,36 @@ window.reopenCurrentTicket = async () => {
 };
 
 function renderContractorApplications(data) {
+  contractorApplicationsList = data.applications || [];
+
   // 1. Update 5 Summary Cards
   const totalAppsEl = document.getElementById("stat-total-apps");
-  if (totalAppsEl) totalAppsEl.textContent = data.totalApplications;
+  if (totalAppsEl) totalAppsEl.textContent = data.totalApplications || 0;
+
+  const submittedAppsEl = document.getElementById("stat-submitted-apps");
+  if (submittedAppsEl) submittedAppsEl.textContent = data.submitted || 0;
+
+  const underReviewAppsEl = document.getElementById("stat-underreview-apps");
+  if (underReviewAppsEl) underReviewAppsEl.textContent = data.underReview || 0;
 
   const wonAppsEl = document.getElementById("stat-won-apps");
-  if (wonAppsEl) wonAppsEl.textContent = data.won;
+  if (wonAppsEl) wonAppsEl.textContent = data.won || 0;
 
-  const notAwardedAppsEl = document.getElementById("stat-notawarded-apps");
-  if (notAwardedAppsEl) notAwardedAppsEl.textContent = data.notAwarded;
-
-  const pendingAppsEl = document.getElementById("stat-pending-apps");
-  if (pendingAppsEl) pendingAppsEl.textContent = data.pending;
-
-  const withdrawnAppsEl = document.getElementById("stat-withdrawn-apps");
-  if (withdrawnAppsEl) withdrawnAppsEl.textContent = data.withdrawn;
+  const lostAppsEl = document.getElementById("stat-lost-apps");
+  if (lostAppsEl) lostAppsEl.textContent = data.lost !== undefined ? data.lost : (data.notAwarded || 0);
 
   const appsCountBadge = document.getElementById("apps-count");
-  if (appsCountBadge) appsCountBadge.textContent = data.totalApplications;
+  if (appsCountBadge) appsCountBadge.textContent = data.totalApplications || 0;
 
   // 2. Overall Contractor Performance Summary & Win Rate Bar
   const perfContainer = document.getElementById("performance-summary-container");
   if (perfContainer) {
-    const decidedCount = data.decidedApplications || (data.won + data.notAwarded);
+    const lostTotal = data.lost !== undefined ? data.lost : (data.notAwarded || 0);
+    const decidedCount = data.decidedApplications || ((data.won || 0) + lostTotal);
+    const withdrawnNote = data.withdrawn ? ` (${data.withdrawn} withdrawn)` : "";
     let winRateHtml = "";
 
-    if (data.winRate !== null) {
+    if (data.winRate !== null && decidedCount > 0) {
       winRateHtml = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <div style="display: flex; align-items: center; gap: 12px;">
@@ -2205,13 +2462,13 @@ function renderContractorApplications(data) {
                 <span class="badge badge-green" style="font-size: 0.72rem;">Decided Win Rate</span>
               </div>
               <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                ${data.won} Won out of ${decidedCount} decided applications (${data.notAwarded} not awarded). Pending &amp; withdrawn excluded.
+                ${data.won} Won out of ${decidedCount} decided applications (${lostTotal} lost / not awarded)${withdrawnNote}.
               </p>
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-muted); background: var(--bg-card); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
             <span>Formula:</span>
-            <code>Wins ÷ (Wins + Not Awarded) × 100</code>
+            <code>Wins ÷ (Wins + Lost) × 100</code>
           </div>
         </div>
       `;
@@ -2219,7 +2476,7 @@ function renderContractorApplications(data) {
       winRateHtml = `
         <div style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.85rem;">
           <span style="font-size: 1.2rem;">ℹ️</span>
-          <span><strong>Not enough completed outcomes to calculate win rate.</strong> Pending and withdrawn applications are excluded from the win-rate calculation.</span>
+          <span><strong>Not enough decided outcomes yet to calculate win rate.</strong> Record Won or Lost outcomes as official portal evaluations conclude${withdrawnNote}.</span>
         </div>
       `;
     }
@@ -2265,58 +2522,59 @@ function renderContractorApplications(data) {
         const statusUpper = (app.application_status || "").toUpperCase();
         if (statusUpper === "WON") {
           statusBadge = `<span class="badge badge-green">Won</span>`;
-        } else if (statusUpper === "NOT AWARDED") {
-          statusBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
+        } else if (statusUpper === "LOST" || statusUpper === "NOT AWARDED" || statusUpper === "REJECTED") {
+          statusBadge = `<span class="badge badge-red">${escapeHtml(app.application_status)}</span>`;
         } else if (statusUpper === "UNDER REVIEW") {
-          statusBadge = `<span class="badge badge-blue">Under Review</span>`;
+          statusBadge = `<span class="badge badge-orange">Under Review</span>`;
         } else if (statusUpper === "WITHDRAWN") {
-          statusBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
+          statusBadge = `<span class="badge badge-muted">Withdrawn</span>`;
         } else {
           statusBadge = `<span class="badge badge-blue">Submitted</span>`;
         }
 
-        const bidDisplay = app.bid_amount ? formatBudget(app.bid_amount) : '<span style="color: var(--text-muted);">Not Recorded</span>';
-        const isWithdrawable = (app.application_status === "Submitted" || app.application_status === "Under Review") && app.outcome === "Pending";
+        const refDisplay = escapeHtml(app.reference_number || app.application_code || ("APP-" + app.id));
+        const portalLine = app.portal_name
+          ? `<div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">Portal: ${escapeHtml(app.portal_name)}</div>`
+          : "";
+        const bidLine = app.bid_amount
+          ? `<span style="font-size: 0.73rem; color: var(--text-muted);"> • Bid: ${formatBudget(app.bid_amount)}</span>`
+          : "";
 
         return `
           <tr style="border-bottom: 1px solid var(--border-color);">
-            <td style="padding: 14px 16px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 0.82rem;">
-              ${app.application_code || ("APP-" + app.id)}
-            </td>
             <td style="padding: 14px 16px;">
-              <a href="tenderDetails.html?id=${app.tender_id}" style="color: var(--text-primary); font-weight: 700; text-decoration: none; hover: underline;" class="hover-primary">
-                ${app.tender_name}
+              <a href="tenderDetails.html?id=${app.tender_id}" style="color: var(--text-primary); font-weight: 700; text-decoration: none;" class="hover-primary">
+                ${escapeHtml(app.tender_name)}
               </a>
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
-                ${app.tender_category} • ${app.tender_department || ""}
+                ${escapeHtml(app.tender_category)}${bidLine}
               </div>
             </td>
-            <td style="padding: 14px 16px; font-size: 0.82rem; color: var(--text-secondary);">
-              ${app.tender_location || "N/A"}
+            <td style="padding: 14px 16px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 0.82rem; white-space: nowrap;">
+              #${app.tender_id}
+              <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">${escapeHtml(app.application_code || "")}</div>
             </td>
-            <td style="padding: 14px 16px; font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap;">
-              ${app.applied_on}
+            <td style="padding: 14px 16px; white-space: nowrap;">
+              <span class="badge badge-purple">${escapeHtml(app.tender_state || "--")}</span>
             </td>
-            <td style="padding: 14px 16px; font-weight: 700; color: var(--text-primary); white-space: nowrap;">
-              ${bidDisplay}
+            <td style="padding: 14px 16px; font-size: 0.84rem; color: var(--text-secondary); white-space: nowrap;">
+              ${escapeHtml(app.applied_on)}
+            </td>
+            <td style="padding: 14px 16px; font-weight: 700; color: var(--text-primary); font-family: monospace; font-size: 0.82rem;">
+              ${refDisplay}
+              ${portalLine}
             </td>
             <td style="padding: 14px 16px; white-space: nowrap;">
               ${statusBadge}
             </td>
             <td style="padding: 14px 16px; white-space: nowrap;">
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" onclick="openAnalysisModal(${app.id})" class="btn btn-primary" style="font-size: 0.75rem; padding: 5px 11px; display: inline-flex; align-items: center; gap: 4px;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                  <span>View Analysis</span>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" onclick="openAnalysisModal(${app.id})" class="btn btn-primary" style="font-size: 0.75rem; padding: 5px 11px;">
+                  View
                 </button>
-                <a href="tenderDetails.html?id=${app.tender_id}" class="btn btn-outline" style="font-size: 0.75rem; padding: 5px 9px;">
-                  Details
-                </a>
-                ${isWithdrawable ? `
-                  <button type="button" onclick="withdrawApplication(${app.id})" class="btn btn-outline" style="font-size: 0.72rem; padding: 5px 8px; color: var(--color-danger); border-color: rgba(239, 68, 68, 0.2);" title="Withdraw this application">
-                    Withdraw
-                  </button>
-                ` : ""}
+                <button type="button" onclick="openEditApplicationModal(${app.id})" class="btn btn-outline" style="font-size: 0.75rem; padding: 5px 10px;">
+                  Edit
+                </button>
               </div>
             </td>
           </tr>
@@ -2366,14 +2624,14 @@ window.openAnalysisModal = async (appId) => {
 
     // Render Section A: Application Summary
     let outcomeBadge = "";
-    if (app.outcome === "Won") {
-      outcomeBadge = `<span class="badge badge-green">Won (Awarded)</span>`;
-    } else if (app.outcome === "Not Awarded") {
-      outcomeBadge = `<span class="badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.2);">Not Awarded</span>`;
+    if (app.outcome === "Won" || app.application_status === "Won") {
+      outcomeBadge = `<span class="badge badge-green">Won</span>`;
+    } else if (["Lost", "Not Awarded", "Rejected"].includes(app.outcome) || ["Lost", "Not Awarded", "Rejected"].includes(app.application_status)) {
+      outcomeBadge = `<span class="badge badge-red">${escapeHtml(app.outcome === "Lost" || app.application_status === "Lost" ? "Lost" : app.outcome)}</span>`;
     } else if (app.outcome === "Withdrawn") {
-      outcomeBadge = `<span class="badge" style="background-color: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border-color);">Withdrawn</span>`;
+      outcomeBadge = `<span class="badge badge-muted">Withdrawn</span>`;
     } else {
-      outcomeBadge = `<span class="badge badge-blue">Pending Review</span>`;
+      outcomeBadge = `<span class="badge badge-blue">${escapeHtml(app.application_status || "Pending Review")}</span>`;
     }
 
     const missingDocsText = app.missing_documents && app.missing_documents.length > 0
@@ -2389,9 +2647,13 @@ window.openAnalysisModal = async (appId) => {
       summarySection.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
           <div>
-            <span class="badge badge-blue" style="font-size: 0.72rem;">${app.tender_category}</span>
-            <h4 style="font-size: 1.15rem; font-weight: 850; color: var(--text-primary); margin-top: 4px;">${app.tender_name}</h4>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">${app.tender_department} • ${app.tender_location}</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;">
+              <span class="badge badge-blue" style="font-size: 0.72rem;">${escapeHtml(app.tender_category)}</span>
+              ${app.tender_state ? `<span class="badge badge-purple" style="font-size: 0.72rem;">${escapeHtml(app.tender_state)}</span>` : ""}
+              <span class="badge badge-muted" style="font-size: 0.72rem;">Tender #${app.tender_id}</span>
+            </div>
+            <h4 style="font-size: 1.15rem; font-weight: 850; color: var(--text-primary); margin-top: 4px;">${escapeHtml(app.tender_name)}</h4>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(app.tender_department)} • ${escapeHtml(app.tender_location)}</span>
           </div>
           <div>
             ${outcomeBadge}
@@ -2400,18 +2662,28 @@ window.openAnalysisModal = async (appId) => {
 
         <div class="grid-3" style="gap: 12px; margin-top: 8px; background-color: var(--bg-card); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-color);">
           <div>
-            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Your Recorded Bid</span>
-            <strong style="font-size: 0.95rem; color: var(--text-primary);">${app.bid_amount ? formatBudget(app.bid_amount) : "Not recorded"}</strong>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Official Portal &amp; Ref No.</span>
+            <strong style="font-size: 0.88rem; color: var(--text-primary); display: block;">${escapeHtml(app.reference_number || app.application_code || ("APP-" + app.id))}</strong>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">${escapeHtml(app.portal_name || "External Procurement Portal")}</span>
           </div>
           <div>
-            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Tender Outlay Budget</span>
-            <strong style="font-size: 0.95rem; color: var(--text-primary);">${formatBudget(app.tender_budget)}</strong>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Your Recorded Bid / Outlay</span>
+            <strong style="font-size: 0.92rem; color: var(--text-primary);">${app.bid_amount ? formatBudget(app.bid_amount) : "Not recorded"}</strong>
+            <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Est: ${formatBudget(app.tender_budget)}</span>
           </div>
           <div>
-            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Current Review Status</span>
-            <strong style="font-size: 0.95rem; color: var(--color-primary);">${app.application_status}</strong>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block;">Submission Status</span>
+            <strong style="font-size: 0.92rem; color: var(--color-primary);">${escapeHtml(app.application_status)}</strong>
+            <span style="font-size: 0.74rem; color: var(--text-muted); display: block;">Date: ${escapeHtml(app.applied_on)}</span>
           </div>
         </div>
+
+        ${app.proposal_notes ? `
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Your Submission Notes</span>
+            <div style="font-size: 0.84rem; color: var(--text-secondary); background: var(--bg-card); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">${escapeHtml(app.proposal_notes)}</div>
+          </div>
+        ` : ""}
 
         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
           <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Recorded Compliance Deficiencies / Missing Documents</span>
@@ -3052,12 +3324,15 @@ async function fetchAdminApplications() {
 
   tbody.innerHTML = adminApplicationsList.map(app => {
     const stUp = (app.application_status || "").toUpperCase();
-    const stClass = stUp === "WON" ? "badge-green" : ((stUp === "NOT AWARDED" || stUp === "REJECTED") ? "badge-red" : (stUp === "WITHDRAWN" ? "badge-muted" : "badge-blue"));
-    const outClass = app.outcome === "Won" ? "badge-green" : ((app.outcome === "Not Awarded" || app.outcome === "Rejected") ? "badge-red" : "badge-secondary");
+    const stClass = stUp === "WON" ? "badge-green" : (["LOST", "NOT AWARDED", "REJECTED"].includes(stUp) ? "badge-red" : (stUp === "WITHDRAWN" ? "badge-muted" : "badge-blue"));
+    const outClass = app.outcome === "Won" ? "badge-green" : (["Lost", "Not Awarded", "Rejected"].includes(app.outcome) ? "badge-red" : "badge-secondary");
 
     return `
       <tr>
-        <td style="font-family:monospace; font-weight:700;">${escapeHtml(app.application_code || ("APP-" + app.id))}</td>
+        <td style="font-family:monospace; font-weight:700;">
+          ${escapeHtml(app.application_code || ("APP-" + app.id))}
+          ${app.reference_number ? `<div style="font-size:0.71rem; color:var(--text-muted); font-weight:500;">Ref: ${escapeHtml(app.reference_number)}</div>` : ""}
+        </td>
         <td>
           <strong>${escapeHtml(app.contractor_name)}</strong>
           <div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.contractor_company || app.contractor_code)}</div>
@@ -3720,10 +3995,14 @@ async function fetchManagerApplications() {
 
   tbody.innerHTML = mgrAppsList.map(app => {
     const stUp = (app.application_status || "").toUpperCase();
-    const stClass = stUp === "WON" ? "badge-green" : ((stUp === "NOT AWARDED" || stUp === "REJECTED") ? "badge-red" : "badge-blue");
+    const stClass = stUp === "WON" ? "badge-green" : (["LOST", "NOT AWARDED", "REJECTED"].includes(stUp) ? "badge-red" : (stUp === "WITHDRAWN" ? "badge-muted" : "badge-blue"));
     return `
       <tr>
-        <td style="font-family:monospace; font-weight:700;">${escapeHtml(app.application_code || ("APP-" + app.id))}</td>
+        <td style="font-family:monospace; font-weight:700;">
+          ${escapeHtml(app.application_code || ("APP-" + app.id))}
+          ${app.reference_number ? `<div style="font-size:0.71rem; color:var(--text-muted); font-weight:500;">Ref: ${escapeHtml(app.reference_number)}</div>` : ""}
+          ${app.portal_name ? `<div style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">${escapeHtml(app.portal_name)}</div>` : ""}
+        </td>
         <td><strong>${escapeHtml(app.contractor_name)}</strong><div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.contractor_company || "")}</div></td>
         <td><strong>${escapeHtml(app.tender_name)}</strong><div style="font-size:0.74rem; color:var(--text-muted);">${escapeHtml(app.tender_category)}</div></td>
         <td style="white-space:nowrap;">${escapeHtml(app.applied_on)}</td>
@@ -3758,7 +4037,7 @@ window.syncManagerEvalOutcome = () => {
   const st = document.getElementById("mgr-eval-status").value;
   const out = document.getElementById("mgr-eval-outcome");
   if (!out) return;
-  if (["Won", "Not Awarded", "Rejected", "Withdrawn"].includes(st)) out.value = st;
+  if (["Won", "Lost", "Not Awarded", "Rejected", "Withdrawn"].includes(st)) out.value = st;
   else out.value = "Pending";
 };
 

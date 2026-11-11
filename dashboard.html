@@ -134,8 +134,11 @@
           </div>
           <p id="profile-email" style="font-size: 0.85rem; color: var(--text-secondary);">bids@company.com</p>
         </div>
-        <div>
-          <a href="tenders.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; padding: 10px 18px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button type="button" id="header-add-app-btn" onclick="openApplicationFormModal()" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; padding: 10px 18px; border: none; font-weight: 700;">
+            <span>+ Add Application</span>
+          </button>
+          <a href="tenders.html" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; padding: 10px 18px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <span>Browse Opportunities</span>
           </a>
@@ -182,9 +185,12 @@
                   Overview of submitted bid applications, status tracking, and performance insights.
                 </p>
               </div>
-              <div style="display: flex; gap: 8px;">
-                <a href="tenders.html" class="btn btn-outline" style="font-size: 0.82rem; padding: 6px 14px;">
-                  + Track New Bid
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" id="apps-add-btn" onclick="openApplicationFormModal()" class="btn btn-primary" style="font-size: 0.84rem; padding: 8px 16px; border: none; font-weight: 700;">
+                  + Add Application
+                </button>
+                <a href="tenders.html" class="btn btn-outline" style="font-size: 0.82rem; padding: 8px 14px;">
+                  Browse Tenders
                 </a>
               </div>
             </div>
@@ -197,29 +203,29 @@
                 <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--text-primary); margin-top: 6px;" id="stat-total-apps">0</h3>
                 <span style="font-size: 0.75rem; color: var(--text-muted);">Recorded Bids</span>
               </div>
+              <!-- Submitted -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(var(--primary-rgb), 0.25); background: rgba(var(--primary-rgb), 0.03);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase;">Submitted</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-primary); margin-top: 6px;" id="stat-submitted-apps">0</h3>
+                <span style="font-size: 0.75rem; color: var(--color-primary);">Filed on Portal</span>
+              </div>
+              <!-- Under Review -->
+              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.28); background: rgba(245, 158, 11, 0.04);">
+                <span style="font-size: 0.72rem; font-weight: 700; color: #D97706; text-transform: uppercase;">Under Review</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: #D97706; margin-top: 6px;" id="stat-underreview-apps">0</h3>
+                <span style="font-size: 0.75rem; color: #D97706;">Awaiting Outcome</span>
+              </div>
               <!-- Won -->
               <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.03);">
                 <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-success); text-transform: uppercase;">Won</span>
                 <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-success); margin-top: 6px;" id="stat-won-apps">0</h3>
-                <span style="font-size: 0.75rem; color: var(--color-success);">Awarded</span>
+                <span style="font-size: 0.75rem; color: var(--color-success);">Successful</span>
               </div>
-              <!-- Not Awarded -->
+              <!-- Lost -->
               <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.03);">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-danger); text-transform: uppercase;">Not Awarded</span>
-                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-danger); margin-top: 6px;" id="stat-notawarded-apps">0</h3>
+                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-danger); text-transform: uppercase;">Lost</span>
+                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-danger); margin-top: 6px;" id="stat-lost-apps">0</h3>
                 <span style="font-size: 0.75rem; color: var(--color-danger);">Unsuccessful</span>
-              </div>
-              <!-- Pending -->
-              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid rgba(var(--primary-rgb), 0.25); background: rgba(var(--primary-rgb), 0.03);">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase;">Pending</span>
-                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--color-primary); margin-top: 6px;" id="stat-pending-apps">0</h3>
-                <span style="font-size: 0.75rem; color: var(--color-primary);">In Review</span>
-              </div>
-              <!-- Withdrawn -->
-              <div class="card" style="padding: 1.25rem 1rem; text-align: center; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-card);">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Withdrawn</span>
-                <h3 style="font-size: 1.75rem; font-weight: 850; color: var(--text-muted); margin-top: 6px;" id="stat-withdrawn-apps">0</h3>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">Contractor Cancelled</span>
               </div>
             </div>
 
@@ -232,20 +238,20 @@
             <div style="display: flex; flex-direction: column; gap: 14px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">Application History</h4>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">Sorted by most recent</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Sorted by submission date</span>
               </div>
 
               <div style="overflow-x: auto; width: 100%; border-radius: 12px; border: 1px solid var(--border-color);" id="apps-table-wrapper">
                 <table>
                   <thead>
                     <tr>
-                      <th>App ID</th>
-                      <th>Tender Title</th>
-                      <th>Location</th>
-                      <th>Applied On</th>
-                      <th>Bid Amount</th>
+                      <th>Tender</th>
+                      <th>Tender ID</th>
+                      <th>State</th>
+                      <th>Submission Date</th>
+                      <th>Reference Number</th>
                       <th>Status</th>
-                      <th>Actions</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody id="applications-table-body">
@@ -259,13 +265,18 @@
                 <div style="height: 52px; width: 52px; border-radius: 50%; background-color: rgba(var(--primary-rgb), 0.08); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
                   📋
                 </div>
-                <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary);">No Tender Applications Yet</h4>
-                <p style="font-size: 0.9rem; color: var(--text-secondary); max-width: 460px; line-height: 1.5;">
-                  You haven't applied for any tenders yet. Browse available opportunities and start tracking your applications here.
+                <h4 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary);">No Tender Applications Recorded Yet</h4>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); max-width: 480px; line-height: 1.5;">
+                  After submitting a bid on an official government tender portal, click Add Application below to record your reference number and track its status.
                 </p>
-                <a href="tenders.html" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; margin-top: 6px;">
-                  <span>Browse Tenders</span>
-                </a>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 6px;">
+                  <button type="button" onclick="openApplicationFormModal()" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; border: none;">
+                    <span>+ Add Application</span>
+                  </button>
+                  <a href="tenders.html" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem;">
+                    <span>Browse Tenders</span>
+                  </a>
+                </div>
               </div>
 
             </div>
@@ -369,6 +380,109 @@
       </div>
     </div>
   </main>
+
+  <!-- Add / Edit Application Modal -->
+  <div id="application-form-modal" class="dashboard-modal-overlay">
+    <div class="dashboard-modal-content" style="max-width: 660px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+        <div>
+          <h3 id="app-modal-title" style="font-size: 1.25rem; font-weight: 850; color: var(--text-primary); margin: 0;">Record Tender Application</h3>
+          <p id="app-modal-subtitle" style="font-size: 0.82rem; color: var(--text-muted); margin: 4px 0 0 0;">Log a bid submitted on an official external procurement portal.</p>
+        </div>
+        <button type="button" onclick="closeApplicationFormModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;" aria-label="Close modal">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="app-form-error" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--color-danger); border-radius: 10px; padding: 10px 14px; font-size: 0.84rem; font-weight: 500;"></div>
+
+      <form id="contractor-application-form" onsubmit="handleApplicationFormSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="app-form-id" />
+
+        <!-- Select Tender -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="app-form-tender" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Select Tender *</label>
+          <select id="app-form-tender" class="form-input" onchange="handleApplicationTenderChange()" required>
+            <option value="">-- Select from the 12 active tenders --</option>
+          </select>
+        </div>
+
+        <!-- Auto-linked Tender Preview -->
+        <div id="app-form-tender-preview" style="display: none; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <span class="badge badge-blue" id="app-preview-id">Tender #--</span>
+            <span class="badge badge-purple" id="app-preview-state">State</span>
+            <span id="app-preview-dept" style="color: var(--text-secondary); font-weight: 600;">--</span>
+          </div>
+          <a id="app-preview-portal-link" href="#" target="_blank" rel="noopener noreferrer" style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary); display: none;">Official Portal &nearr;</a>
+        </div>
+
+        <div class="grid-2" style="gap: 1rem;">
+          <!-- Application Submission Date -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="app-form-date" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Application Submission Date *</label>
+            <input type="date" id="app-form-date" class="form-input" required />
+          </div>
+
+          <!-- Official Portal Name -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="app-form-portal" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Official Portal Name *</label>
+            <input type="text" id="app-form-portal" list="gov-portals-datalist" class="form-input" placeholder="e.g. CPPP eProcurement, GeM, MahaTenders" required />
+            <datalist id="gov-portals-datalist">
+              <option value="CPPP eProcurement Portal (eprocure.gov.in)">
+              <option value="GeM (Government e Marketplace)">
+              <option value="MahaTenders (mahatenders.gov.in)">
+              <option value="Gujarat (n)Procure (nprocure.com)">
+              <option value="MP Tenders (mptenders.gov.in)">
+              <option value="eProcure UP (etender.up.nic.in)">
+              <option value="Delhi eProcurement (govtprocurement.delhi.gov.in)">
+              <option value="Haryana eTenders (etenders.hry.nic.in)">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap: 1rem;">
+          <!-- Reference Number -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="app-form-ref" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Application / Bid Reference Number *</label>
+            <input type="text" id="app-form-ref" class="form-input" placeholder="e.g. CPPP/2026/MH/94812" required />
+          </div>
+
+          <!-- Submission Status -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="app-form-status" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Submission Status *</label>
+            <select id="app-form-status" class="form-input" required>
+              <option value="Submitted">Submitted</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Won">Won</option>
+              <option value="Lost">Lost</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Optional Bid Amount Quoted -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="app-form-bid" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Bid Amount Quoted in INR (Optional)</label>
+          <input type="number" id="app-form-bid" class="form-input" min="1" step="any" placeholder="e.g. 6720000000" />
+        </div>
+
+        <!-- Optional Additional Notes -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="app-form-notes" style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Additional Notes (Optional)</label>
+          <textarea id="app-form-notes" class="form-input" rows="3" placeholder="EMD details, technical bid upload confirmation, consortium partners, etc."></textarea>
+        </div>
+
+        <p style="font-size: 0.8rem; color: var(--text-secondary); background: rgba(var(--primary-rgb), 0.05); border: 1px solid rgba(var(--primary-rgb), 0.16); border-radius: 10px; padding: 10px 14px; margin: 0; line-height: 1.45;">
+          Record applications submitted through external government tender portals. TenderKart does not directly submit bids.
+        </p>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;">
+          <button type="button" onclick="closeApplicationFormModal()" class="btn btn-secondary" style="padding: 9px 18px;">Cancel</button>
+          <button type="submit" id="app-form-submit-btn" class="btn btn-primary" style="padding: 9px 22px; border: none; font-weight: 700;">Save Application</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Contractor Ticket Conversation Modal -->
   <div id="contractor-ticket-modal" class="dashboard-modal-overlay">

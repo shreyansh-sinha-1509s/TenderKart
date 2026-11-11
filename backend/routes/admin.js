@@ -1,7 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const { ALLOWED_CATEGORIES, MAX_DEMO_TENDERS, INQUIRY_STATUSES, normalizeState } = require("../constants");
+const {
+  ALLOWED_CATEGORIES,
+  MAX_DEMO_TENDERS,
+  INQUIRY_STATUSES,
+  summarizeApplications,
+  normalizeState
+} = require("../constants");
 const { requireAdmin } = require("../middleware/auth");
 
 // Strictly Central Admin ONLY across ALL /api/admin endpoints
@@ -56,27 +62,7 @@ router.get(["/stats", "/analytics"], async (req, res) => {
 
     // Applications summary
     const allApps = await db.queryAsync("SELECT application_status, outcome FROM applications");
-    const applicationsSummary = {
-      total: allApps.length,
-      won: 0,
-      notAwarded: 0,
-      underReview: 0,
-      submitted: 0,
-      pending: 0,
-      withdrawn: 0
-    };
-    allApps.forEach((a) => {
-      const st = (a.application_status || "").trim();
-      const out = (a.outcome || "").trim();
-      if (st === "Won" || out === "Won") applicationsSummary.won++;
-      else if (["Not Awarded", "Rejected"].includes(st) || ["Not Awarded", "Rejected"].includes(out)) applicationsSummary.notAwarded++;
-      else if (st === "Withdrawn" || out === "Withdrawn") applicationsSummary.withdrawn++;
-      else {
-        applicationsSummary.pending++;
-        if (st === "Under Review") applicationsSummary.underReview++;
-        else applicationsSummary.submitted++;
-      }
-    });
+    const applicationsSummary = summarizeApplications(allApps);
 
     // Inquiries summary
     const allInquiries = await db.queryAsync("SELECT status, assignment_status FROM inquiries");

@@ -41,8 +41,8 @@ function computeInitialStatus(deadlineStr) {
   const now = new Date();
   deadline.setHours(0, 0, 0, 0);
   now.setHours(0, 0, 0, 0);
-  if (deadline < now) return "Closed";
-  const diffDays = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+  if (deadline.getTime() < now.getTime()) return "Closed";
+  const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   if (diffDays <= 7) return "Closing Soon";
   return "Open";
 }
@@ -156,6 +156,8 @@ db.serialize(() => {
       tender_id INTEGER NOT NULL,
       applied_on TEXT NOT NULL,
       bid_amount REAL,
+      portal_name TEXT,
+      reference_number TEXT,
       application_status TEXT NOT NULL DEFAULT 'Submitted',
       outcome TEXT DEFAULT 'Pending',
       proposal_notes TEXT,
@@ -171,6 +173,8 @@ db.serialize(() => {
       FOREIGN KEY(evaluator_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
+  db.run("ALTER TABLE applications ADD COLUMN portal_name TEXT", () => {});
+  db.run("ALTER TABLE applications ADD COLUMN reference_number TEXT", () => {});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS inquiries (

@@ -4,7 +4,15 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const { ALLOWED_CATEGORIES, TENDER_STATUSES, INQUIRY_STATUSES, MAX_DEMO_TENDERS } = require("../constants");
+const {
+  ALLOWED_CATEGORIES,
+  TENDER_STATUSES,
+  INQUIRY_STATUSES,
+  ALL_APPLICATION_STATUSES,
+  mapApplicationOutcome,
+  summarizeApplications,
+  MAX_DEMO_TENDERS
+} = require("../constants");
 const { requireManager } = require("../middleware/auth");
 
 // All endpoints require an Approved & Active Manager with a valid assigned office_state
@@ -48,17 +56,8 @@ router.get("/dashboard", async (req, res) => {
       [state]
     );
 
-    const appSummary = { total: appRows.length, won: 0, notAwarded: 0, pending: 0, withdrawn: 0 };
-    const contractorIds = new Set();
-    appRows.forEach((a) => {
-      contractorIds.add(a.contractor_id);
-      const st = (a.application_status || "").trim();
-      const out = (a.outcome || "").trim();
-      if (st === "Won" || out === "Won") appSummary.won++;
-      else if (["Not Awarded", "Rejected"].includes(st) || ["Not Awarded", "Rejected"].includes(out)) appSummary.notAwarded++;
-      else if (st === "Withdrawn" || out === "Withdrawn") appSummary.withdrawn++;
-      else appSummary.pending++;
-    });
+    const appSummary = summarizeApplications(appRows);
+    const contractorIds = new Set(appRows.map((a) => a.contractor_id));
 
     const inqSummary = { total: inqRows.length, pending: 0, inProgress: 0, resolved: 0 };
     inqRows.forEach((i) => {
@@ -430,12 +429,11 @@ router.put("/applications/:id/evaluate", async (req, res) => {
     }
 
     const finalStatus = application_status || status || "Under Review";
-    const validStatuses = ["Submitted", "Under Review", "Won", "Not Awarded", "Rejected", "Withdrawn"];
-    if (!validStatuses.includes(finalStatus)) {
+    if (!ALL_APPLICATION_STATUSES.includes(finalStatus)) {
       return res.status(400).json({ message: "Invalid application status." });
     }
 
-    const finalOutcome = outcome || (["Won", "Not Awarded", "Rejected", "Withdrawn"].includes(finalStatus) ? finalStatus : "Pending");
+    const finalOutcome = outcome || mapApplicationOutcome(finalStatus);
     const finalNotes = evaluation_notes !== undefined ? evaluation_notes : (feedback_notes !== undefined ? feedback_notes : appRow.evaluation_notes);
 
     const missingDocsStr = Array.isArray(missing_documents)

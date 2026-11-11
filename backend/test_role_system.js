@@ -79,6 +79,7 @@ async function runTests() {
     let adminToken = null;
     let gujMgrToken = null;
     let conToken = null;
+    let secondConToken = null;
     let gujInquiryId = null;
 
     await record("1. Exactly 12 active tenders exist & HTML pages serve HTTP 200 without demo login shortcuts", async () => {
@@ -175,6 +176,7 @@ async function runTests() {
       });
       assert.strictEqual(loginRes.status, 200);
       assert.strictEqual(loginRes.body.user.role, "contractor");
+      secondConToken = loginRes.body.token;
     })();
 
     let pendingMgrId = null;
@@ -533,6 +535,119 @@ async function runTests() {
 
       const finalCount = await api(baseUrl, "GET", "/api/tenders");
       assert.strictEqual(finalCount.body.length, 12);
+    })();
+
+    await record("16. Contractor Add Application, Edit/Status Update, Stats, State Manager & Admin Visibility, Ownership Isolation", async () => {
+      const beforeMy = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
+      assert.strictEqual(beforeMy.status, 200);
+      const startTotal = beforeMy.body.totalApplications;
+      const startSubmitted = beforeMy.body.submitted;
+      const startUnderReview = beforeMy.body.underReview;
+      const startWon = beforeMy.body.won;
+      const startLost = beforeMy.body.lost;
+
+      // Reject incomplete submission missing portal_name / reference_number
+      const badCreate = await api(baseUrl, "POST", "/api/applications", {
+        token: conToken,
+        body: { tender_id: 61, applied_on: "2026-10-15", application_status: "Submitted" },
+      });
+      assert.strictEqual(badCreate.status, 400);
+
+      // Record valid external application on Gujarat tender #61
+      const createRes = await api(baseUrl, "POST", "/api/applications", {
+        token: conToken,
+        body: {
+          tender_id: 61,
+          applied_on: "2026-10-15",
+          portal_name: "Gujarat (n)Procure (nprocure.com)",
+          reference_number: "GJ/NP/2026/77412",
+          application_status: "Submitted",
+          bid_amount: 3100000000,
+          proposal_notes: "Submitted online with EMD draft.",
+        },
+      });
+      assert.strictEqual(createRes.status, 201, `Create failed: ${JSON.stringify(createRes.body)}`);
+      const appId = createRes.body.application.id;
+      assert.strictEqual(createRes.body.application.tender_state, "Gujarat");
+      assert.strictEqual(createRes.body.application.portal_name, "Gujarat (n)Procure (nprocure.com)");
+      assert.strictEqual(createRes.body.application.reference_number, "GJ/NP/2026/77412");
+      assert.strictEqual(createRes.body.application.application_status, "Submitted");
+
+      // Dashboard KPI counts increment immediately
+      const afterAdd = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
+      assert.strictEqual(afterAdd.body.totalApplications, startTotal + 1);
+      assert.strictEqual(afterAdd.body.submitted, startSubmitted + 1);
+
+      // Edit status: Submitted -> Under Review -> Lost -> Won
+      const editReview = await api(baseUrl, "PUT", `/api/applications/${appId}`, {
+        token: conToken,
+        body: {
+          tender_id: 61,
+          applied_on: "2026-10-15",
+          portal_name: "Gujarat (n)Procure (nprocure.com)",
+          reference_number: "GJ/NP/2026/77412-REV",
+          application_status: "Under Review",
+          proposal_notes: "Technical evaluation opened.",
+        },
+      });
+      assert.strictEqual(editReview.status, 200);
+      assert.strictEqual(editReview.body.application.application_status, "Under Review");
+      assert.strictEqual(editReview.body.application.reference_number, "GJ/NP/2026/77412-REV");
+
+      const afterReview = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
+      assert.strictEqual(afterReview.body.submitted, startSubmitted);
+      assert.strictEqual(afterReview.body.underReview, startUnderReview + 1);
+
+      const editLost = await api(baseUrl, "PUT", `/api/applications/${appId}`, {
+        token: conToken,
+        body: {
+          tender_id: 61,
+          applied_on: "2026-10-15",
+          portal_name: "Gujarat (n)Procure (nprocure.com)",
+          reference_number: "GJ/NP/2026/77412-REV",
+          application_status: "Lost",
+        },
+      });
+      assert.strictEqual(editLost.status, 200);
+      assert.strictEqual(editLost.body.application.outcome, "Lost");
+
+      const afterLost = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
+      assert.strictEqual(afterLost.body.lost, startLost + 1);
+      assert.strictEqual(afterLost.body.won, startWon);
+
+      // Gujarat Manager sees tender #61 application; Rajasthan manager cannot access it
+      const gujApps = await api(baseUrl, "GET", "/api/manager/applications", { token: gujMgrToken });
+      assert.strictEqual(gujApps.status, 200);
+      assert(gujApps.body.applications.some((a) => a.id === appId), "Gujarat Manager must see Gujarat application");
+
+      const rajApps = await api(baseUrl, "GET", "/api/manager/applications", { token: approvedNewMgrToken });
+      assert.strictEqual(rajApps.status, 200);
+      assert(!rajApps.body.applications.some((a) => a.id === appId), "Rajasthan Manager must NOT see Gujarat application");
+      const crossStateMgrRead = await api(baseUrl, "GET", `/api/applications/${appId}`, { token: approvedNewMgrToken });
+      assert.strictEqual(crossStateMgrRead.status, 403);
+
+      // Admin monitors nationwide applications & updated stats
+      const admAppsAfter = await api(baseUrl, "GET", "/api/admin/applications", { token: adminToken });
+      assert(admAppsAfter.body.some((a) => a.id === appId), "Admin must see newly recorded application");
+      const admStatsAfter = await api(baseUrl, "GET", "/api/admin/stats", { token: adminToken });
+      assert.strictEqual(admStatsAfter.body.applicationsSummary.total, initialAppsCount + 1);
+
+      // Another contractor cannot view, edit, or withdraw CON1001's application
+      assert.strictEqual((await api(baseUrl, "GET", `/api/applications/${appId}`, { token: secondConToken })).status, 403);
+      assert.strictEqual(
+        (await api(baseUrl, "PUT", `/api/applications/${appId}`, {
+          token: secondConToken,
+          body: {
+            tender_id: 61,
+            applied_on: "2026-10-15",
+            portal_name: "GeM",
+            reference_number: "HACK-01",
+            application_status: "Won",
+          },
+        })).status,
+        403
+      );
+      assert.strictEqual((await api(baseUrl, "PUT", `/api/applications/${appId}/withdraw`, { token: secondConToken })).status, 403);
     })();
 
     console.log(`\nALL ${results.length} ROLE-SYSTEM CHECKS PASSED SUCCESSFULLY.`);
