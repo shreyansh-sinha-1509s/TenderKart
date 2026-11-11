@@ -1677,6 +1677,19 @@ body.dark-theme .hero-nav-btn:hover {
   }
 }
 
+/* Prevent nav overflow on medium screens (e.g. 1024px) while preserving mobile drawer at <=960px */
+@media (max-width: 1140px) {
+  #desktop-nav-links {
+    gap: 14px !important;
+  }
+  #desktop-nav-links a {
+    font-size: 0.86rem !important;
+  }
+  nav .container > a > div > span:nth-child(2) {
+    display: none;
+  }
+}
+
 /* Collapse desktop nav cleanly on medium-narrow viewports */
 @media (max-width: 960px) {
   #desktop-nav-links, #desktop-nav-actions {

@@ -270,13 +270,14 @@ function renderNavbar() {
   let navItems = [];
   if (role === "admin") {
     navItems = [
-      { label: "Admin Dashboard", href: "admin.html", active: activePath === "admin.html" && !activeHash },
-      { label: "Manage Tenders", href: "admin.html#manage-tenders", active: activePath === "admin.html" && activeHash === "#manage-tenders" },
-      { label: "Tender Distribution", href: "admin.html#tender-distribution", active: activePath === "admin.html" && activeHash === "#tender-distribution" },
+      { label: "Home", href: "index.html", active: activePath === "index.html" || activePath === "" },
+      { label: "Admin Dashboard", href: "admin.html", active: activePath === "admin.html" },
+      { label: "About", href: "about-tenderkart.html", active: activePath === "about-tenderkart.html" },
       { label: "How It Works", href: "about.html", active: activePath === "about.html" }
     ];
   } else if (role === "contractor") {
     navItems = [
+      { label: "Home", href: "index.html", active: activePath === "index.html" || activePath === "" },
       { label: "Dashboard", href: "dashboard.html", active: activePath === "dashboard.html" },
       { label: "Browse Tenders", href: "tenders.html", active: activePath === "tenders.html" || activePath === "tenderDetails.html" },
       { label: "Saved Tenders", href: "saved.html", active: activePath === "saved.html" },
