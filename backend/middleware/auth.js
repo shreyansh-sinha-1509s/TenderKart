@@ -1,5 +1,5 @@
 // backend/middleware/auth.js
-// Centralized JWT verification and fresh DB role/state authorization middleware
+// Centralized JWT verification and fresh DB role authorization (Central Admin & Contractor)
 
 const jwt = require("jsonwebtoken");
 const db = require("../db");
@@ -20,8 +20,7 @@ function authenticateUser(req, res, next) {
     }
 
     db.query(
-      `SELECT id, username, email, role, name, company, department, office_state,
-              approval_status, is_active, user_code, created_at
+      `SELECT id, username, email, role, name, company, department, user_code, is_active, created_at
        FROM users WHERE id = ? LIMIT 1`,
       [decoded.id],
       (dbErr, rows) => {
@@ -35,26 +34,14 @@ function authenticateUser(req, res, next) {
         const user = rows[0];
         const role = (user.role || "").toLowerCase();
 
-        if (role === "manager") {
-          if (user.approval_status === "Pending") {
-            return res.status(403).json({
-              code: "PENDING_APPROVAL",
-              message: "Your manager account is pending Central Admin approval."
-            });
-          }
-          if (user.approval_status === "Rejected") {
-            return res.status(403).json({
-              code: "REJECTED",
-              message: "Your manager registration was rejected by Central Admin."
-            });
-          }
-          if (!user.is_active) {
-            return res.status(403).json({
-              code: "DEACTIVATED",
-              message: "Your manager account has been deactivated by Central Admin."
-            });
-          }
-        } else if (!user.is_active) {
+        if (role !== "admin" && role !== "contractor") {
+          return res.status(403).json({
+            code: "ROLE_REMOVED",
+            message: "This account role is no longer supported."
+          });
+        }
+
+        if (!user.is_active) {
           return res.status(403).json({
             code: "DEACTIVATED",
             message: "Your account is currently inactive."
@@ -80,28 +67,18 @@ function requireRole(...allowedRoles) {
           message: "Access denied. You do not have permission to perform this action."
         });
       }
-      if (req.user.role === "manager" && !req.user.office_state) {
-        return res.status(403).json({
-          message: "Manager account does not have an assigned office state."
-        });
-      }
       next();
     });
   };
 }
 
 const requireAdmin = requireRole("admin");
-const requireManager = requireRole("manager");
 const requireContractor = requireRole("contractor");
-const requireManagerOrAdmin = requireRole("admin", "manager");
 
 module.exports = {
   JWT_SECRET,
   authenticateUser,
   requireRole,
   requireAdmin,
-  requireManager,
-  requireContractor,
-  requireManagerOrAdmin
+  requireContractor
 };
-

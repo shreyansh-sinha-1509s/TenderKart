@@ -4,6 +4,7 @@ const db = require("../db");
 const { authenticateUser, requireContractor } = require("../middleware/auth");
 const {
   CONTRACTOR_APPLICATION_STATUSES,
+  isValidDateStr,
   mapApplicationOutcome,
   summarizeApplications
 } = require("../constants");
@@ -22,10 +23,9 @@ const APPLICATION_SELECT_FIELDS = `
   a.proposal_notes,
   a.missing_documents,
   a.evaluation_notes,
-  a.evaluator_id,
-  a.evaluated_at,
   a.created_at,
   a.updated_at,
+  t.tender_code AS tender_code,
   t.name AS tender_name,
   t.category AS tender_category,
   t.department AS tender_department,
@@ -62,7 +62,7 @@ function validateApplicationFields(body, { isEdit = false } = {}) {
   }
 
   const cleanDate = (applied_on || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate) || isNaN(Date.parse(cleanDate))) {
+  if (!isValidDateStr(cleanDate)) {
     return { error: "Please provide a valid application submission date (YYYY-MM-DD)." };
   }
 
@@ -85,7 +85,7 @@ function validateApplicationFields(body, { isEdit = false } = {}) {
   const rawStatus = (application_status || status || "Submitted").trim();
   if (!CONTRACTOR_APPLICATION_STATUSES.includes(rawStatus)) {
     return {
-      error: `Invalid submission status. Allowed values: ${CONTRACTOR_APPLICATION_STATUSES.join(", ")}.`
+      error: `Invalid application status. Allowed values: ${CONTRACTOR_APPLICATION_STATUSES.join(", ")}.`
     };
   }
 
@@ -114,7 +114,7 @@ function validateApplicationFields(body, { isEdit = false } = {}) {
   };
 }
 
-// 1. GET /api/applications/my - Retrieve applications & performance stats for logged-in contractor
+// 1. GET /api/applications/my - Logged-in contractor's own application history & counts
 router.get("/my", requireContractor, (req, res) => {
   const contractorId = req.user.id;
 
@@ -133,51 +133,31 @@ router.get("/my", requireContractor, (req, res) => {
       return res.status(500).json({ message: "Error fetching applications" });
     }
 
-    const applications = results.map((row) => {
+    const applications = (results || []).map((row) => {
       let missingDocs = [];
       let requiredDocs = [];
       try {
         missingDocs = JSON.parse(row.missing_documents || "[]");
-      } catch (e) {
+      } catch {
         missingDocs = row.missing_documents ? [row.missing_documents] : [];
       }
       try {
         requiredDocs = JSON.parse(row.tender_required_docs || "[]");
-      } catch (e) {
+      } catch {
         requiredDocs = [];
       }
 
       return {
         ...row,
+        tender_code: row.tender_code || `TK-${String(row.tender_id).padStart(4, "0")}`,
         missing_documents: missingDocs,
         tender_required_docs: requiredDocs
       };
     });
 
     const stats = summarizeApplications(applications);
-    const categoryStatsMap = {};
-
-    applications.forEach((app) => {
-      const status = (app.application_status || "").trim();
-      const outcome = (app.outcome || "").trim();
-      const cat = app.tender_category || "Other";
-      if (!categoryStatsMap[cat]) {
-        categoryStatsMap[cat] = { category: cat, total: 0, won: 0, notAwarded: 0, pending: 0 };
-      }
-      categoryStatsMap[cat].total++;
-      if (status === "Won" || outcome === "Won") {
-        categoryStatsMap[cat].won++;
-      } else if (["Lost", "Not Awarded", "Rejected"].includes(status) || ["Lost", "Not Awarded", "Rejected"].includes(outcome)) {
-        categoryStatsMap[cat].notAwarded++;
-      } else if (status !== "Withdrawn" && outcome !== "Withdrawn") {
-        categoryStatsMap[cat].pending++;
-      }
-    });
-
     const decided = stats.won + stats.lost;
     const winRate = decided > 0 ? parseFloat(((stats.won / decided) * 100).toFixed(1)) : null;
-    const winRateDisplay = winRate !== null ? `${winRate}%` : "Not enough completed outcomes to calculate win rate.";
-    const categories = Object.values(categoryStatsMap);
 
     res.json({
       totalApplications: stats.total,
@@ -190,9 +170,6 @@ router.get("/my", requireContractor, (req, res) => {
       withdrawn: stats.withdrawn,
       decidedApplications: decided,
       winRate,
-      winRateDisplay,
-      categories,
-      categoryStats: categories,
       summary: {
         total: stats.total,
         submitted: stats.submitted,
@@ -203,16 +180,14 @@ router.get("/my", requireContractor, (req, res) => {
         pending: stats.pending,
         withdrawn: stats.withdrawn,
         decided,
-        winRate,
-        winRateDisplay
+        winRate
       },
       applications
     });
   });
 });
 
-// 2. GET /api/applications/:id - Detailed analysis view of a single application
-// Enforces contractor ownership OR manager state restriction OR Central Admin supervision
+// 2. GET /api/applications/:id - View single application (Contractor owner or Central Admin only)
 router.get("/:id", authenticateUser, (req, res) => {
   const applicationId = req.params.id;
   const userId = req.user.id;
@@ -221,41 +196,32 @@ router.get("/:id", authenticateUser, (req, res) => {
   const query = `
     SELECT
       ${APPLICATION_SELECT_FIELDS},
-      t.description AS tender_description,
-      u.name AS evaluator_name,
-      u.department AS evaluator_department
+      t.description AS tender_description
     FROM applications a
     JOIN tenders t ON a.tender_id = t.id
-    LEFT JOIN users u ON a.evaluator_id = u.id
     WHERE a.id = ?
   `;
 
   db.query(query, [applicationId], (err, results) => {
     if (err) return res.status(500).json({ message: "Error fetching application" });
-    if (results.length === 0) return res.status(404).json({ message: "Application not found" });
+    if (!results || results.length === 0) return res.status(404).json({ message: "Application not found" });
 
     const app = results[0];
 
-    if (userRole === "contractor" && app.contractor_id !== userId) {
+    if (userRole !== "admin" && app.contractor_id !== userId) {
       return res.status(403).json({ message: "Access denied. You can only view your own applications." });
     }
-    if (
-      userRole === "manager" &&
-      (app.tender_state || "").toLowerCase() !== (req.user.office_state || "").toLowerCase()
-    ) {
-      return res.status(403).json({
-        message: "Access denied. You can only view applications for tenders in your assigned state."
-      });
-    }
+
+    app.tender_code = app.tender_code || `TK-${String(app.tender_id).padStart(4, "0")}`;
 
     try {
       app.missing_documents = JSON.parse(app.missing_documents || "[]");
-    } catch (e) {
+    } catch {
       app.missing_documents = app.missing_documents ? [app.missing_documents] : [];
     }
     try {
       app.tender_required_docs = JSON.parse(app.tender_required_docs || "[]");
-    } catch (e) {
+    } catch {
       app.tender_required_docs = [];
     }
 
@@ -271,7 +237,6 @@ router.get("/:id", authenticateUser, (req, res) => {
 
 function buildFactualInsights(app) {
   const findings = [];
-  const outcome = app.outcome;
   const bid = parseFloat(app.bid_amount);
   const budget = parseFloat(app.tender_budget);
 
@@ -279,39 +244,21 @@ function buildFactualInsights(app) {
     const diffPct = (((bid - budget) / budget) * 100).toFixed(1);
     if (bid > budget) {
       findings.push({
-        factor: "Bid Price vs. Estimated Budget",
-        type: "warning",
-        observation: `The recorded bid amount (₹${(bid / 10000000).toFixed(2)} Cr) is ${diffPct}% above the estimated tender budget allocation (₹${(budget / 10000000).toFixed(2)} Cr).`,
-        whyItMatters: "The difference may deserve review, although the estimated budget is not necessarily the final accepted bid price or a strict eligibility limit.",
-        recommendedAction: "Review the tender's financial requirements, quantities, scope of work, and pricing assumptions before finalizing the next bid."
+        factor: "Recorded Bid vs. Estimated Budget",
+        type: "financial",
+        observation: `Your recorded bid (₹${(bid / 10000000).toFixed(2)} Cr) is ${diffPct}% above the tender estimated budget (₹${(budget / 10000000).toFixed(2)} Cr).`,
+        whyItMatters: "Public authorities compare financial quotes against departmental cost estimates during bid evaluation.",
+        recommendedAction: "Review scope quantities and rate assumptions against official authority tender conditions."
       });
     } else {
       findings.push({
-        factor: "Bid Price vs. Estimated Budget",
-        type: "positive",
-        observation: `The recorded bid amount (₹${(bid / 10000000).toFixed(2)} Cr) is within the sanctioned public outlay (₹${(budget / 10000000).toFixed(2)} Cr, variance: ${diffPct}%).`,
-        whyItMatters: "Financial bids strictly aligned with the department's authorized ceiling provide competitive viability during L1 cost-quality scoring.",
-        recommendedAction: "Maintain detailed unit-rate analysis and risk contingencies on material price inflation for upcoming bids."
+        factor: "Recorded Bid vs. Estimated Budget",
+        type: "financial",
+        observation: `Your recorded bid (₹${(bid / 10000000).toFixed(2)} Cr) is within the estimated tender budget (₹${(budget / 10000000).toFixed(2)} Cr, variance: ${diffPct}%).`,
+        whyItMatters: "Aligning quoted value with departmental estimates helps remain competitive under L1 / QCBS scoring.",
+        recommendedAction: "Track official portal result announcements and update status once the authority publishes the outcome."
       });
     }
-  }
-
-  if (Array.isArray(app.missing_documents) && app.missing_documents.length > 0) {
-    findings.push({
-      factor: "Document Compliance & Completeness",
-      type: "danger",
-      observation: `A required document is marked as missing in the evaluation feedback: "${app.missing_documents.join(", ")}".`,
-      whyItMatters: "Incomplete documentation may cause an application to fail the preliminary technical compliance review before commercial bids are opened.",
-      recommendedAction: "Review the tender's document checklist before submission and verify each required attachment with digital signature."
-    });
-  } else if (app.tender_required_docs && app.tender_required_docs.length > 0) {
-    findings.push({
-      factor: "Required Documentation Checklist",
-      type: "info",
-      observation: `Tender requires ${app.tender_required_docs.length} mandatory compliance certificates (including ${app.tender_required_docs.slice(0, 2).join(", ")}).`,
-      whyItMatters: "Rigorous verification of statutory documents (GST, Class-A registrations, solvency letters) is mandatory for government contracts.",
-      recommendedAction: "Pre-assemble an updated statutory document folder refreshed quarterly to speed up application filings."
-    });
   }
 
   if (app.applied_on && app.tender_deadline) {
@@ -321,40 +268,30 @@ function buildFactualInsights(app) {
 
     if (diffDays >= 0) {
       findings.push({
-        factor: "Submission Schedule & Timeliness",
+        factor: "Submission Schedule",
         type: "positive",
-        observation: `Application was recorded on ${app.applied_on}, ${diffDays === 0 ? "on the deadline day" : `${diffDays} days before the deadline`} (${app.tender_deadline}).`,
-        whyItMatters: "Timely filing avoids e-procurement portal server congestion and ensures bid validity bank guarantees are properly registered.",
-        recommendedAction: "Continue planning bid uploads at least 48 to 72 hours ahead of the closing hour."
+        observation: `Submitted on ${app.applied_on}, ${diffDays === 0 ? "on the deadline date" : `${diffDays} days ahead of the ${app.tender_deadline} deadline`}.`,
+        whyItMatters: "Early submission on external portals prevents portal traffic timeouts prior to closing.",
+        recommendedAction: "Retain the acknowledgement receipt and reference number safely for authority verification."
       });
     } else {
       findings.push({
-        factor: "Submission Schedule & Timeliness",
+        factor: "Submission Schedule",
         type: "warning",
-        observation: `Application recording date (${app.applied_on}) is post deadline date (${app.tender_deadline}).`,
-        whyItMatters: "Tenders submitted after deadline hours are rejected unconditionally by procurement portals.",
-        recommendedAction: "Set calendar alerts 7 days prior to tender closing date."
+        observation: `Recorded submission date (${app.applied_on}) is after the listed tender deadline (${app.tender_deadline}).`,
+        whyItMatters: "Official e-procurement portals generally close submissions strictly at the deadline timestamp.",
+        recommendedAction: "Verify whether an official corrigendum extended the closing date on the portal."
       });
     }
   }
 
-  if (app.evaluation_notes && app.evaluation_notes.trim()) {
+  if (Array.isArray(app.tender_required_docs) && app.tender_required_docs.length > 0) {
     findings.push({
-      factor: "Official Evaluator Review Notes",
-      type: outcome === "Won" ? "positive" : (["Lost", "Not Awarded", "Rejected"].includes(outcome) ? "danger" : "info"),
-      observation: `Procurement authority note: "${app.evaluation_notes.trim()}"`,
-      whyItMatters: "Direct feedback from departmental technical review committees provides factual insight into compliance strengths or gaps.",
-      recommendedAction: outcome === "Won"
-        ? "Document the successful technical proposal structure as a reusable baseline for similar contracts."
-        : "Address the specific committee remarks in pre-bid meetings for subsequent procurement cycles."
-    });
-  } else if (["Lost", "Not Awarded", "Rejected"].includes(outcome)) {
-    findings.push({
-      factor: "Outcome Assessment",
-      type: "neutral",
-      observation: "Not enough information to identify the reason for this outcome.",
-      whyItMatters: "Contract award decisions consider multiple factors including competitor pricing, financial turnover, and past technical execution track-record.",
-      recommendedAction: "Contact procuring authority during the post-evaluation debriefing window to request factual scoring sheets."
+      factor: "Document Checklist Reference",
+      type: "documentation",
+      observation: `This tender lists ${app.tender_required_docs.length} required compliance documents (${app.tender_required_docs.slice(0, 3).join(", ")}).`,
+      whyItMatters: "Complete statutory filings (EMD, GST, PAN, solvency, registration) are checked during technical opening.",
+      recommendedAction: "Confirm uploaded copies on the official portal match the required document specifications."
     });
   }
 
@@ -366,7 +303,7 @@ function buildFactualInsights(app) {
 
   return {
     findings: normalizedFindings,
-    educationalDisclaimer: "Tender Performance Insights provides educational feedback based strictly on recorded submission facts. Does not represent official procurement arbitration."
+    educationalDisclaimer: "TenderKart records applications submitted through external government portals. Actual bid submission and procurement decisions are handled by the respective government authorities."
   };
 }
 
@@ -379,7 +316,7 @@ router.post("/", requireContractor, async (req, res) => {
       return res.status(400).json({ message: error });
     }
 
-    const tender = await db.getAsync("SELECT id, name, state FROM tenders WHERE id = ? LIMIT 1", [value.tender_id]);
+    const tender = await db.getAsync("SELECT id, tender_code, name, state FROM tenders WHERE id = ? LIMIT 1", [value.tender_id]);
     if (!tender) {
       return res.status(404).json({ message: "Selected tender does not exist." });
     }
@@ -426,40 +363,12 @@ router.post("/", requireContractor, async (req, res) => {
       [inResult.insertId]
     );
 
-    await db.queryAsync(
-      `INSERT INTO notifications (user_id, title, message, created_at)
-       VALUES (?, 'Application Recorded', ?, datetime('now'))`,
-      [contractorId, `Application ${appCode} (${value.reference_number}) for "${tender.name}" was recorded as ${value.application_status}.`]
-    );
-
-    // Notify assigned state manager if approved & active
-    if (tender.state) {
-      const stateManager = await db.getAsync(
-        "SELECT id FROM users WHERE role = 'manager' AND LOWER(office_state) = LOWER(?) AND approval_status = 'Approved' AND is_active = 1 LIMIT 1",
-        [tender.state]
-      );
-      if (stateManager) {
-        await db.queryAsync(
-          `INSERT INTO notifications (user_id, title, message, created_at)
-           VALUES (?, 'New State Bid Application', ?, datetime('now'))`,
-          [stateManager.id, `${req.user.company || req.user.name} recorded ${appCode} (Ref: ${value.reference_number}) for "${tender.name}" (${tender.state}).`]
-        );
-      }
-    }
-
-    db.logActivity({
-      actor_user_id: contractorId,
-      actor_role: "contractor",
-      action_type: "application_submitted",
-      entity_type: "application",
-      entity_id: inResult.insertId,
-      state: tender.state,
-      details: `Application ${appCode} (${value.portal_name}, Ref: ${value.reference_number}) recorded as ${value.application_status} for "${tender.name.slice(0, 60)}"`
-    });
-
     return res.status(201).json({
       message: "Application recorded successfully!",
-      application: created
+      application: {
+        ...created,
+        tender_code: created.tender_code || `TK-${String(created.tender_id).padStart(4, "0")}`
+      }
     });
   } catch (err) {
     console.error("Error creating application:", err);
@@ -542,71 +451,16 @@ router.put("/:id", requireContractor, async (req, res) => {
       [applicationId]
     );
 
-    db.logActivity({
-      actor_user_id: contractorId,
-      actor_role: "contractor",
-      action_type: "application_updated",
-      entity_type: "application",
-      entity_id: applicationId,
-      state: targetTender.state,
-      details: `Application ${existing.application_code} updated (${value.application_status}, Ref: ${value.reference_number})`
-    });
-
     return res.json({
       message: "Application updated successfully!",
-      application: updated
+      application: {
+        ...updated,
+        tender_code: updated.tender_code || `TK-${String(updated.tender_id).padStart(4, "0")}`
+      }
     });
   } catch (err) {
     console.error("Error updating application:", err);
     return res.status(500).json({ message: "Failed to update application: " + err.message });
-  }
-});
-
-// 5. PUT /api/applications/:id/withdraw - Voluntary withdrawal by contractor
-router.put("/:id/withdraw", requireContractor, async (req, res) => {
-  try {
-    const applicationId = req.params.id;
-    const contractorId = req.user.id;
-
-    const current = await db.getAsync(
-      `SELECT a.id, a.contractor_id, a.application_code, a.application_status, a.outcome, t.state
-       FROM applications a
-       JOIN tenders t ON a.tender_id = t.id
-       WHERE a.id = ? LIMIT 1`,
-      [applicationId]
-    );
-
-    if (!current) {
-      return res.status(404).json({ message: "Application not found." });
-    }
-    if (current.contractor_id !== contractorId) {
-      return res.status(403).json({ message: "Access denied. You can only withdraw your own applications." });
-    }
-
-    if (["Won", "Lost", "Not Awarded", "Rejected"].includes(current.application_status)) {
-      return res.status(400).json({ message: "Cannot withdraw an application that has already reached a final outcome." });
-    }
-
-    await db.queryAsync(
-      `UPDATE applications
-       SET application_status = 'Withdrawn', outcome = 'Withdrawn', updated_at = datetime('now')
-       WHERE id = ? AND contractor_id = ?`,
-      [applicationId, contractorId]
-    );
-
-    db.logActivity({
-      actor_user_id: contractorId,
-      actor_role: "contractor",
-      action_type: "application_withdrawn",
-      entity_type: "application",
-      entity_id: current.id,
-      state: current.state,
-      details: `Application ${current.application_code} withdrawn by contractor.`
-    });
-
-    return res.json({ message: "Application withdrawn successfully." });
-  } catch (err) {
-    return res.status(500).json({ message: "Failed to withdraw application" });
   }
 });
 

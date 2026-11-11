@@ -3,40 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TenderKart - Central Admin Nationwide Supervision</title>
+  <title>TenderKart - Central Admin Dashboard</title>
   <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    #admin-split {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 2rem;
-    }
-    @media (max-width: 900px) {
-      #admin-split {
-        grid-template-columns: 1fr;
-      }
-    }
-    .admin-tab-btn {
-      width: 100%;
-      text-align: left;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: var(--transition-smooth);
-    }
-    .admin-tab-btn:hover {
-      background-color: var(--bg-secondary);
-      color: var(--text-primary);
-    }
     .dashboard-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -50,7 +21,7 @@
     .dashboard-modal-content {
       background-color: var(--bg-primary);
       border: 1px solid var(--border-color);
-      max-width: 820px;
+      max-width: 780px;
       width: 100%;
       margin: 0 auto;
       border-radius: 20px;
@@ -60,13 +31,40 @@
       flex-direction: column;
       gap: 18px;
     }
+    .admin-dist-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 2rem;
+      align-items: center;
+    }
+    @media (max-width: 850px) {
+      .admin-dist-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .admin-filters-bar {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    @media (max-width: 960px) {
+      .admin-filters-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 560px) {
+      .admin-filters-bar {
+        grid-template-columns: 1fr;
+      }
+    }
     table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
     }
     th {
-      padding: 12px 16px;
+      padding: 12px 14px;
       background-color: var(--bg-secondary);
       color: var(--text-muted);
       font-size: 0.74rem;
@@ -76,9 +74,10 @@
       white-space: nowrap;
     }
     td {
-      padding: 13px 16px;
+      padding: 13px 14px;
       border-bottom: 1px solid var(--border-color);
       font-size: 0.85rem;
+      vertical-align: top;
     }
   </style>
 </head>
@@ -89,377 +88,263 @@
   <main style="flex: 1; padding: 3rem 0;">
     <div class="container" style="display: flex; flex-direction: column; gap: 2rem;">
 
-      <!-- Central Admin Header -->
-      <div class="card" style="padding: 1.75rem 2rem; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(245, 158, 11, 0.06) 100%); display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; border: 1px solid rgba(245, 158, 11, 0.25);">
+      <!-- Central Admin Header & Simple Total Tenders Count -->
+      <div class="card" style="padding: 1.75rem 2rem; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(245, 158, 11, 0.06) 100%); display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; border: 1px solid rgba(245, 158, 11, 0.25);">
         <div style="display: flex; align-items: center; gap: 16px;">
           <div style="height: 56px; width: 56px; border-radius: 14px; background: linear-gradient(135deg, #D97706, #B45309); color: #FFFFFF; font-size: 1.5rem; display: flex; align-items: center; justify-content: center;">
             🛡️
           </div>
           <div>
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <h1 style="font-size: 1.65rem; font-weight: 850; color: var(--text-primary); margin: 0;">Central Admin Supervision Portal</h1>
-              <span class="badge badge-orange">Pan-India Authority</span>
+              <h1 style="font-size: 1.6rem; font-weight: 850; color: var(--text-primary); margin: 0;">Central Admin Dashboard</h1>
+              <span class="badge badge-orange">Central Admin</span>
             </div>
-            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 4px 0 0 0;">
-              Nationwide oversight across all 12 tenders, state-wise managers, contractors, inquiries, and real-time database analytics.
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 4px 0 0 0;">
+              Add, edit, close, reopen, filter, and remove infrastructure tenders and monitor live category distribution.
             </p>
           </div>
         </div>
+
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 10px 18px; text-align: center; min-width: 125px;">
+            <span style="display: block; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Tenders</span>
+            <span id="admin-total-tenders" style="display: block; font-size: 1.6rem; font-weight: 850; color: var(--color-primary); line-height: 1.2;">0</span>
+          </div>
+          <button type="button" id="btn-admin-add-tender" onclick="openAdminAddTenderModal()" class="btn btn-primary" style="border: none; padding: 11px 20px; font-weight: 700;">
+            + Add Tender
+          </button>
+        </div>
       </div>
 
-      <div id="admin-split">
-        <!-- Sidebar Navigation -->
-        <aside style="display: flex; flex-direction: column; gap: 1rem; height: fit-content;">
-          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 8px;">
-            <button onclick="switchAdminTab('stats')" class="admin-tab-btn" id="btn-admin-stats">
-              📊 <span>Nationwide Analytics</span>
-            </button>
-            <button onclick="switchAdminTab('managers')" class="admin-tab-btn" id="btn-admin-managers">
-              🏛️ <span>Manager Approvals &amp; Performance</span>
-              <span class="badge badge-orange" style="margin-left: auto;" id="admin-pending-mgr-badge">0</span>
-            </button>
-            <button onclick="switchAdminTab('tenders')" class="admin-tab-btn" id="btn-admin-tenders">
-              📋 <span>All 12 Tenders</span>
-              <span class="badge badge-blue" style="margin-left: auto;" id="admin-tenders-badge">12</span>
-            </button>
-            <button onclick="switchAdminTab('apps')" class="admin-tab-btn" id="btn-admin-apps">
-              📑 <span>Applications Monitor</span>
-              <span class="badge badge-blue" style="margin-left: auto;" id="admin-apps-badge">0</span>
-            </button>
-            <button onclick="switchAdminTab('users')" class="admin-tab-btn" id="btn-admin-users">
-              👥 <span>Contractors &amp; Users</span>
-            </button>
-            <button onclick="switchAdminTab('helpdesk')" class="admin-tab-btn" id="btn-admin-helpdesk">
-              💬 <span>All Inquiries Monitor</span>
-              <span class="badge badge-orange" style="margin-left: auto;" id="admin-helpdesk-badge">0</span>
-            </button>
+      <!-- Overall Tender Distribution Section (ONE Main Visualization: Pie Chart) -->
+      <section id="tender-distribution" class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 850; margin: 0; color: var(--text-primary);">Tender Distribution by Category – Pie Chart</h2>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 4px 0 0 0;">
+              Live count across the 6 permitted infrastructure categories calculated directly from SQLite.
+            </p>
           </div>
-        </aside>
+          <span class="badge badge-blue" id="admin-pie-total-badge">Total: 0 Tenders</span>
+        </div>
 
-        <!-- Main Panels -->
-        <section style="display: flex; flex-direction: column; gap: 2rem;">
-
-          <!-- Panel 1: Nationwide Analytics & Monitoring -->
-          <div id="admin-tab-stats" style="display: flex; flex-direction: column; gap: 1.75rem;">
-            <!-- Primary KPI Cards -->
-            <div class="grid-4" style="gap: 1.25rem;">
-              <div class="card" style="padding: 1.35rem; text-align: center;">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Tenders</span>
-                <h3 style="font-size: 1.85rem; font-weight: 850; color: var(--text-primary); margin-top: 6px;" id="stat-box-tenders">12</h3>
-                <span style="font-size: 0.74rem; color: var(--text-muted);" id="stat-box-budget">Outlay: --</span>
-              </div>
-              <div class="card" style="padding: 1.35rem; text-align: center;">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Registered Contractors</span>
-                <h3 style="font-size: 1.85rem; font-weight: 850; color: var(--color-primary); margin-top: 6px;" id="stat-box-contractors">0</h3>
-                <span style="font-size: 0.74rem; color: var(--text-muted);" id="stat-box-saves">0 Saved Tenders</span>
-              </div>
-              <div class="card" style="padding: 1.35rem; text-align: center;">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Approved Managers</span>
-                <h3 style="font-size: 1.85rem; font-weight: 850; color: var(--color-success); margin-top: 6px;" id="stat-box-managers">0</h3>
-                <span style="font-size: 0.74rem; color: #D97706;" id="stat-box-pending-mgrs">0 Pending Approval</span>
-              </div>
-              <div class="card" style="padding: 1.35rem; text-align: center;">
-                <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Tender Views</span>
-                <h3 style="font-size: 1.85rem; font-weight: 850; color: var(--text-primary); margin-top: 6px;" id="stat-box-views">0</h3>
-                <span style="font-size: 0.74rem; color: var(--text-muted);" id="stat-box-apps-total">0 Applications</span>
-              </div>
-            </div>
-
-            <!-- Applications & Inquiries Summary Strip -->
-            <div class="grid-2" style="gap: 1.5rem;">
-              <div class="card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 12px;">
-                <h3 style="font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin: 0;">Application Outcomes (Real DB)</h3>
-                <div id="analytics-app-outcomes" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center;"></div>
-              </div>
-              <div class="card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 12px;">
-                <h3 style="font-size: 1.05rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin: 0;">Nationwide Inquiry Statuses</h3>
-                <div id="analytics-inquiry-summary" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center;"></div>
-              </div>
-            </div>
-
-            <!-- Category Distribution & Recent Activity -->
-            <div class="grid-2" style="gap: 1.5rem;">
-              <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 18px;">
-                <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin: 0;">6-Category Tender Distribution</h3>
-                <div style="display: flex; flex-direction: column; gap: 14px;" id="analytics-allocations"></div>
-              </div>
-              <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 18px;">
-                <h3 style="font-size: 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin: 0;">Recent Platform Updates</h3>
-                <div style="display: flex; flex-direction: column; gap: 14px; max-height: 360px; overflow-y: auto;" id="analytics-logs"></div>
-              </div>
-            </div>
-
-            <!-- State-Wise Tender & Contractor Activity Table -->
-            <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 14px;">
-              <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0;">State-Wise Tender Distribution &amp; Contractor Activity</h3>
-              <div style="overflow-x: auto;">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>State</th>
-                      <th>Tenders</th>
-                      <th>Total Outlay</th>
-                      <th>Views</th>
-                      <th>Saved</th>
-                      <th>Applications</th>
-                      <th>Inquiries (Resolved)</th>
-                      <th>Approved State Manager</th>
-                    </tr>
-                  </thead>
-                  <tbody id="analytics-state-table"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Manager-Wise Performance Table -->
-            <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 14px;">
-              <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0;">Manager-Wise Activity &amp; Performance Comparison</h3>
-              <div style="overflow-x: auto;">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Manager</th>
-                      <th>Office State</th>
-                      <th>Status</th>
-                      <th>State Tenders</th>
-                      <th>Tender Updates</th>
-                      <th>Inquiry Responses</th>
-                      <th>Assigned / Resolved</th>
-                      <th>Apps Evaluated</th>
-                    </tr>
-                  </thead>
-                  <tbody id="analytics-manager-perf-table"></tbody>
-                </table>
-              </div>
-            </div>
+        <div class="admin-dist-grid">
+          <div style="position: relative; height: 320px; width: 100%; display: flex; align-items: center; justify-content: center;">
+            <canvas id="admin-category-pie-chart"></canvas>
+            <div id="admin-pie-fallback" style="display: none; width: 100%; text-align: center; color: var(--text-muted); font-size: 0.9rem;"></div>
           </div>
+          <div id="admin-category-breakdown-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+      </section>
 
-          <!-- Panel 2: Manager Registrations, Approvals & Account Control -->
-          <div id="admin-tab-managers" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 20px;">
-            <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-              <h3 style="font-size: 1.25rem; font-weight: 850; margin: 0;">State Manager Registrations &amp; Account Control</h3>
-              <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 4px 0 0 0;">
-                Approve or reject pending manager registrations, activate or deactivate accounts, and monitor state performance.
-              </p>
-            </div>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Manager Details</th>
-                    <th>Assigned State</th>
-                    <th>Approval</th>
-                    <th>Account Status</th>
-                    <th>Tender Updates</th>
-                    <th>Inquiry Replies</th>
-                    <th style="text-align: right;">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-managers-table"></tbody>
-              </table>
-            </div>
+      <!-- Manage Tenders Section -->
+      <section id="manage-tenders" class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 850; margin: 0; color: var(--text-primary);">Manage Tenders</h2>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 4px 0 0 0;" id="admin-tenders-showing">
+              Showing all tenders
+            </p>
           </div>
+          <button type="button" onclick="openAdminAddTenderModal()" class="btn btn-primary" style="border: none; padding: 9px 18px; font-size: 0.86rem; font-weight: 700;">
+            + Add Tender
+          </button>
+        </div>
 
-          <!-- Panel 3: All 12 Tenders Across India (Supervisory Read-Only View) -->
-          <div id="admin-tab-tenders" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-              <div>
-                <h3 style="font-size: 1.25rem; font-weight: 850; margin: 0;">All 12 Demonstration Tenders Across India</h3>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 4px 0 0 0;">Central Admin supervisory catalog view (routine updates are managed by assigned State Managers).</p>
-              </div>
-              <select id="admin-tenders-state-filter" class="form-input" style="width: 200px; height: 38px;" onchange="renderAdminTendersTable()">
-                <option value="">All States</option>
-              </select>
-            </div>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tender Title</th>
-                    <th>State</th>
-                    <th>Category</th>
-                    <th>Budget</th>
-                    <th>Deadline</th>
-                    <th>Status</th>
-                    <th>Views / Saves / Apps</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-tenders-table"></tbody>
-              </table>
-            </div>
+        <!-- Search & Filter Bar -->
+        <div class="admin-filters-bar">
+          <input type="text" id="admin-filter-search" class="form-input" placeholder="Search title, Tender ID, dept, location..." style="height: 42px;" />
+          <select id="admin-filter-category" class="form-input" style="height: 42px;">
+            <option value="">All Categories</option>
+            <option value="Roads">Roads</option>
+            <option value="Bridges">Bridges</option>
+            <option value="Water Supply">Water Supply</option>
+            <option value="Buildings">Buildings</option>
+            <option value="Metro Projects">Metro Projects</option>
+            <option value="Smart City">Smart City</option>
+          </select>
+          <select id="admin-filter-state" class="form-input" style="height: 42px;">
+            <option value="">All States</option>
+          </select>
+          <select id="admin-filter-status" class="form-input" style="height: 42px;">
+            <option value="">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="Closing Soon">Closing Soon</option>
+            <option value="Closed">Closed</option>
+          </select>
+          <button type="button" onclick="resetAdminTenderFilters()" class="btn btn-secondary" style="height: 42px; padding: 0 14px; font-size: 0.84rem;">Reset</button>
+        </div>
+
+        <!-- Tenders Table -->
+        <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Tender ID</th>
+                <th>Tender Title &amp; Department</th>
+                <th>Category</th>
+                <th>State &amp; Location</th>
+                <th>Budget</th>
+                <th>Published / Deadline</th>
+                <th>Status</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-tenders-table"></tbody>
+          </table>
+          <div id="admin-tenders-empty" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+            No tenders match your search or filter criteria.
           </div>
+        </div>
+      </section>
 
-          <!-- Panel 4: Contractor & User Registry -->
-          <div id="admin-tab-users" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 16px;">
-            <h3 style="font-size: 1.25rem; font-weight: 850; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin: 0;">Registered Contractors &amp; Platform Users</h3>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Name &amp; Organization</th>
-                    <th>Email</th>
-                    <th>Role / State</th>
-                    <th>Status</th>
-                    <th>Activity Summary</th>
-                    <th>Registered</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-users-table"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Panel 5: Nationwide Applications Monitor -->
-          <div id="admin-tab-apps" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 16px;">
-            <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-              <h3 style="font-size: 1.25rem; font-weight: 850; margin: 0;">Nationwide Applications Monitor</h3>
-              <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 4px 0 0 0;">Monitor all contractor applications and recorded outcomes across all states.</p>
-            </div>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>App ID</th>
-                    <th>Contractor &amp; Firm</th>
-                    <th>Tender &amp; State</th>
-                    <th>Applied On</th>
-                    <th>Bid Amount</th>
-                    <th>Status</th>
-                    <th>Outcome</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-apps-table"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Panel 6: Nationwide Inquiries Monitor -->
-          <div id="admin-tab-helpdesk" class="card" style="padding: 2rem; display: none; flex-direction: column; gap: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-              <div>
-                <h3 style="font-size: 1.25rem; font-weight: 850; margin: 0;">Nationwide Inquiries Monitor</h3>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 4px 0 0 0;">
-                  Supervise all state-routed inquiries and handle Unassigned / Pending Admin Assignment tickets.
-                </p>
-              </div>
-            </div>
-
-            <div class="grid-4" style="grid-template-columns: repeat(5, 1fr); gap: 12px;">
-              <div class="card" style="padding: 1rem; text-align: center;">
-                <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total</span>
-                <h3 id="stat-inquiries-total" style="font-size: 1.5rem; font-weight: 850; margin-top: 4px;">0</h3>
-              </div>
-              <div class="card" style="padding: 1rem; text-align: center; border-color: rgba(245, 158, 11, 0.3);">
-                <span style="font-size: 0.7rem; font-weight: 700; color: #D97706; text-transform: uppercase;">Pending</span>
-                <h3 id="stat-inquiries-new" style="font-size: 1.5rem; font-weight: 850; color: #D97706; margin-top: 4px;">0</h3>
-              </div>
-              <div class="card" style="padding: 1rem; text-align: center; border-color: rgba(37, 99, 235, 0.3);">
-                <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase;">In Progress</span>
-                <h3 id="stat-inquiries-progress" style="font-size: 1.5rem; font-weight: 850; color: var(--color-primary); margin-top: 4px;">0</h3>
-              </div>
-              <div class="card" style="padding: 1rem; text-align: center; border-color: rgba(16, 185, 129, 0.3);">
-                <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-success); text-transform: uppercase;">Resolved</span>
-                <h3 id="stat-inquiries-resolved" style="font-size: 1.5rem; font-weight: 850; color: var(--color-success); margin-top: 4px;">0</h3>
-              </div>
-              <div class="card" style="padding: 1rem; text-align: center; border-color: rgba(239, 68, 68, 0.3);">
-                <span style="font-size: 0.7rem; font-weight: 700; color: #EF4444; text-transform: uppercase;">Unassigned</span>
-                <h3 id="stat-inquiries-unassigned" style="font-size: 1.5rem; font-weight: 850; color: #EF4444; margin-top: 4px;">0</h3>
-              </div>
-            </div>
-
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-              <input type="text" id="filter-inquiry-search" class="form-input" placeholder="Search ticket, sender, tender..." style="flex: 2; min-width: 200px; height: 38px;" />
-              <select id="filter-inquiry-state" class="form-input" style="flex: 1; min-width: 140px; height: 38px;">
-                <option value="">All States</option>
-              </select>
-              <select id="filter-inquiry-status" class="form-input" style="flex: 1; min-width: 130px; height: 38px;">
-                <option value="">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Resolved">Resolved</option>
-              </select>
-              <select id="filter-inquiry-assignment" class="form-input" style="flex: 1; min-width: 150px; height: 38px;">
-                <option value="">All Assignments</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Unassigned">Unassigned</option>
-              </select>
-              <button type="button" onclick="resetAdminInquiryFilters()" class="btn btn-secondary" style="height: 38px; padding: 0 14px; font-size: 0.82rem;">Reset</button>
-            </div>
-
-            <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 12px;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ticket ID</th>
-                    <th>Sender</th>
-                    <th>State</th>
-                    <th>Assigned To</th>
-                    <th>Category</th>
-                    <th>Related Tender</th>
-                    <th>Status</th>
-                    <th>Submitted</th>
-                    <th style="text-align: right;">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="admin-inquiries-tbody"></tbody>
-              </table>
-              <div id="admin-inquiries-empty" style="display: none; padding: 2rem; text-align: center; color: var(--text-muted);">
-                No inquiries match your filter criteria.
-              </div>
-            </div>
-          </div>
-
-        </section>
-      </div>
     </div>
   </main>
 
-  <!-- Admin Supervisory Inquiry Modal -->
-  <div id="admin-ticket-modal" class="dashboard-modal-overlay">
+  <!-- Add / Edit Tender Modal -->
+  <div id="admin-tender-modal" class="dashboard-modal-overlay">
     <div class="dashboard-modal-content">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
         <div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <span class="badge badge-orange" id="amodal-ticket-number">TKT</span>
-            <span class="badge" id="amodal-ticket-status-badge">Pending</span>
-            <span class="badge badge-blue" id="amodal-ticket-state-badge">State</span>
+          <h3 id="admin-tender-modal-title" style="font-size: 1.25rem; font-weight: 850; margin: 0; color: var(--text-primary);">Add New Tender</h3>
+          <p id="admin-tender-modal-subtitle" style="font-size: 0.82rem; color: var(--text-muted); margin: 4px 0 0 0;">Complete all required tender fields below.</p>
+        </div>
+        <button type="button" onclick="closeAdminTenderModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;" aria-label="Close">✕</button>
+      </div>
+
+      <div id="admin-tender-form-error" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--color-danger); border-radius: 10px; padding: 10px 14px; font-size: 0.84rem; font-weight: 500;"></div>
+
+      <form id="admin-tender-form" onsubmit="handleAdminTenderSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="tender-form-id" />
+
+        <div class="grid-2" style="gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-name" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Tender Title *</label>
+            <input type="text" id="tender-form-name" class="form-input" placeholder="e.g. Pune Ring Road Six-Lane Highway Expansion" required />
           </div>
-          <h3 id="amodal-ticket-subject" style="font-size: 1.2rem; font-weight: 850; margin: 8px 0 2px 0;">Subject</h3>
-          <p id="amodal-ticket-meta" style="font-size: 0.82rem; color: var(--text-secondary); margin: 0;"></p>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-code" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Tender ID *</label>
+            <input type="text" id="tender-form-code" class="form-input" placeholder="e.g. TK-0069" required />
+          </div>
         </div>
-        <button onclick="closeAdminTicketModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">✕</button>
-      </div>
 
-      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 14px; font-size: 0.84rem; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between;">
-        <div><strong>Sender:</strong> <span id="amodal-sender-name">--</span> (<span id="amodal-sender-role">--</span>)</div>
-        <div><strong>Organization:</strong> <span id="amodal-sender-org">--</span></div>
-        <div><strong>Email:</strong> <span id="amodal-sender-email">--</span></div>
-        <div><strong>Assignment:</strong> <span id="amodal-assignment-info">--</span></div>
-      </div>
-
-      <div id="amodal-tender-info" style="display: none; background: rgba(var(--primary-rgb), 0.05); border-radius: 10px; padding: 10px 14px; font-size: 0.84rem;">
-        <strong>Linked Tender: </strong><span id="amodal-tender-name" style="color: var(--color-primary); font-weight: 600;">--</span>
-      </div>
-
-      <div id="amodal-conversation-thread" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;"></div>
-
-      <div style="display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <strong style="font-size: 0.8rem;">Status:</strong>
-          <select id="amodal-status-select" class="form-input" style="width: 170px; height: 34px; padding: 2px 8px;">
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Resolved">Resolved</option>
-          </select>
-          <button type="button" onclick="updateAdminTicketControls()" class="btn btn-outline" style="height: 34px; padding: 0 12px; font-size: 0.8rem;">Update Status</button>
+        <div class="grid-3" style="gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-category" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Category *</label>
+            <select id="tender-form-category" class="form-input" required>
+              <option value="Roads">Roads</option>
+              <option value="Bridges">Bridges</option>
+              <option value="Water Supply">Water Supply</option>
+              <option value="Buildings">Buildings</option>
+              <option value="Metro Projects">Metro Projects</option>
+              <option value="Smart City">Smart City</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-state" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">State *</label>
+            <select id="tender-form-state" class="form-input" required>
+              <option value="">Select State</option>
+            </select>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-location" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Location *</label>
+            <input type="text" id="tender-form-location" class="form-input" placeholder="e.g. Pune, Maharashtra" required />
+          </div>
         </div>
-        <textarea id="amodal-reply-input" class="form-input" rows="3" placeholder="Supervisory Central Admin response (ideal for Unassigned / Pending Admin Assignment inquiries)..."></textarea>
+
+        <div class="grid-2" style="gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-department" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Department *</label>
+            <input type="text" id="tender-form-department" class="form-input" placeholder="e.g. Maharashtra State Road Development Corp" required />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-budget" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Estimated Budget (INR) *</label>
+            <input type="number" id="tender-form-budget" class="form-input" min="1" step="any" placeholder="e.g. 450000000" required />
+          </div>
+        </div>
+
+        <div class="grid-3" style="gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-published" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Published Date *</label>
+            <input type="date" id="tender-form-published" class="form-input" required />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-deadline" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Submission Deadline *</label>
+            <input type="date" id="tender-form-deadline" class="form-input" required />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-status" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Tender Status *</label>
+            <select id="tender-form-status" class="form-input" required>
+              <option value="Open">Open</option>
+              <option value="Closing Soon">Closing Soon</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="tender-form-source-url" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Official Government Portal Link *</label>
+          <input type="url" id="tender-form-source-url" class="form-input" placeholder="https://eprocure.gov.in/eprocure/app" required />
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="tender-form-description" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Tender Description *</label>
+          <textarea id="tender-form-description" class="form-input" rows="3" placeholder="Project scope, civil specifications, and deliverables..." required></textarea>
+        </div>
+
+        <div class="grid-2" style="gap: 1rem;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-eligibility" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Eligibility Criteria (Optional)</label>
+            <input type="text" id="tender-form-eligibility" class="form-input" placeholder="e.g. Class-A registered contractors" />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <label for="tender-form-docs" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Required Documents (Comma Separated)</label>
+            <input type="text" id="tender-form-docs" class="form-input" placeholder="e.g. GST Certificate, EMD Bank Guarantee" />
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px;">
+          <button type="button" onclick="closeAdminTenderModal()" class="btn btn-secondary" style="padding: 9px 18px;">Cancel</button>
+          <button type="submit" id="tender-form-submit-btn" class="btn btn-primary" style="padding: 9px 22px; border: none; font-weight: 700;">Save Tender</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reopen Tender with Updated Deadline Modal -->
+  <div id="admin-reopen-modal" class="dashboard-modal-overlay">
+    <div class="dashboard-modal-content" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <h3 style="font-size: 1.15rem; font-weight: 850; margin: 0;">Reopen Tender</h3>
+        <button type="button" onclick="closeAdminReopenModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">✕</button>
+      </div>
+      <p id="reopen-modal-text" style="font-size: 0.88rem; color: var(--text-secondary); margin: 0; line-height: 1.5;"></p>
+      <form onsubmit="confirmAdminReopenWithDeadline(event)" style="display: flex; flex-direction: column; gap: 12px;">
+        <input type="hidden" id="reopen-tender-id" />
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="reopen-new-deadline" style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">New Submission Deadline *</label>
+          <input type="date" id="reopen-new-deadline" class="form-input" required />
+        </div>
         <div style="display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" onclick="submitAdminReply('In Progress')" class="btn btn-primary" style="font-size: 0.84rem; padding: 8px 16px;">Send Admin Reply</button>
-          <button type="button" onclick="submitAdminReply('Resolved')" class="btn btn-secondary" style="font-size: 0.84rem; padding: 8px 16px; color: var(--color-success);">Reply &amp; Resolve</button>
+          <button type="button" onclick="closeAdminReopenModal()" class="btn btn-secondary" style="padding: 8px 16px;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="padding: 8px 18px; border: none;">Reopen Tender</button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirmation Dialog Modal for Deleting a Tender -->
+  <div id="admin-delete-modal" class="dashboard-modal-overlay">
+    <div class="dashboard-modal-content" style="max-width: 460px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <h3 style="font-size: 1.15rem; font-weight: 850; margin: 0; color: var(--color-danger);">Confirm Tender Removal</h3>
+        <button type="button" onclick="closeAdminDeleteModal()" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">✕</button>
+      </div>
+      <p id="delete-modal-text" style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; margin: 0;"></p>
+      <input type="hidden" id="delete-tender-id" />
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" onclick="closeAdminDeleteModal()" class="btn btn-secondary" style="padding: 8px 16px;">Cancel</button>
+        <button type="button" id="confirm-delete-tender-btn" onclick="confirmAdminDeleteTender()" class="btn" style="padding: 8px 18px; background: var(--color-danger); color: #FFFFFF; border: none;">Remove Tender</button>
       </div>
     </div>
   </div>

@@ -3,860 +3,132 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TenderKart - Project Overview & Analytics</title>
+  <title>TenderKart - How It Works</title>
   <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
   <link rel="stylesheet" href="style.css">
-  <!-- Chart.js CDN for visual category distribution maps -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* Objectives grid layout */
-    .objectives-grid {
+    .steps-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 1.5rem;
     }
-    @media (max-width: 768px) {
-      .objectives-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .objective-card {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 1.75rem;
-      display: flex;
-      gap: 1rem;
-      box-shadow: var(--shadow-sm);
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
-    }
-    .objective-card:hover {
-      transform: translateY(-5px) scale(1.01);
-      box-shadow: var(--shadow-md);
-      border-color: var(--color-primary);
-    }
-    .obj-icon {
-      font-size: 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 44px;
-      height: 44px;
-      background-color: rgba(var(--primary-rgb), 0.08);
-      border-radius: 10px;
-      flex-shrink: 0;
-      color: var(--color-primary);
-    }
-
-    /* Analytics Section grids */
-    .analytics-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-    }
     @media (max-width: 900px) {
-      .analytics-grid {
+      .steps-grid {
         grid-template-columns: 1fr;
       }
     }
-    .chart-container-wrapper {
+    .step-card {
       background-color: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 20px;
+      border-radius: 18px;
       padding: 2rem;
-      box-shadow: var(--shadow-sm);
       display: flex;
       flex-direction: column;
-      gap: 1.25rem;
-      height: 400px;
-      transition: var(--transition-smooth);
-    }
-
-    /* Technology stack grid */
-    .tech-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-    }
-    @media (max-width: 900px) {
-      .tech-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    @media (max-width: 600px) {
-      .tech-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .tech-card {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 1.25rem;
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-      box-shadow: var(--shadow-sm);
-      transition: transform 0.25s ease, border-color 0.25s ease;
-    }
-    .tech-card:hover {
-      transform: translateY(-3px);
-      border-color: var(--color-primary);
-    }
-    .tech-icon {
-      font-size: 1.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      background-color: rgba(var(--primary-rgb), 0.08);
-      border-radius: 8px;
-      color: var(--color-primary);
-      flex-shrink: 0;
-    }
-
-    /* Category Scope grid */
-    .scope-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-    @media (max-width: 768px) {
-      .scope-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    @media (max-width: 480px) {
-      .scope-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .scope-item {
-      background-color: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1rem;
-      display: flex;
-      align-items: center;
       gap: 12px;
-      font-weight: 600;
-      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
       transition: var(--transition-smooth);
     }
-    .scope-item:hover {
-      background-color: var(--bg-card);
+    .step-card:hover {
+      transform: translateY(-4px);
       border-color: var(--color-primary);
-      transform: scale(1.02);
-    }
-
-    /* Scroll reveal transitions */
-    .scroll-reveal {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-    }
-    .scroll-reveal.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Smart City Animations & Styling */
-    .smart-city-wrapper {
-      transform-style: preserve-3d;
-      perspective: 1200px;
-      cursor: crosshair;
-    }
-    .smart-city-wrapper svg {
-      transition: transform 0.12s cubic-bezier(0.25, 1, 0.5, 1);
-      will-change: transform;
-    }
-    .road-flow-line {
-      animation: flowRoad 1.2s linear infinite;
-    }
-    @keyframes flowRoad {
-      0% { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: -20; }
-    }
-    .pulse-node {
-      animation: pulseGlow 2s infinite;
-    }
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 0.4; r: 3; }
-      50% { opacity: 1; r: 4.5; }
-    }
-    .blink-node {
-      animation: blink 1.5s infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
-    }
-    .float-pin-1 { animation: floatAnim 3.2s ease-in-out infinite; }
-    .float-pin-2 { animation: floatAnim 3.6s ease-in-out infinite 0.4s; }
-    .float-pin-3 { animation: floatAnim 3.0s ease-in-out infinite 0.8s; }
-    .float-pin-4 { animation: floatAnim 3.4s ease-in-out infinite 1.2s; }
-    @keyframes floatAnim {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
-    .city-interactive {
-      transition: opacity 0.25s ease, filter 0.25s ease;
-      cursor: pointer;
-    }
-    .city-interactive:hover {
-      filter: drop-shadow(0 0 10px var(--color-primary));
-      opacity: 0.95;
+      box-shadow: var(--shadow-md);
     }
   </style>
 </head>
 <body style="min-height: 100vh; display: flex; flex-direction: column;">
 
-  <!-- Sticky Glassmorphic Navbar (rendered dynamically by app.js) -->
   <div id="navbar-placeholder"></div>
 
-  <!-- Main Content Space -->
-  <main style="flex: 1; padding: 1.5rem 0 3rem 0;">
-    <div class="container" style="display: flex; flex-direction: column; gap: 2.75rem;">
-      
-      <!-- Page Header Title banner -->
-      <div style="text-align: center; display: flex; flex-direction: column; gap: 6px; max-width: 720px; margin: 0 auto;">
-        <span class="badge badge-blue" style="width: fit-content; align-self: center; font-size: 0.72rem; padding: 3px 10px;">ACADEMIC WORKSPACE</span>
-        <h1 style="font-size: 2.2rem; font-weight: 850; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.15; margin: 0;">Project Overview</h1>
-        <p style="font-size: 0.98rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
-          An intelligent and centralized platform for discovering, filtering and analyzing urban infrastructure tender opportunities.
+  <main style="flex: 1; padding: 3.5rem 0 4.5rem 0;">
+    <div class="container" style="display: flex; flex-direction: column; gap: 3rem;">
+
+      <!-- Page Header -->
+      <div style="text-align: center; display: flex; flex-direction: column; gap: 10px; max-width: 720px; margin: 0 auto;">
+        <span class="badge badge-blue" style="width: fit-content; align-self: center;">HOW IT WORKS</span>
+        <h1 style="font-size: 2.35rem; font-weight: 850; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.2; margin: 0;">
+          How TenderKart Works
+        </h1>
+        <p style="font-size: 1rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+          TenderKart simplifies urban infrastructure tender discovery, AI-assisted understanding, and personal bid application tracking across India.
         </p>
       </div>
 
-      <!-- SECTION 1 — PROJECT OVERVIEW -->
-      <section class="grid-2 scroll-reveal" style="gap: 2.5rem; align-items: center; margin-top: 0;">
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-          <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.25; margin: 0;">Centralizing Infrastructure Opportunities</h2>
-          <p style="font-size: 0.94rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
-            TenderKart is an academic project designed as a centralized platform for discovering and exploring urban infrastructure tender opportunities. It organizes opportunities into major infrastructure categories and provides users with a simple interface to search, filter and review relevant tender information.
+      <!-- 3 Core Workflow Steps -->
+      <section class="steps-grid">
+        <div class="step-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="height: 44px; width: 44px; border-radius: 12px; background: rgba(var(--primary-rgb), 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">🔍</span>
+            <span class="badge badge-blue">Step 01</span>
+          </div>
+          <h2 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 4px 0 0 0;">1. Discover infrastructure tender opportunities</h2>
+          <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+            Browse and search verified infrastructure notices by title, location, state, category, and tender status (Open, Closing Soon, Closed) across Roads, Bridges, Water Supply, Buildings, Metro Projects, and Smart City sectors.
           </p>
-          <p style="font-size: 0.94rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
-            The platform demonstrates how web technologies, databases, data analytics and intelligent information extraction can be combined to simplify the process of finding infrastructure opportunities.
+        </div>
+
+        <div class="step-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="height: 44px; width: 44px; border-radius: 12px; background: rgba(var(--primary-rgb), 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">✨</span>
+            <span class="badge badge-blue">Step 02</span>
+          </div>
+          <h2 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 4px 0 0 0;">2. Understand tender details using AI-assisted summaries</h2>
+          <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+            Open any tender details page to inspect its estimated budget, department, deadline, eligibility, and required documents — and click Generate AI Summary to condense lengthy specifications into clear bullet points.
           </p>
-          
-          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.25rem;">
-            <span style="font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);">✓ Multi-Sector Categorization</span>
-            <span style="font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);">✓ Live Tender Analytics</span>
-            <span style="font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);">✓ SQLite-Powered Architecture</span>
-          </div>
         </div>
 
-        <!-- Smart-City Infrastructure Visualization -->
-        <div class="smart-city-wrapper" style="position: relative; width: 100%; height: 360px; background: radial-gradient(circle at center, #0F172A 0%, #020617 100%); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: var(--shadow-md); overflow: hidden; display: flex; align-items: center; justify-content: center; transition: var(--transition-smooth);">
-          <svg viewBox="0 0 500 360" width="100%" height="100%" style="overflow: visible;">
-            <defs>
-              <linearGradient id="cityGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="var(--color-primary)" stop-opacity="0.3" />
-                <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0.05" />
-              </linearGradient>
-              <linearGradient id="neonPurpleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.5" />
-                <stop offset="100%" stop-color="#D946EF" stop-opacity="0.1" />
-              </linearGradient>
-              <linearGradient id="neonCyanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.6" />
-                <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.15" />
-              </linearGradient>
-              <linearGradient id="neonTealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#10B981" />
-                <stop offset="100%" stop-color="#059669" />
-              </linearGradient>
-              <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            <!-- Background Isometric Grid Mesh -->
-            <g opacity="0.15" stroke="var(--color-primary)" stroke-width="1">
-              <path d="M 0,180 L 250,315 L 500,180 L 250,45 Z" fill="none" stroke-width="1.5" />
-              <path d="M 50,180 L 250,270 L 450,180" fill="none" />
-              <path d="M 100,180 L 250,225 L 400,180" fill="none" />
-              <path d="M 0,180 L 500,180 M 250,45 L 250,315" fill="none" stroke-dasharray="4 4" />
-            </g>
-
-            <!-- Water Treatment & Environmental Infrastructure -->
-            <g class="city-interactive" data-label="Water Supply Infrastructure (100 MLD)">
-              <!-- Clarifier 1 -->
-              <ellipse cx="420" cy="275" rx="26" ry="11" fill="rgba(6, 182, 212, 0.15)" stroke="#06B6D4" stroke-width="1.5" />
-              <ellipse cx="420" cy="275" rx="16" ry="7" fill="rgba(6, 182, 212, 0.25)" stroke="#06B6D4" stroke-width="1" stroke-dasharray="3 3" />
-              <circle cx="420" cy="275" r="3" fill="#06B6D4" />
-              <line x1="420" y1="275" x2="444" y2="272" stroke="#06B6D4" stroke-width="1.5" />
-              <!-- Water Tower Tank -->
-              <path d="M 420,275 L 420,225" stroke="#06B6D4" stroke-width="2.5" />
-              <circle cx="420" cy="216" r="14" fill="url(#cityGlowGrad)" stroke="#06B6D4" stroke-width="2" />
-              <circle cx="420" cy="216" r="8" fill="rgba(6, 182, 212, 0.3)" stroke="#06B6D4" stroke-width="1" />
-              <!-- Pipeline Network -->
-              <path d="M 420,275 Q 345,305 270,275" fill="none" stroke="#06B6D4" stroke-width="2" stroke-dasharray="4 4" opacity="0.7" />
-            </g>
-
-            <!-- Cable-Stayed Bridge Infrastructure -->
-            <g class="city-interactive" data-label="Bridges & Flyovers (Cable-Stayed)">
-              <!-- A-Frame Pylon -->
-              <path d="M 230,165 L 210,265 L 250,265 Z" fill="none" stroke="#10B981" stroke-width="2.5" />
-              <line x1="220" y1="215" x2="240" y2="215" stroke="#10B981" stroke-width="1.5" />
-              <!-- Suspension Cables -->
-              <line x1="230" y1="165" x2="160" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-              <line x1="230" y1="165" x2="185" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-              <line x1="230" y1="165" x2="275" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-              <line x1="230" y1="165" x2="300" y2="265" stroke="#10B981" stroke-width="1" opacity="0.8" />
-              <!-- Bridge Deck -->
-              <path d="M 145,268 L 315,260" fill="none" stroke="#38BDF8" stroke-width="4.5" stroke-linecap="round" />
-            </g>
-
-            <!-- Highway & Flowing Traffic Corridor -->
-            <g class="city-interactive" data-label="Roads & Highways (6-Lane NH-48)">
-              <!-- Main Road Base -->
-              <path d="M 20,315 Q 140,225 250,255 T 480,195" fill="none" stroke="rgba(15, 23, 42, 0.7)" stroke-width="22" stroke-linecap="round" />
-              <path d="M 20,315 Q 140,225 250,255 T 480,195" fill="none" stroke="var(--border-color)" stroke-width="24" stroke-linecap="round" opacity="0.35" />
-              <!-- Center Lane Dash Line -->
-              <path d="M 20,315 Q 140,225 250,255 T 480,195" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="8 8" class="road-flow-line" />
-              
-              <!-- Flowing Vehicles -->
-              <circle r="4" fill="#00F2FE" style="filter: drop-shadow(0 0 5px #00F2FE);">
-                <animateMotion dur="6s" repeatCount="indefinite" path="M 20,315 Q 140,225 250,255 T 480,195" />
-              </circle>
-              <circle r="3.5" fill="#EF4444" style="filter: drop-shadow(0 0 5px #EF4444);">
-                <animateMotion dur="8.5s" begin="2s" repeatCount="indefinite" path="M 20,315 Q 140,225 250,255 T 480,195" />
-              </circle>
-              <circle r="3.5" fill="#FBBF24" style="filter: drop-shadow(0 0 4px #FBBF24);">
-                <animateMotion dur="11s" begin="4.5s" repeatCount="indefinite" path="M 20,315 Q 140,225 250,255 T 480,195" />
-              </circle>
-            </g>
-
-            <!-- Elevated Metro Rail System -->
-            <g class="city-interactive" data-label="Metro Projects (Elevated Viaduct)">
-              <!-- Track Structure -->
-              <path d="M 35,160 L 465,125" fill="none" stroke="var(--border-color)" stroke-width="4" stroke-linecap="round" />
-              <path d="M 35,160 L 465,125" fill="none" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="4 4" />
-              <!-- Concrete Piers -->
-              <line x1="110" y1="154" x2="110" y2="215" stroke="var(--border-color)" stroke-width="3" />
-              <line x1="230" y1="144" x2="230" y2="225" stroke="var(--border-color)" stroke-width="3" />
-              <line x1="350" y1="134" x2="350" y2="195" stroke="var(--border-color)" stroke-width="3" />
-
-              <!-- High-Speed Metro Bullet Train -->
-              <g>
-                <rect x="-22" y="-5" width="44" height="10" rx="3.5" fill="#EC4899" style="filter: drop-shadow(0 0 6px #EC4899);" />
-                <!-- Windows -->
-                <rect x="-16" y="-3" width="7" height="3" fill="#FFFFFF" opacity="0.85" />
-                <rect x="-6" y="-3" width="7" height="3" fill="#FFFFFF" opacity="0.85" />
-                <rect x="4" y="-3" width="7" height="3" fill="#FFFFFF" opacity="0.85" />
-                <circle cx="18" cy="0" r="1.5" fill="#00F2FE" />
-                <animateMotion dur="5s" repeatCount="indefinite" path="M 35,160 L 465,125" />
-              </g>
-            </g>
-
-            <!-- Modern Architectural Buildings & Smart Complexes -->
-            <g class="city-interactive" data-label="Govt Buildings & Complexes">
-              <!-- Center Tower -->
-              <path d="M 325,90 L 355,75 L 385,90 L 385,205 L 355,218 L 325,205 Z" fill="url(#neonPurpleGrad)" stroke="#8B5CF6" stroke-width="1.5" />
-              <!-- Facade Server Node Lines -->
-              <line x1="335" y1="108" x2="350" y2="100" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="360" y1="100" x2="375" y2="108" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="335" y1="135" x2="350" y2="128" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="360" y1="128" x2="375" y2="135" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="335" y1="162" x2="350" y2="155" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="360" y1="155" x2="375" y2="162" stroke="#8B5CF6" stroke-width="1.5" opacity="0.8" class="blink-node" />
-
-              <!-- Back Tower -->
-              <path d="M 265,65 L 290,52 L 315,65 L 315,148 L 290,158 L 265,148 Z" fill="rgba(15, 23, 42, 0.75)" stroke="#8B5CF6" stroke-width="1" />
-              
-              <!-- Front Left Complex -->
-              <path d="M 75,130 L 105,115 L 135,130 L 135,220 L 105,232 L 75,220 Z" fill="url(#neonCyanGrad)" stroke="#06B6D4" stroke-width="1.5" />
-              <line x1="85" y1="148" x2="100" y2="140" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="110" y1="140" x2="125" y2="148" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="85" y1="175" x2="100" y2="168" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-              <line x1="110" y1="168" x2="125" y2="175" stroke="#06B6D4" stroke-width="1.5" opacity="0.8" class="blink-node" />
-            </g>
-
-            <!-- Smart City Communication Nodes -->
-            <g class="city-interactive" data-label="Smart City ICCC & IoT Network">
-              <!-- Fiber Optics Network Link -->
-              <path d="M 105,115 L 290,52 L 355,75 Z" fill="none" stroke="#06B6D4" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6" />
-              <circle cx="105" cy="115" r="3.5" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
-              <circle cx="290" cy="52" r="3.5" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
-              <circle cx="355" cy="75" r="3.5" fill="#06B6D4" class="pulse-node" style="filter: drop-shadow(0 0 5px #06B6D4);" />
-            </g>
-
-            <!-- ---------------- ISOMETRIC FLOATING TENDER PINS (BUG-FREE NESTED COORDINATES) ---------------- -->
-            
-            <!-- Pin 1: Road Tender (Bottom-Left over highway) -->
-            <g transform="translate(100, 260)">
-              <g class="float-pin-1">
-                <rect x="-40" y="-11" width="80" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#F59E0B" stroke-width="1.5" />
-                <circle cx="-28" cy="0" r="3" fill="#F59E0B" class="pulse-node" />
-                <text x="-18" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Road Tender</text>
-              </g>
-            </g>
-
-            <!-- Pin 2: Bridge Project (Center-Right over bridge) -->
-            <g transform="translate(245, 285)">
-              <g class="float-pin-2">
-                <rect x="-44" y="-11" width="88" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#10B981" stroke-width="1.5" />
-                <circle cx="-31" cy="0" r="3" fill="#10B981" class="pulse-node" />
-                <text x="-21" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Bridge Project</text>
-              </g>
-            </g>
-
-            <!-- Pin 3: Metro Transit (Center-Left over elevated rail) -->
-            <g transform="translate(150, 110)">
-              <g class="float-pin-3">
-                <rect x="-46" y="-11" width="92" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#8B5CF6" stroke-width="1.5" />
-                <circle cx="-33" cy="0" r="3" fill="#8B5CF6" class="pulse-node" />
-                <text x="-22" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Metro Transit</text>
-              </g>
-            </g>
-
-            <!-- Pin 4: Smart City (Top-Right over tower network) -->
-            <g transform="translate(360, 42)">
-              <g class="float-pin-4">
-                <rect x="-40" y="-11" width="80" height="22" rx="6" fill="rgba(15, 23, 42, 0.92)" stroke="#06B6D4" stroke-width="1.5" />
-                <circle cx="-28" cy="0" r="3" fill="#06B6D4" class="pulse-node" />
-                <text x="-18" y="3.5" fill="#FFFFFF" font-size="8.5" font-weight="800" letter-spacing="0.4px">Smart City</text>
-              </g>
-            </g>
-          </svg>
-
-          <!-- Branding Label -->
-          <div style="position: absolute; bottom: 12px; left: 14px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.8px; color: var(--color-primary); text-transform: uppercase; display: flex; align-items: center; gap: 6px; background-color: rgba(15, 23, 42, 0.85); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-color); backdrop-filter: blur(4px); z-index: 10; pointer-events: none;">
-            <span style="display: inline-block; width: 5px; height: 5px; border-radius: 50%; background-color: #10B981; animation: blink 2s infinite;"></span>
-            Urban Infrastructure • Connected Opportunities
+        <div class="step-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="height: 44px; width: 44px; border-radius: 12px; background: rgba(var(--primary-rgb), 0.1); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 1.35rem;">🏛️</span>
+            <span class="badge badge-blue">Step 03</span>
           </div>
-
-          <!-- Tooltip Overlay -->
-          <div id="city-tooltip" style="position: absolute; display: none; background-color: rgba(15, 23, 42, 0.95); border: 1px solid var(--color-primary); border-radius: 8px; padding: 5px 10px; color: #FFFFFF; font-size: 0.72rem; font-weight: 700; pointer-events: none; box-shadow: var(--shadow-md); z-index: 100; white-space: nowrap; backdrop-filter: blur(4px); transform: translate(-50%, -100%); margin-top: -8px; transition: opacity 0.15s ease;">
-            Tooltip
-          </div>
+          <h2 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 4px 0 0 0;">3. Visit the official government portal to participate</h2>
+          <p style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+            Use the official government portal link provided on each tender to review official notices and submit your bid externally. Afterward, record your submission date and portal reference number in My Applications to track progress.
+          </p>
         </div>
       </section>
 
-      <!-- SECTION 2 — KEY PROJECT OBJECTIVES -->
-      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
-        <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); text-align: center; letter-spacing: -0.5px;">Key Project Objectives</h2>
-        <div class="objectives-grid">
-          <!-- Card 1 -->
-          <div class="objective-card">
-            <div class="obj-icon">🧭</div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Centralized Discovery</h3>
-              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Bring infrastructure opportunities into a single searchable interface.</p>
-            </div>
-          </div>
-          <!-- Card 2 -->
-          <div class="objective-card">
-            <div class="obj-icon">🔍</div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Smart Filtering</h3>
-              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Allow users to narrow opportunities by category, location, authority and budget.</p>
-            </div>
-          </div>
-          <!-- Card 3 -->
-          <div class="objective-card">
-            <div class="obj-icon">💾</div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Data Organization</h3>
-              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Store and organize tender information using a structured SQLite database.</p>
-            </div>
-          </div>
-          <!-- Card 4 -->
-          <div class="objective-card">
-            <div class="obj-icon">📈</div>
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <h3 style="font-size: 1.05rem; font-weight: 750; color: var(--text-primary);">Decision Support</h3>
-              <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">Present tender and category information through simple visual analytics.</p>
-            </div>
-          </div>
+      <!-- Official Disclaimer Card -->
+      <section class="card" style="padding: 2rem; background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.06) 0%, var(--bg-card) 100%); border: 1px solid rgba(var(--primary-rgb), 0.25); display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.35rem;">ℹ️</span>
+          <h2 style="font-size: 1.15rem; font-weight: 850; color: var(--text-primary); margin: 0;">Platform Scope &amp; Disclaimer</h2>
         </div>
-      </section>
-
-      <!-- SECTION 3 — TENDER ANALYTICS -->
-      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
-        <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
-          <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;">Tender Analytics</h2>
-          <p style="font-size: 0.95rem; color: var(--text-secondary);">Explore the distribution of active opportunities across TenderKart’s infrastructure categories.</p>
-        </div>
-
-        <div class="analytics-grid">
-          <!-- Chart 1: Doughnut Chart -->
-          <div class="chart-container-wrapper">
-            <h3 style="font-size: 1.1rem; font-weight: 750; color: var(--text-primary); margin-bottom: 0.5rem; text-align: center;">Opportunity Distribution by Category</h3>
-            <div style="position: relative; flex: 1; min-height: 220px;">
-              <canvas id="doughnutChart"></canvas>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); text-align: center; font-style: italic;">Verified dataset tracking real-world public infrastructure projects.</span>
-          </div>
-
-          <!-- Chart 2: Bar Chart -->
-          <div class="chart-container-wrapper">
-            <h3 style="font-size: 1.1rem; font-weight: 750; color: var(--text-primary); margin-bottom: 0.5rem; text-align: center;">Tenders by Infrastructure Category</h3>
-            <div style="position: relative; flex: 1; min-height: 240px;">
-              <canvas id="barChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- SECTION 4 — DATA INSIGHTS -->
-      <section id="data-insights-section" class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
-        <div class="grid-3" style="gap: 1.5rem;">
-          <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
-            <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-tenders">0</h3>
-            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Active Tenders</span>
-          </div>
-          <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
-            <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-categories">0</h3>
-            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Infrastructure Categories</span>
-          </div>
-          <div class="card" style="padding: 2rem 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 6px;">
-            <h3 style="font-size: 3rem; font-weight: 900; color: var(--color-primary); margin: 0;" id="count-highest">0</h3>
-            <span style="font-size: 0.85rem; font-weight: 750; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Highest Category Count</span>
-          </div>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: -0.5rem;">
-          Current figures represent active infrastructure projects and are updated through the database.
+        <p style="font-size: 0.96rem; color: var(--text-primary); line-height: 1.65; margin: 0; font-weight: 500;">
+          TenderKart is an opportunity discovery and application tracking platform. Actual bid submission, document verification and procurement decisions are handled by the respective government authorities and their official portals.
         </p>
       </section>
 
-      <!-- SECTION 5 — TECHNOLOGY OVERVIEW -->
-      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
-        <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); text-align: center; letter-spacing: -0.5px;">Technology Overview</h2>
-        <div class="tech-grid">
-          <!-- Item 1: HTML5 -->
-          <div class="tech-card">
-            <div class="tech-icon">🌐</div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">HTML5</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary);">Structure for responsive layout markup.</span>
-            </div>
-          </div>
-          <!-- Item 2: CSS3 -->
-          <div class="tech-card">
-            <div class="tech-icon">🎨</div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">CSS3</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary);">Variables-driven typography and UI themes.</span>
-            </div>
-          </div>
-          <!-- Item 3: JavaScript -->
-          <div class="tech-card">
-            <div class="tech-icon">⚡</div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">JavaScript</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary);">Dynamic UI bindings, observer events & charts.</span>
-            </div>
-          </div>
-          <!-- Item 4: Node.js -->
-          <div class="tech-card">
-            <div class="tech-icon">🟢</div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Node.js</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary);">Fast asynchronous JS runtime environment.</span>
-            </div>
-          </div>
-          <!-- Item 5: Express.js -->
-          <div class="tech-card">
-            <div class="tech-icon">🚂</div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">Express.js</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary);">Web framework serving static folders & REST APIs.</span>
-            </div>
-          </div>
-          <!-- Item 6: SQLite -->
-          <div class="tech-card">
-            <div class="tech-icon">💾</div>
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-              <strong style="font-size: 0.95rem; color: var(--text-primary); font-weight: 700;">SQLite</strong>
-              <span style="font-size: 0.8rem; color: var(--text-secondary);">Embedded relational database storing static lists.</span>
-            </div>
-          </div>
+      <!-- Quick Platform Roles Summary & Actions -->
+      <section class="grid-2" style="gap: 1.5rem;">
+        <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 10px;">
+          <span class="badge badge-blue" style="width: fit-content;">Contractors</span>
+          <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0;">Discovery, Bookmarks &amp; Application Tracking</h3>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+            Browse opportunities across India, bookmark tenders in your private Saved Tenders list, review AI-assisted summaries, and maintain your external portal submission history.
+          </p>
+        </div>
+        <div class="card" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 10px;">
+          <span class="badge badge-orange" style="width: fit-content;">Central Admin</span>
+          <h3 style="font-size: 1.15rem; font-weight: 800; margin: 0;">Centralized Tender Governance</h3>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; margin: 0;">
+            Publish new infrastructure tenders, update tender details, close or reopen tenders based on deadlines, remove obsolete entries, and view live category distribution.
+          </p>
         </div>
       </section>
 
-      <!-- SECTION 6 — PROJECT SCOPE -->
-      <section class="scroll-reveal" style="display: flex; flex-direction: column; gap: 2rem;">
-        <div style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
-          <h2 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px;">Current Project Scope</h2>
-          <p style="font-size: 0.95rem; color: var(--text-secondary);">The application covers exactly six active core infrastructure categories.</p>
-        </div>
-        <div class="scope-grid">
-          <div class="scope-item">
-            <span>🛣️</span>
-            <span>Roads — 3 tenders</span>
-          </div>
-          <div class="scope-item">
-            <span>🌉</span>
-            <span>Bridges — 3 tenders</span>
-          </div>
-          <div class="scope-item">
-            <span>💧</span>
-            <span>Water Supply — 2 tenders</span>
-          </div>
-          <div class="scope-item">
-            <span>🏢</span>
-            <span>Buildings — 2 tenders</span>
-          </div>
-          <div class="scope-item">
-            <span>🏙️</span>
-            <span>Smart City — 1 tender</span>
-          </div>
-          <div class="scope-item">
-            <span>🚇</span>
-            <span>Metro Projects — 1 tender</span>
-          </div>
-        </div>
-      </section>
+      <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <a href="tenders.html" class="btn btn-primary" style="border: none;">Browse Tenders</a>
+        <a href="register.html" class="btn btn-outline">Contractor Registration</a>
+      </div>
 
     </div>
   </main>
 
-  <!-- Footer placeholder -->
   <div id="footer-placeholder"></div>
-
-  <!-- Toast overlay -->
   <div id="toast-container"></div>
 
   <script src="app.js"></script>
-  
-  <!-- Analytics and Animations controller logic -->
-  <script>
-    let doughnutChart, barChart;
-
-    function getThemeColors() {
-      const isDark = document.body.classList.contains("dark-theme");
-      const computedStyle = getComputedStyle(document.body);
-      
-      // Grab main theme primary color dynamically
-      const primaryColor = computedStyle.getPropertyValue('--color-primary').trim() || (isDark ? '#3B82F6' : '#2563EB');
-      const textColor = isDark ? '#94A3B8' : '#475569';
-      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
-      
-      return { isDark, primaryColor, textColor, gridColor };
-    }
-
-    function initCharts() {
-      const colors = getThemeColors();
-      
-      // Chart 1: Doughnut Chart
-      const ctxDoughnut = document.getElementById('doughnutChart').getContext('2d');
-      doughnutChart = new Chart(ctxDoughnut, {
-        type: 'doughnut',
-        data: {
-          labels: ['Roads', 'Bridges', 'Water Supply', 'Buildings', 'Smart City', 'Metro Projects'],
-          datasets: [{
-            data: [3, 3, 2, 2, 1, 1],
-            backgroundColor: ['#3B82F6', '#10B981', '#06B6D4', '#F59E0B', '#8B5CF6', '#EC4899'],
-            borderWidth: colors.isDark ? 2 : 1,
-            borderColor: colors.isDark ? '#1F2937' : '#FFFFFF'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                color: colors.textColor,
-                padding: 15,
-                boxWidth: 12,
-                font: { family: 'Inter, system-ui, -apple-system, sans-serif', size: 11, weight: '600' }
-              }
-            }
-          }
-        }
-      });
-
-      // Chart 2: Bar Chart
-      const ctxBar = document.getElementById('barChart').getContext('2d');
-      barChart = new Chart(ctxBar, {
-        type: 'bar',
-        data: {
-          labels: ['Roads', 'Bridges', 'Water Supply', 'Buildings', 'Smart City', 'Metro Projects'],
-          datasets: [{
-            label: 'Active Tenders',
-            data: [3, 3, 2, 2, 1, 1],
-            backgroundColor: colors.primaryColor,
-            borderRadius: 6,
-            barThickness: 20
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            x: {
-              grid: { color: colors.gridColor },
-              ticks: { color: colors.textColor, font: { family: 'Inter, system-ui, -apple-system, sans-serif', weight: '600', size: 10 } }
-            },
-            y: {
-              grid: { color: colors.gridColor },
-              ticks: { color: colors.textColor, font: { family: 'Inter, system-ui, -apple-system, sans-serif', weight: '600' }, stepSize: 1 }
-            }
-          }
-        }
-      });
-    }
-
-    function updateCharts() {
-      const colors = getThemeColors();
-      if (doughnutChart) {
-        doughnutChart.data.datasets[0].borderColor = colors.isDark ? '#1F2937' : '#FFFFFF';
-        doughnutChart.data.datasets[0].borderWidth = colors.isDark ? 2 : 1;
-        doughnutChart.options.plugins.legend.labels.color = colors.textColor;
-        doughnutChart.update();
-      }
-      if (barChart) {
-        barChart.data.datasets[0].backgroundColor = colors.primaryColor;
-        barChart.options.scales.x.grid.color = colors.gridColor;
-        barChart.options.scales.x.ticks.color = colors.textColor;
-        barChart.options.scales.y.grid.color = colors.gridColor;
-        barChart.options.scales.y.ticks.color = colors.textColor;
-        barChart.update();
-      }
-    }
-
-    // Numbers animation logic
-    function initCounters() {
-      const targets = [
-        { id: 'count-tenders', target: 12 },
-        { id: 'count-categories', target: 6 },
-        { id: 'count-highest', target: 3 }
-      ];
-
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            targets.forEach(t => {
-              const el = document.getElementById(t.id);
-              if (el) {
-                animateValue(el, 0, t.target, 1200);
-              }
-            });
-            observer.disconnect();
-          }
-        });
-      }, { threshold: 0.15 });
-
-      const targetSection = document.getElementById('data-insights-section');
-      if (targetSection) {
-        observer.observe(targetSection);
-      }
-    }
-
-    function animateValue(element, start, end, duration) {
-      let startTime = null;
-      function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        const progress = Math.min((timestamp - startTime) / duration, 1);
-        
-        // Cubic ease out
-        const easeProgress = 1 - Math.pow(1 - progress, 3);
-        const val = Math.floor(easeProgress * (end - start) + start);
-        
-        element.textContent = val;
-        if (progress < 1) {
-          window.requestAnimationFrame(step);
-        }
-      }
-      window.requestAnimationFrame(step);
-    }
-
-    // Scroll reveal transitions
-    function initScrollReveal() {
-      const elements = document.querySelectorAll('.scroll-reveal');
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('active');
-            observer.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.1 });
-
-      elements.forEach(el => observer.observe(el));
-    }
-
-    // MutationObserver to watch class changes on document.body for real-time theme switches
-    function initThemeObserver() {
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach(mutation => {
-          if (mutation.attributeName === 'class') {
-            updateCharts();
-          }
-        });
-      });
-      observer.observe(document.body, { attributes: true });
-    }
-
-    // Setup Smart City Tooltips & Smooth 3D Inertia Parallax
-    function initSmartCityParallax() {
-      const tooltip = document.getElementById('city-tooltip');
-      const wrapper = document.querySelector('.smart-city-wrapper');
-      const svg = wrapper ? wrapper.querySelector('svg') : null;
-      if (!wrapper || !svg) return;
-
-      let targetX = 0, targetY = 0;
-      let currentX = 0, currentY = 0;
-      let rafId = null;
-
-      wrapper.addEventListener('mousemove', (e) => {
-        const rect = wrapper.getBoundingClientRect();
-        const normX = (e.clientX - rect.left) / rect.width - 0.5;
-        const normY = (e.clientY - rect.top) / rect.height - 0.5;
-        targetX = normX * 12;
-        targetY = -normY * 12;
-
-        if (tooltip && tooltip.style.display === 'block') {
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          tooltip.style.left = `${x}px`;
-          tooltip.style.top = `${y}px`;
-        }
-      });
-
-      wrapper.addEventListener('mouseleave', () => {
-        targetX = 0;
-        targetY = 0;
-        if (tooltip) tooltip.style.display = 'none';
-      });
-
-      document.querySelectorAll('.city-interactive').forEach(el => {
-        el.addEventListener('mouseenter', () => {
-          if (!tooltip) return;
-          const label = el.getAttribute('data-label');
-          tooltip.textContent = label;
-          tooltip.style.display = 'block';
-        });
-        el.addEventListener('mouseleave', () => {
-          if (!tooltip) return;
-          tooltip.style.display = 'none';
-        });
-      });
-
-      function renderTilt() {
-        currentX += (targetX - currentX) * 0.12;
-        currentY += (targetY - currentY) * 0.12;
-        svg.style.transform = `rotateX(${currentY.toFixed(2)}deg) rotateY(${currentX.toFixed(2)}deg)`;
-        rafId = requestAnimationFrame(renderTilt);
-      }
-      renderTilt();
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      initCharts();
-      initCounters();
-      initScrollReveal();
-      initThemeObserver();
-      initSmartCityParallax();
-    });
-  </script>
 </body>
 </html>

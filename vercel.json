@@ -8,6 +8,14 @@
     {
       "source": "/analytics",
       "destination": "/"
+    },
+    {
+      "source": "/manager.html",
+      "destination": "/"
+    },
+    {
+      "source": "/contact.html",
+      "destination": "/"
     }
   ],
   "rewrites": [

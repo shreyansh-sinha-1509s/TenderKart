@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TenderKart - Saved Tenders</title>
+  <link rel="icon" type="image/jpeg" href="images/logo.jpg" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body style="min-height: 100vh; display: flex; flex-direction: column;">
+
+  <div id="navbar-placeholder"></div>
+
+  <main style="flex: 1; padding: 3rem 0;">
+    <div class="container" style="display: flex; flex-direction: column; gap: 2rem;">
+
+      <!-- Header -->
+      <div class="card" style="padding: 1.75rem 2rem; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(var(--primary-rgb), 0.05) 100%); display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; border: 1px solid rgba(var(--primary-rgb), 0.15);">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="height: 54px; width: 54px; border-radius: 14px; background-color: var(--color-primary); color: #FFFFFF; font-size: 1.5rem; display: flex; align-items: center; justify-content: center;">
+            🔖
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <h1 style="font-size: 1.6rem; font-weight: 850; color: var(--text-primary); margin: 0;">Saved Tenders</h1>
+              <span class="badge badge-blue" id="saved-page-count">0 Saved</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin: 4px 0 0 0;" id="saved-page-subtitle">
+              Bookmarked infrastructure tender opportunities for quick access and bid planning.
+            </p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <a href="tenders.html" class="btn btn-primary" style="font-size: 0.88rem; padding: 10px 18px; border: none;">Browse Tenders</a>
+          <a href="dashboard.html" class="btn btn-outline" style="font-size: 0.88rem; padding: 10px 18px;">My Applications</a>
+        </div>
+      </div>
+
+      <!-- Saved Tenders List -->
+      <div class="card" style="padding: 2rem; display: flex; flex-direction: column; gap: 18px;">
+        <div id="saved-page-list" style="display: flex; flex-direction: column; gap: 16px;">
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Loading your saved tenders...</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="footer-placeholder"></div>
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

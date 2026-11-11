@@ -1,21 +1,21 @@
 // backend/seed.js
-// TenderKart Demo Database Seeder
-// Executes idempotent demo enrichment for tenders, applications, and centralized helpdesk
+// Idempotent two-role database verification & baseline bootstrapper
+
+const db = require("./db");
 
 async function main() {
-  await require("./seed_demo_enrichment");
-  const seedHelpdesk = require("./seed_helpdesk");
-  await seedHelpdesk();
+  await new Promise((r) => setTimeout(r, 400));
+  const roles = await db.queryAsync(
+    "SELECT LOWER(role) AS role, COUNT(*) AS count FROM users GROUP BY LOWER(role)"
+  );
+  const tenders = await db.getAsync("SELECT COUNT(*) AS count FROM tenders");
+  console.log("TenderKart database check complete:");
+  console.log("Users:", roles);
+  console.log("Tenders:", tenders ? tenders.count : 0);
+  db.rawDb.close();
 }
 
-if (require.main === module) {
-  main().then(() => {
-    console.log("Master seed completed successfully.");
-    process.exit(0);
-  }).catch((err) => {
-    console.error("Master seed error:", err);
-    process.exit(1);
-  });
-}
-
-module.exports = main;
+main().catch((err) => {
+  console.error("Seed check failed:", err);
+  process.exit(1);
+});

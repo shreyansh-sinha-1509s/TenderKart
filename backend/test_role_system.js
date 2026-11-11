@@ -1,8 +1,8 @@
 /**
- * Comprehensive verification suite for TenderKart Role-Based System (12 Tenders).
- * Tests all 16 verification rules, role isolation, automatic state inquiry routing,
- * Central Admin analytics, SQLite 12-tender trigger, and HTML endpoints against
- * the real Express application using a backed-up and restored tenderkart.db snapshot.
+ * Automated Verification Suite for TenderKart Final Two-Role Architecture
+ * Validates Central Admin & Contractor roles, tender CRUD + Close/Reopen,
+ * live Pie Chart stats, Contractor browsing/bookmarks/AI summary/applications,
+ * removal of Manager/Inquiry/Notification features, DB foreign-key integrity, and HTML routes.
  */
 
 const assert = require("assert");
@@ -20,7 +20,7 @@ if (!fs.existsSync(dbPath)) {
   process.exit(1);
 }
 
-// Snapshot DB before server starts so all test mutations leave repo DB pristine afterward
+// Snapshot DB before server starts so test mutations leave repo DB unchanged
 fs.copyFileSync(dbPath, backupPath);
 
 const app = require("./server");
@@ -33,6 +33,7 @@ async function api(baseUrl, method, endpoint, { token = null, body = null } = {}
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    redirect: "manual"
   });
   const text = await res.text();
   let json = null;
@@ -41,19 +42,27 @@ async function api(baseUrl, method, endpoint, { token = null, body = null } = {}
   } catch {
     json = { raw: text };
   }
-  return { status: res.status, ok: res.ok, body: json, text };
+  return { status: res.status, ok: res.ok, body: json, text, headers: res.headers };
+}
+
+function addDaysStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 async function runTests() {
   const results = [];
-  const record = (name, fn) => async () => {
+  const record = async (name, fn) => {
     await fn();
-    results.push({ name, passed: true });
+    results.push(name);
     console.log(`PASS: ${name}`);
   };
 
-  // Wait briefly for db.serialize() startup checks
-  await new Promise((r) => setTimeout(r, 350));
+  await new Promise((r) => setTimeout(r, 400));
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
@@ -62,605 +71,423 @@ async function runTests() {
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
-    // Capture baseline DB counts & set ephemeral runtime passwords on disposable snapshot
-    const baselineContractors = await db.getAsync("SELECT COUNT(*) AS c FROM users WHERE LOWER(role) = 'contractor'");
-    const baselineApps = await db.getAsync("SELECT COUNT(*) AS c FROM applications");
-    const initialContractorsCount = baselineContractors ? baselineContractors.c : 0;
-    const initialAppsCount = baselineApps ? baselineApps.c : 0;
+    await record("1 & 2. Exactly 1 Admin, 5 Contractors, 0 Managers, clean tables & no 12-tender trigger", async () => {
+      const roles = await db.queryAsync(
+        "SELECT LOWER(role) AS role, COUNT(*) AS cnt FROM users GROUP BY LOWER(role)"
+      );
+      const roleMap = Object.fromEntries(roles.map((r) => [r.role, r.cnt]));
+      assert.strictEqual(roleMap.admin, 1, "Expected exactly 1 admin");
+      assert.strictEqual(roleMap.contractor, 5, "Expected exactly 5 contractors");
+      assert.strictEqual(roleMap.manager || 0, 0, "Expected 0 managers");
 
-    const ephAdminPass = process.env.TEST_ADMIN_PASSWORD || `Adm#${crypto.randomBytes(6).toString("hex")}`;
-    const ephMgrPass = process.env.TEST_MANAGER_PASSWORD || `Mgr#${crypto.randomBytes(6).toString("hex")}`;
-    const ephConPass = process.env.TEST_CONTRACTOR_PASSWORD || `Con#${crypto.randomBytes(6).toString("hex")}`;
+      const tables = await db.queryAsync(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+      );
+      const tableNames = new Set(tables.map((t) => t.name));
+      assert(!tableNames.has("inquiries"), "inquiries table must not exist");
+      assert(!tableNames.has("inquiry_messages"), "inquiry_messages table must not exist");
+      assert(!tableNames.has("notifications"), "notifications table must not exist");
 
-    await db.queryAsync("UPDATE users SET password = ? WHERE username = 'admin'", [bcrypt.hashSync(ephAdminPass, 10)]);
-    await db.queryAsync("UPDATE users SET password = ? WHERE username = 'MGR2002'", [bcrypt.hashSync(ephMgrPass, 10)]);
-    await db.queryAsync("UPDATE users SET password = ? WHERE username = 'CON1001'", [bcrypt.hashSync(ephConPass, 10)]);
+      const triggers = await db.queryAsync("SELECT name FROM sqlite_master WHERE type='trigger'");
+      assert(!triggers.some((t) => t.name === "enforce_max_12_tenders"), "enforce_max_12_tenders trigger must be removed");
+
+      await assert.rejects(
+        () =>
+          db.queryAsync(
+            "INSERT INTO users (username, email, password, role) VALUES ('rogue_mgr', 'mgr@test.in', 'hash', 'manager')"
+          ),
+        /CHECK constraint failed/i
+      );
+    });
+
+    // Set ephemeral test passwords on snapshot so existing hashes never break test portability
+    const ephAdminPass = `Adm#${crypto.randomBytes(6).toString("hex")}`;
+    await db.queryAsync("UPDATE users SET password = ? WHERE LOWER(role) = 'admin'", [
+      bcrypt.hashSync(ephAdminPass, 10)
+    ]);
+
+    const contractorUsers = await db.queryAsync(
+      "SELECT id, username, email, user_code FROM users WHERE LOWER(role) = 'contractor' ORDER BY id ASC"
+    );
+    assert.strictEqual(contractorUsers.length, 5);
+    const ephConPass = `Con#${crypto.randomBytes(6).toString("hex")}`;
+    await db.queryAsync("UPDATE users SET password = ? WHERE LOWER(role) = 'contractor'", [
+      bcrypt.hashSync(ephConPass, 10)
+    ]);
 
     let adminToken = null;
-    let gujMgrToken = null;
-    let conToken = null;
-    let secondConToken = null;
-    let gujInquiryId = null;
+    const contractorTokens = {};
 
-    await record("1. Exactly 12 active tenders exist & HTML pages serve HTTP 200 without demo login shortcuts", async () => {
-      const tRes = await api(baseUrl, "GET", "/api/tenders");
-      assert.strictEqual(tRes.status, 200);
-      assert(Array.isArray(tRes.body), "Expected array from /api/tenders");
-      assert.strictEqual(tRes.body.length, 12, `Expected 12 tenders, got ${tRes.body.length}`);
+    await record("3 & 4. Admin login and all 5 Contractor logins succeed", async () => {
+      const admRes = await api(baseUrl, "POST", "/api/users/login", {
+        body: { usernameOrEmail: "admin", password: ephAdminPass }
+      });
+      assert.strictEqual(admRes.status, 200);
+      assert.strictEqual(admRes.body.user.role, "admin");
+      adminToken = admRes.body.token;
 
-      const pages = [
-        "index.html",
-        "login.html",
-        "register.html",
-        "contact.html",
-        "tenders.html",
-        "tenderDetails.html",
-        "dashboard.html",
-        "manager.html",
-        "admin.html",
-      ];
-      for (const page of pages) {
-        const res = await fetch(`${baseUrl}/${page}`);
-        assert.strictEqual(res.status, 200, `${page} did not return 200`);
-        const html = await res.text();
-        if (page === "login.html") {
-          assert(!/contractor101|manager101|admin0|quickLogin|Admin@1001/i.test(html), "login.html still contains demo shortcuts");
-        }
+      for (const cu of contractorUsers) {
+        const uLogin = await api(baseUrl, "POST", "/api/users/login", {
+          body: { usernameOrEmail: cu.username, password: ephConPass }
+        });
+        assert.strictEqual(uLogin.status, 200, `Login failed for ${cu.username}`);
+        assert.strictEqual(uLogin.body.user.role, "contractor");
+        assert(uLogin.body.token);
+        contractorTokens[cu.username] = uLogin.body.token;
+
+        const eLogin = await api(baseUrl, "POST", "/api/users/login", {
+          body: { usernameOrEmail: cu.email, password: ephConPass }
+        });
+        assert.strictEqual(eLogin.status, 200, `Email login failed for ${cu.email}`);
       }
-    })();
+    });
 
-    await record("2 & 3. Exact 6-category distribution (Roads 3, Bridges 3, Water Supply 2, Buildings 2, Metro Projects 1, Smart City 1) & 0 Drainage/Street Lighting", async () => {
-      const tRes = await api(baseUrl, "GET", "/api/tenders");
-      const counts = {};
-      for (const t of tRes.body) {
-        counts[t.category] = (counts[t.category] || 0) + 1;
-        assert(t.state && t.state.trim().length > 0, `Tender ${t.id} missing state`);
-      }
-      assert.strictEqual(counts["Roads"], 3);
-      assert.strictEqual(counts["Bridges"], 3);
-      assert.strictEqual(counts["Water Supply"], 2);
-      assert.strictEqual(counts["Buildings"], 2);
-      assert.strictEqual(counts["Metro Projects"], 1);
-      assert.strictEqual(counts["Smart City"], 1);
-      assert.strictEqual(counts["Drainage"] || 0, 0);
-      assert.strictEqual(counts["Street Lighting"] || 0, 0);
-      assert.strictEqual(Object.keys(counts).length, 6);
-    })();
-
-    await record("4. Contractor registration active immediately, duplicate blocked, public Admin registration blocked", async () => {
-      const adminReg = await api(baseUrl, "POST", "/api/users/register", {
+    let registeredConToken = null;
+    await record("5 & 6. Public Contractor registration works; Admin & Manager registration blocked", async () => {
+      const blockAdmin = await api(baseUrl, "POST", "/api/users/register", {
         body: {
           accountType: "admin",
+          company: "Bad Co",
           name: "Rogue Admin",
           username: "rogue_admin",
           email: "rogue@test.in",
           password: "Password@123",
-          confirmPassword: "Password@123",
-        },
+          confirmPassword: "Password@123"
+        }
       });
-      assert.strictEqual(adminReg.status, 403);
+      assert.strictEqual(blockAdmin.status, 403);
+
+      const blockMgr = await api(baseUrl, "POST", "/api/users/register", {
+        body: {
+          accountType: "manager",
+          name: "Rogue Mgr",
+          username: "rogue_mgr",
+          email: "roguemgr@test.in",
+          password: "Password@123",
+          confirmPassword: "Password@123"
+        }
+      });
+      assert.strictEqual(blockMgr.status, 400);
 
       const conReg = await api(baseUrl, "POST", "/api/users/register", {
         body: {
           accountType: "contractor",
-          company: "Apex Infra Builders Pvt Ltd",
-          name: "Rohan Contractor",
-          email: "rohan.con.test@tenderkart.in",
+          company: "Apex Infra Pvt Ltd",
+          name: "Rohan Sharma",
           username: "rohan_con_test",
+          email: "rohan.con.test@tenderkart.in",
           password: "Password@123",
-          confirmPassword: "Password@123",
-        },
+          confirmPassword: "Password@123"
+        }
       });
       assert.strictEqual(conReg.status, 201);
       assert.strictEqual(conReg.body.user.role, "contractor");
-      assert.strictEqual(conReg.body.user.approval_status, "Approved");
-      assert(conReg.body.token, "Active contractor should receive token on register");
+      assert(conReg.body.token);
+      registeredConToken = conReg.body.token;
+    });
 
-      // Duplicate username/email blocked
-      const dupReg = await api(baseUrl, "POST", "/api/users/register", {
-        body: {
-          accountType: "contractor",
-          company: "Other Co",
-          name: "Dup User",
-          email: "rohan.con.test@tenderkart.in",
-          username: "rohan_con_test",
-          password: "Password@123",
-          confirmPassword: "Password@123",
-        },
-      });
-      assert.strictEqual(dupReg.status, 409);
-
-      // New contractor logs in manually
-      const loginRes = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "rohan_con_test", password: "Password@123" },
-      });
-      assert.strictEqual(loginRes.status, 200);
-      assert.strictEqual(loginRes.body.user.role, "contractor");
-      secondConToken = loginRes.body.token;
-    })();
-
-    let pendingMgrId = null;
-    let rejectMgrId = null;
-    let approvedNewMgrToken = null;
-
-    await record("5. Manager registration defaults to Pending Approval and blocks login before approval", async () => {
-      const reg1 = await api(baseUrl, "POST", "/api/users/register", {
-        body: {
-          accountType: "manager",
-          name: "Rajeshwar Officer",
-          email: "raj.mgr.test@tenderkart.in",
-          username: "mgr_raj_test",
-          office_state: "Rajasthan",
-          password: "Password@123",
-          confirmPassword: "Password@123",
-        },
-      });
-      assert.strictEqual(reg1.status, 201);
-      assert.strictEqual(reg1.body.user.role, "manager");
-      assert.strictEqual(reg1.body.user.approval_status, "Pending");
-      assert.strictEqual(reg1.body.user.office_state, "Rajasthan");
-      assert(!reg1.body.token, "Pending manager must NOT receive auth token");
-      pendingMgrId = reg1.body.user.id;
-
-      const reg2 = await api(baseUrl, "POST", "/api/users/register", {
-        body: {
-          accountType: "manager",
-          name: "Reject Test Officer",
-          email: "reject.mgr.test@tenderkart.in",
-          username: "mgr_reject_test",
-          office_state: "Bihar",
-          password: "Password@123",
-          confirmPassword: "Password@123",
-        },
-      });
-      assert.strictEqual(reg2.status, 201);
-      rejectMgrId = reg2.body.user.id;
-
-      const blockedLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "mgr_raj_test", password: "Password@123" },
-      });
-      assert.strictEqual(blockedLogin.status, 403);
-      assert.strictEqual(blockedLogin.body.code, "PENDING_APPROVAL");
-    })();
-
-    await record("6 & 16a. Central Admin manual login + approves, rejects, deactivates, reactivates manager accounts", async () => {
-      const admLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "admin", password: ephAdminPass },
-      });
-      assert.strictEqual(admLogin.status, 200);
-      assert.strictEqual(admLogin.body.user.role, "admin");
-      adminToken = admLogin.body.token;
-
-      // Approve Rajasthan manager
-      const appRes = await api(baseUrl, "PATCH", `/api/admin/managers/${pendingMgrId}/approve`, {
-        token: adminToken,
-      });
-      assert.strictEqual(appRes.status, 200);
-      assert.strictEqual(appRes.body.success, true);
-
-      const mgrListAfterApprove = await api(baseUrl, "GET", "/api/admin/managers", { token: adminToken });
-      assert.strictEqual(mgrListAfterApprove.status, 200);
-      const mgrsArr = Array.isArray(mgrListAfterApprove.body) ? mgrListAfterApprove.body : mgrListAfterApprove.body.managers || [];
-      const approvedMgrRow = mgrsArr.find((m) => m.id === pendingMgrId);
-      assert.strictEqual(approvedMgrRow.approval_status, "Approved");
-
-      // Now Rajasthan manager logs in
-      const mgrLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "mgr_raj_test", password: "Password@123" },
-      });
-      assert.strictEqual(mgrLogin.status, 200);
-      assert.strictEqual(mgrLogin.body.user.role, "manager");
-      assert.strictEqual(mgrLogin.body.user.office_state, "Rajasthan");
-      approvedNewMgrToken = mgrLogin.body.token;
-
-      // Deactivate manager -> blocks both new login & existing token
-      const deactRes = await api(baseUrl, "PATCH", `/api/admin/managers/${pendingMgrId}/status`, {
-        token: adminToken,
-        body: { is_active: false },
-      });
-      assert.strictEqual(deactRes.status, 200);
-
-      const deactLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "mgr_raj_test", password: "Password@123" },
-      });
-      assert.strictEqual(deactLogin.status, 403);
-      assert.strictEqual(deactLogin.body.code, "DEACTIVATED");
-
-      const staleTokenCall = await api(baseUrl, "GET", "/api/manager/dashboard", {
-        token: approvedNewMgrToken,
-      });
-      assert.strictEqual(staleTokenCall.status, 403);
-
-      // Reactivate works
-      const reactRes = await api(baseUrl, "PATCH", `/api/admin/managers/${pendingMgrId}/status`, {
-        token: adminToken,
-        body: { is_active: true },
-      });
-      assert.strictEqual(reactRes.status, 200);
-
-      // Reject second manager -> blocks login with REJECTED
-      const rejRes = await api(baseUrl, "PATCH", `/api/admin/managers/${rejectMgrId}/reject`, {
-        token: adminToken,
-      });
-      assert.strictEqual(rejRes.status, 200);
-      const rejLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "mgr_reject_test", password: "Password@123" },
-      });
-      assert.strictEqual(rejLogin.status, 403);
-      assert.strictEqual(rejLogin.body.code, "REJECTED");
-    })();
-
-    await record("7 & 16b. Gujarat Manager logs in manually, views/edits only Gujarat tenders, blocked from Maharashtra tenders & state change", async () => {
-      const mLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "MGR2002", password: ephMgrPass },
-      });
-      assert.strictEqual(mLogin.status, 200);
-      assert.strictEqual(mLogin.body.user.role, "manager");
-      assert.strictEqual(mLogin.body.user.office_state, "Gujarat");
-      gujMgrToken = mLogin.body.token;
-
-      const listRes = await api(baseUrl, "GET", "/api/manager/tenders", { token: gujMgrToken });
-      assert.strictEqual(listRes.status, 200);
-      assert(listRes.body.tenders.length > 0);
-      assert(listRes.body.tenders.every((t) => t.state === "Gujarat"), "Manager tenders leaked non-Gujarat tender");
-
-      const gujTender = listRes.body.tenders[0];
-      const editOwn = await api(baseUrl, "PUT", `/api/manager/tenders/${gujTender.id}`, {
-        token: gujMgrToken,
-        body: { budget: gujTender.budget + 100000, status: "Closing Soon" },
-      });
-      assert.strictEqual(editOwn.status, 200);
-
-      // Attempt to reassign state
-      const reassignFail = await api(baseUrl, "PUT", `/api/manager/tenders/${gujTender.id}`, {
-        token: gujMgrToken,
-        body: { state: "Maharashtra" },
-      });
-      assert.strictEqual(reassignFail.status, 403);
-
-      // Attempt to edit Maharashtra tender (ID 42)
-      const editCrossFail = await api(baseUrl, "PUT", "/api/manager/tenders/42", {
-        token: gujMgrToken,
-        body: { budget: 9999999 },
-      });
-      assert.strictEqual(editCrossFail.status, 403);
-    })();
-
-    await record("8 & 16c. Contractor manual login searches/filters tenders across all states, views details (+views_count), summarizes & saves", async () => {
-      const cLogin = await api(baseUrl, "POST", "/api/users/login", {
-        body: { usernameOrEmail: "CON1001", password: ephConPass },
-      });
-      assert.strictEqual(cLogin.status, 200);
-      assert.strictEqual(cLogin.body.user.role, "contractor");
-      conToken = cLogin.body.token;
-
-      const gujSearch = await api(baseUrl, "GET", "/api/tenders?state=Gujarat");
-      assert.strictEqual(gujSearch.status, 200);
-      assert.strictEqual(gujSearch.body.length, 2);
-
-      const mhSearch = await api(baseUrl, "GET", "/api/tenders?state=Maharashtra");
-      assert.strictEqual(mhSearch.status, 200);
-      assert.strictEqual(mhSearch.body.length, 2);
-
-      const roadsSearch = await api(baseUrl, "GET", "/api/tenders?category=Roads");
-      assert.strictEqual(roadsSearch.status, 200);
-      assert.strictEqual(roadsSearch.body.length, 3);
-
-      const d1 = await api(baseUrl, "GET", "/api/tenders/61");
-      assert.strictEqual(d1.status, 200);
-      const viewsAfterFirst = d1.body.views_count;
-      const d2 = await api(baseUrl, "GET", "/api/tenders/61");
-      assert.strictEqual(d2.body.views_count, viewsAfterFirst + 1);
-
-      const sumRes = await api(baseUrl, "POST", "/api/tenders/61/summarize", { token: conToken });
-      assert.strictEqual(sumRes.status, 200);
-      assert(Array.isArray(sumRes.body.summaryPoints) && sumRes.body.summaryPoints.length > 0, "AI summary missing summaryPoints");
-      assert.strictEqual(sumRes.body.tenderId, 61);
-
-      const saveRes = await api(baseUrl, "POST", "/api/saved/61/save", { token: conToken });
-      assert(saveRes.status === 200 || saveRes.status === 201, "Expected saved tender 200/201");
-    })();
-
-    await record("9. Inquiry auto-routes Gujarat tender inquiry to Gujarat Manager, unassigned state to Admin, blocks non-contractor form use", async () => {
-      // Contractor submits Gujarat inquiry (tender 61)
-      const gujInq = await api(baseUrl, "POST", "/api/inquiries", {
-        token: conToken,
-        body: {
-          related_tender_id: 61,
-          inquiry_category: "Tender Clarification",
-          message: "Please clarify structural steel grade IS 2062 requirement for Bharuch flyover.",
-        },
-      });
-      assert.strictEqual(gujInq.status, 201);
-      assert.strictEqual(gujInq.body.state, "Gujarat");
-      assert.strictEqual(gujInq.body.assignment_status, "Assigned");
-      assert(gujInq.body.assigned_manager_id, "Gujarat inquiry must be auto-assigned to Gujarat manager");
-      gujInquiryId = gujInq.body.inquiry_id;
-
-      // Contractor submits Assam inquiry (tender 41, no manager in Assam) -> Unassigned / Pending Admin Assignment
-      const assamInq = await api(baseUrl, "POST", "/api/inquiries", {
-        token: conToken,
-        body: {
-          related_tender_id: 41,
-          inquiry_category: "Document Related",
-          message: "Is geotechnical report annexure uploaded separately for Brahmaputra bridge?",
-        },
-      });
-      assert.strictEqual(assamInq.status, 201);
-      assert.strictEqual(assamInq.body.state, "Assam");
-      assert.strictEqual(assamInq.body.assignment_status, "Unassigned / Pending Admin Assignment");
-      assert.strictEqual(assamInq.body.assigned_manager_id, null);
-
-      // Verify Admin sees unassigned inquiry
-      const admInqs = await api(baseUrl, "GET", "/api/admin/inquiries?assignment_status=Unassigned", {
-        token: adminToken,
-      });
-      assert.strictEqual(admInqs.status, 200);
-      assert(admInqs.body.inquiries.some((i) => i.id === assamInq.body.inquiry_id), "Admin must see unassigned Assam inquiry");
-
-      // Manager & Admin blocked from contractor inquiry submission form
-      const mgrInqFail = await api(baseUrl, "POST", "/api/inquiries", {
-        token: gujMgrToken,
-        body: { related_tender_id: 61, inquiry_category: "Other", message: "Should be blocked." },
-      });
-      assert.strictEqual(mgrInqFail.status, 403);
-
-      const admInqFail = await api(baseUrl, "POST", "/api/inquiries", {
-        token: adminToken,
-        body: { related_tender_id: 61, inquiry_category: "Other", message: "Should be blocked." },
-      });
-      assert.strictEqual(admInqFail.status, 403);
-    })();
-
-    await record("10 & 11. Gujarat Manager receives inquiry, replies & resolves; Contractor sees response in dashboard", async () => {
-      const mgrInqs = await api(baseUrl, "GET", "/api/manager/inquiries", { token: gujMgrToken });
-      assert.strictEqual(mgrInqs.status, 200);
-      const found = mgrInqs.body.inquiries.find((i) => i.id === gujInquiryId);
-      assert(found, "Gujarat manager did not receive routed Gujarat inquiry");
-      assert(mgrInqs.body.inquiries.every((i) => i.state === "Gujarat"), "Manager inquiries included non-Gujarat item");
-
-      const replyRes = await api(baseUrl, "POST", `/api/manager/inquiries/${gujInquiryId}/reply`, {
-        token: gujMgrToken,
-        body: {
-          message_body: "Confirmed: IS 2062 E350 Grade C structural steel applies to main spans.",
-          status: "Resolved",
-        },
-      });
-      assert.strictEqual(replyRes.status, 200);
-      assert.strictEqual(replyRes.body.status, "Resolved");
-
-      const conThread = await api(baseUrl, "GET", `/api/inquiries/${gujInquiryId}`, { token: conToken });
-      assert.strictEqual(conThread.status, 200);
-      assert.strictEqual(conThread.body.ticket.status, "Resolved");
-      assert(
-        conThread.body.messages.some((m) => (m.sender_role || "").toLowerCase() === "manager" && m.message_body.includes("IS 2062 E350")),
-        "Contractor cannot see manager reply in thread"
-      );
-    })();
-
-    await record("12. Central Admin nationwide analytics accurately reflects real DB records and manager activity", async () => {
+    await record("11. Initial Pie Chart stats match exact 12 tenders & 6 categories", async () => {
       const statsRes = await api(baseUrl, "GET", "/api/admin/stats", { token: adminToken });
       assert.strictEqual(statsRes.status, 200);
-      const s = statsRes.body;
-      assert.strictEqual(s.tendersCount, 12);
-      assert.strictEqual(s.maxTenders, 12);
-      assert.strictEqual(s.contractorsCount, initialContractorsCount + 1, "Expected contractorsCount to increase by 1 after test registration");
-      assert(s.approvedManagersCount >= 7, "Expected approvedManagersCount >= 7");
-      assert(s.totalViews >= 2, "Expected real view counter >= 2");
-
-      const catTotal = s.categoryStats.reduce((sum, c) => sum + c.count, 0);
-      assert.strictEqual(catTotal, 12, "Category stats must sum to 12");
-      const stateTotal = s.stateStats.reduce((sum, st) => sum + st.tender_count, 0);
-      assert.strictEqual(stateTotal, 12, "State stats must sum to 12");
-      assert.strictEqual(s.applicationsSummary.total, initialAppsCount, "Applications summary total must match DB baseline");
-      assert(s.inquiriesSummary.total >= 7, "Inquiries summary total should include newly routed inquiries");
-
-      const gujMgrPerf = s.managerPerformance.find((m) => m.username === "MGR2002");
-      assert(gujMgrPerf, "MGR2002 missing in managerPerformance");
-      assert(gujMgrPerf.tender_updates_count >= 1, "MGR2002 tender_updates_count should reflect edit");
-      assert(gujMgrPerf.inquiry_responses_count >= 1, "MGR2002 inquiry_responses_count should reflect reply");
-      assert(Array.isArray(s.recentActivity) && s.recentActivity.length > 0, "Expected recorded activity logs");
-    })();
-
-    await record("13 & 14. Strict cross-state isolation and unauthorized role boundary enforcement", async () => {
-      // Find a Maharashtra inquiry & application from existing DB
-      const admInqs = await api(baseUrl, "GET", "/api/admin/inquiries", { token: adminToken });
-      const mhInq = admInqs.body.inquiries.find((i) => i.state === "Maharashtra");
-      if (mhInq) {
-        const crossInqRead = await api(baseUrl, "GET", `/api/inquiries/${mhInq.id}`, { token: gujMgrToken });
-        assert.strictEqual(crossInqRead.status, 403);
-        const crossInqReply = await api(baseUrl, "POST", `/api/manager/inquiries/${mhInq.id}/reply`, {
-          token: gujMgrToken,
-          body: { message_body: "Cross-state intrusion", status: "In Progress" },
-        });
-        assert.strictEqual(crossInqReply.status, 403);
-      }
-
-      const admApps = await api(baseUrl, "GET", "/api/admin/applications", { token: adminToken });
-      const appsList = Array.isArray(admApps.body) ? admApps.body : admApps.body.applications || [];
-      const mhApp = appsList.find((a) => a.tender_state === "Maharashtra");
-      assert(mhApp, "Expected at least 1 Maharashtra application in demo DB");
-      const crossAppRead = await api(baseUrl, "GET", `/api/applications/${mhApp.id}`, { token: gujMgrToken });
-      assert.strictEqual(crossAppRead.status, 403);
-      const crossAppEval = await api(baseUrl, "PUT", `/api/manager/applications/${mhApp.id}/evaluate`, {
-        token: gujMgrToken,
-        body: { status: "Under Review", outcome: "Pending", evaluation_notes: "Unauthorized" },
+      assert.strictEqual(statsRes.body.totalTenders, 12);
+      const map = Object.fromEntries(
+        statsRes.body.categoryDistribution.map((c) => [c.category, c.count])
+      );
+      assert.deepStrictEqual(map, {
+        Roads: 3,
+        Bridges: 3,
+        "Water Supply": 2,
+        Buildings: 2,
+        "Metro Projects": 1,
+        "Smart City": 1
       });
-      assert.strictEqual(crossAppEval.status, 403);
+    });
 
-      // Role privilege escalation guards
-      assert.strictEqual((await api(baseUrl, "GET", "/api/admin/stats", { token: gujMgrToken })).status, 403);
-      assert.strictEqual((await api(baseUrl, "GET", "/api/admin/managers", { token: gujMgrToken })).status, 403);
-      assert.strictEqual((await api(baseUrl, "GET", "/api/admin/stats", { token: conToken })).status, 403);
-      assert.strictEqual((await api(baseUrl, "GET", "/api/manager/dashboard", { token: conToken })).status, 403);
-      assert.strictEqual((await api(baseUrl, "GET", "/api/manager/tenders", { token: conToken })).status, 403);
-      assert.strictEqual((await api(baseUrl, "GET", "/api/admin/stats")).status, 401);
-      assert.strictEqual((await api(baseUrl, "GET", "/api/manager/dashboard")).status, 401);
-    })();
-
-    await record("15. 13th tender creation blocked at API level (Manager & Admin) and SQLite trigger level", async () => {
-      const payload = {
-        name: "13th Tender Unauthorized Expansion",
-        department: "Gujarat PWD",
-        category: "Roads",
-        budget: 120000000,
-        location: "Surat, Gujarat",
-        state: "Gujarat",
-        deadline: "2026-12-31",
-        eligibility: "Class-A Contractor",
-        description: "Must be rejected due to 12 tender limit.",
-      };
-      const mgr13 = await api(baseUrl, "POST", "/api/manager/tenders", { token: gujMgrToken, body: payload });
-      assert.strictEqual(mgr13.status, 400);
-      assert.strictEqual(mgr13.body.code, "TENDER_LIMIT_REACHED");
-
-      const adm13 = await api(baseUrl, "POST", "/api/admin/tenders", { token: adminToken, body: payload });
-      assert.strictEqual(adm13.status, 400);
-      assert.strictEqual(adm13.body.code, "TENDER_LIMIT_REACHED");
-
-      // Direct SQLite trigger check (supplying all NOT NULL columns so trigger itself rejects 13th row)
-      let triggerMsg = "";
-      try {
-        await new Promise((resolve, reject) => {
-          db.rawDb.run(
-            `INSERT INTO tenders (name, department, category, budget, location, state, deadline, eligibility, required_documents, description)
-             VALUES ('Direct Trigger Test', 'Test Dept', 'Roads', 1000, 'Surat', 'Gujarat', '2026-12-31', 'Class-A', '[]', 'Test')`,
-            (err) => (err ? reject(err) : resolve())
-          );
-        });
-      } catch (err) {
-        triggerMsg = err.message || "";
-      }
-      assert(/strictly limited to 12 tenders/i.test(triggerMsg), `Unexpected SQLite trigger result: "${triggerMsg}"`);
-
-      const finalCount = await api(baseUrl, "GET", "/api/tenders");
-      assert.strictEqual(finalCount.body.length, 12);
-    })();
-
-    await record("16. Contractor Add Application, Edit/Status Update, Stats, State Manager & Admin Visibility, Ownership Isolation", async () => {
-      const beforeMy = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
-      assert.strictEqual(beforeMy.status, 200);
-      const startTotal = beforeMy.body.totalApplications;
-      const startSubmitted = beforeMy.body.submitted;
-      const startUnderReview = beforeMy.body.underReview;
-      const startWon = beforeMy.body.won;
-      const startLost = beforeMy.body.lost;
-
-      // Reject incomplete submission missing portal_name / reference_number
-      const badCreate = await api(baseUrl, "POST", "/api/applications", {
-        token: conToken,
-        body: { tender_id: 61, applied_on: "2026-10-15", application_status: "Submitted" },
-      });
-      assert.strictEqual(badCreate.status, 400);
-
-      // Record valid external application on Gujarat tender #61
-      const createRes = await api(baseUrl, "POST", "/api/applications", {
-        token: conToken,
+    let createdTenderId = null;
+    await record("7, 8, 9, 10 & 12. Admin Add (with validation), Edit, Close, Reopen, Remove & Pie Chart live update", async () => {
+      const badUrl = await api(baseUrl, "POST", "/api/admin/tenders", {
+        token: adminToken,
         body: {
-          tender_id: 61,
-          applied_on: "2026-10-15",
-          portal_name: "Gujarat (n)Procure (nprocure.com)",
-          reference_number: "GJ/NP/2026/77412",
-          application_status: "Submitted",
-          bid_amount: 3100000000,
-          proposal_notes: "Submitted online with EMD draft.",
-        },
+          name: "Invalid URL Test Tender",
+          tender_code: "TK-BAD1",
+          category: "Roads",
+          state: "Maharashtra",
+          location: "Pune",
+          department: "MSRDC",
+          budget: 100000000,
+          published_date: addDaysStr(-1),
+          deadline: addDaysStr(20),
+          source_url: "not-a-valid-url",
+          description: "Valid long enough tender description text."
+        }
       });
-      assert.strictEqual(createRes.status, 201, `Create failed: ${JSON.stringify(createRes.body)}`);
-      const appId = createRes.body.application.id;
-      assert.strictEqual(createRes.body.application.tender_state, "Gujarat");
-      assert.strictEqual(createRes.body.application.portal_name, "Gujarat (n)Procure (nprocure.com)");
-      assert.strictEqual(createRes.body.application.reference_number, "GJ/NP/2026/77412");
-      assert.strictEqual(createRes.body.application.application_status, "Submitted");
+      assert.strictEqual(badUrl.status, 400);
 
-      // Dashboard KPI counts increment immediately
-      const afterAdd = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
-      assert.strictEqual(afterAdd.body.totalApplications, startTotal + 1);
-      assert.strictEqual(afterAdd.body.submitted, startSubmitted + 1);
-
-      // Edit status: Submitted -> Under Review -> Lost -> Won
-      const editReview = await api(baseUrl, "PUT", `/api/applications/${appId}`, {
-        token: conToken,
+      const addRes = await api(baseUrl, "POST", "/api/admin/tenders", {
+        token: adminToken,
         body: {
-          tender_id: 61,
-          applied_on: "2026-10-15",
-          portal_name: "Gujarat (n)Procure (nprocure.com)",
-          reference_number: "GJ/NP/2026/77412-REV",
-          application_status: "Under Review",
-          proposal_notes: "Technical evaluation opened.",
-        },
+          name: "Bengaluru Peripheral Ring Road Package 1",
+          tender_code: "TK-0901",
+          category: "Roads",
+          state: "Karnataka",
+          location: "Bengaluru, Karnataka",
+          department: "Bangalore Development Authority",
+          budget: 5200000000,
+          published_date: addDaysStr(0),
+          deadline: addDaysStr(25),
+          status: "Open",
+          source_url: "https://eproc.karnataka.gov.in",
+          description: "Construction of six-lane peripheral ring road corridor around Bengaluru metropolitan area."
+        }
       });
-      assert.strictEqual(editReview.status, 200);
-      assert.strictEqual(editReview.body.application.application_status, "Under Review");
-      assert.strictEqual(editReview.body.application.reference_number, "GJ/NP/2026/77412-REV");
+      assert.strictEqual(addRes.status, 201);
+      createdTenderId = addRes.body.tender.id;
+      assert.strictEqual(addRes.body.tender.status, "Open");
 
-      const afterReview = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
-      assert.strictEqual(afterReview.body.submitted, startSubmitted);
-      assert.strictEqual(afterReview.body.underReview, startUnderReview + 1);
-
-      const editLost = await api(baseUrl, "PUT", `/api/applications/${appId}`, {
-        token: conToken,
-        body: {
-          tender_id: 61,
-          applied_on: "2026-10-15",
-          portal_name: "Gujarat (n)Procure (nprocure.com)",
-          reference_number: "GJ/NP/2026/77412-REV",
-          application_status: "Lost",
-        },
-      });
-      assert.strictEqual(editLost.status, 200);
-      assert.strictEqual(editLost.body.application.outcome, "Lost");
-
-      const afterLost = await api(baseUrl, "GET", "/api/applications/my", { token: conToken });
-      assert.strictEqual(afterLost.body.lost, startLost + 1);
-      assert.strictEqual(afterLost.body.won, startWon);
-
-      // Gujarat Manager sees tender #61 application; Rajasthan manager cannot access it
-      const gujApps = await api(baseUrl, "GET", "/api/manager/applications", { token: gujMgrToken });
-      assert.strictEqual(gujApps.status, 200);
-      assert(gujApps.body.applications.some((a) => a.id === appId), "Gujarat Manager must see Gujarat application");
-
-      const rajApps = await api(baseUrl, "GET", "/api/manager/applications", { token: approvedNewMgrToken });
-      assert.strictEqual(rajApps.status, 200);
-      assert(!rajApps.body.applications.some((a) => a.id === appId), "Rajasthan Manager must NOT see Gujarat application");
-      const crossStateMgrRead = await api(baseUrl, "GET", `/api/applications/${appId}`, { token: approvedNewMgrToken });
-      assert.strictEqual(crossStateMgrRead.status, 403);
-
-      // Admin monitors nationwide applications & updated stats
-      const admAppsAfter = await api(baseUrl, "GET", "/api/admin/applications", { token: adminToken });
-      assert(admAppsAfter.body.some((a) => a.id === appId), "Admin must see newly recorded application");
-      const admStatsAfter = await api(baseUrl, "GET", "/api/admin/stats", { token: adminToken });
-      assert.strictEqual(admStatsAfter.body.applicationsSummary.total, initialAppsCount + 1);
-
-      // Another contractor cannot view, edit, or withdraw CON1001's application
-      assert.strictEqual((await api(baseUrl, "GET", `/api/applications/${appId}`, { token: secondConToken })).status, 403);
+      // Pie chart now shows 13 total tenders and 4 Roads
+      const statsAfterAdd = await api(baseUrl, "GET", "/api/admin/stats", { token: adminToken });
+      assert.strictEqual(statsAfterAdd.body.totalTenders, 13);
       assert.strictEqual(
-        (await api(baseUrl, "PUT", `/api/applications/${appId}`, {
-          token: secondConToken,
-          body: {
-            tender_id: 61,
-            applied_on: "2026-10-15",
-            portal_name: "GeM",
-            reference_number: "HACK-01",
-            application_status: "Won",
-          },
-        })).status,
+        statsAfterAdd.body.categoryDistribution.find((c) => c.category === "Roads").count,
+        4
+      );
+
+      // Edit category to Smart City -> Pie chart reflects Roads=3, Smart City=2
+      const editRes = await api(baseUrl, "PUT", `/api/admin/tenders/${createdTenderId}`, {
+        token: adminToken,
+        body: {
+          name: "Bengaluru Smart Corridor Package 1 (Updated)",
+          category: "Smart City"
+        }
+      });
+      assert.strictEqual(editRes.status, 200);
+      assert.strictEqual(editRes.body.tender.category, "Smart City");
+
+      const statsAfterEdit = await api(baseUrl, "GET", "/api/admin/stats", { token: adminToken });
+      assert.strictEqual(
+        statsAfterEdit.body.categoryDistribution.find((c) => c.category === "Smart City").count,
+        2
+      );
+
+      // Close tender
+      const closeRes = await api(baseUrl, "PATCH", `/api/admin/tenders/${createdTenderId}/status`, {
+        token: adminToken,
+        body: { action: "close" }
+      });
+      assert.strictEqual(closeRes.status, 200);
+      assert.strictEqual(closeRes.body.tender.status, "Closed");
+
+      // Reopen tender with Closing Soon deadline (within 3 days)
+      const reopenRes = await api(baseUrl, "PATCH", `/api/admin/tenders/${createdTenderId}/status`, {
+        token: adminToken,
+        body: { action: "reopen", deadline: addDaysStr(3) }
+      });
+      assert.strictEqual(reopenRes.status, 200);
+      assert.strictEqual(reopenRes.body.tender.status, "Closing Soon");
+
+      // Reopen expired tender (id=41) without new future deadline is rejected cleanly
+      const expiredReopenFail = await api(baseUrl, "PATCH", "/api/admin/tenders/41/status", {
+        token: adminToken,
+        body: { action: "reopen" }
+      });
+      assert.strictEqual(expiredReopenFail.status, 400);
+
+      // Delete created tender -> returns to 12 tenders, Smart City=1
+      const delRes = await api(baseUrl, "DELETE", `/api/admin/tenders/${createdTenderId}`, {
+        token: adminToken
+      });
+      assert.strictEqual(delRes.status, 200);
+
+      const statsAfterDel = await api(baseUrl, "GET", "/api/admin/stats", { token: adminToken });
+      assert.strictEqual(statsAfterDel.body.totalTenders, 12);
+      assert.strictEqual(
+        statsAfterDel.body.categoryDistribution.find((c) => c.category === "Smart City").count,
+        1
+      );
+    });
+
+    const con1Token = contractorTokens.CON1001;
+    await record("13, 14, 15, 16 & 22. Browse/filter, Saved isolation, AI summary & Contractor blocked from Admin APIs", async () => {
+      const openRes = await api(baseUrl, "GET", "/api/tenders?status=Open");
+      assert.strictEqual(openRes.status, 200);
+      assert(openRes.body.length > 0);
+      assert(openRes.body.every((t) => t.status === "Open"));
+
+      const closedRes = await api(baseUrl, "GET", "/api/tenders?status=Closed");
+      assert.strictEqual(closedRes.status, 200);
+      assert(closedRes.body.every((t) => t.status === "Closed"));
+
+      const mhRes = await api(baseUrl, "GET", "/api/tenders?state=Maharashtra");
+      assert.strictEqual(mhRes.status, 200);
+      assert.strictEqual(mhRes.body.length, 2);
+
+      // Strict State + Location AND filtering tests
+      const t1a = await api(baseUrl, "GET", "/api/tenders?state=Maharashtra&location=Ratnagiri");
+      assert.strictEqual(t1a.status, 200);
+      assert.strictEqual(t1a.body.length, 1);
+      assert.strictEqual(t1a.body[0].id, 43);
+
+      const t1b = await api(baseUrl, "GET", `/api/tenders?state=Maharashtra&location=${encodeURIComponent("  ratnagiri , maharashtra ")}`);
+      assert.strictEqual(t1b.status, 200);
+      assert.strictEqual(t1b.body.length, 1);
+      assert.strictEqual(t1b.body[0].id, 43);
+
+      const t2 = await api(baseUrl, "GET", "/api/tenders?state=Maharashtra&location=Pune");
+      assert.strictEqual(t2.status, 200);
+      assert.strictEqual(t2.body.length, 0);
+
+      const t3 = await api(baseUrl, "GET", "/api/tenders?state=Maharashtra&location=Thane");
+      assert.strictEqual(t3.status, 200);
+      assert.strictEqual(t3.body.length, 1);
+      assert.strictEqual(t3.body[0].id, 42);
+
+      const t4 = await api(baseUrl, "GET", "/api/tenders?state=Gujarat&location=Ratnagiri");
+      assert.strictEqual(t4.status, 200);
+      assert.strictEqual(t4.body.length, 0);
+
+      const t5 = await api(baseUrl, "GET", "/api/tenders?location=Ratnagiri");
+      assert.strictEqual(t5.status, 200);
+      assert.strictEqual(t5.body.length, 1);
+      assert.strictEqual(t5.body[0].id, 43);
+
+      // Contractor save/unsave & isolation
+      const saveRes = await api(baseUrl, "POST", "/api/saved/43/save", { token: con1Token });
+      assert.strictEqual(saveRes.status, 200);
+      assert.strictEqual(saveRes.body.saved, true);
+
+      const con1Saved = await api(baseUrl, "GET", "/api/saved", { token: con1Token });
+      assert.strictEqual(con1Saved.status, 200);
+      assert(con1Saved.body.some((t) => t.id === 43));
+
+      const con2Saved = await api(baseUrl, "GET", "/api/saved", { token: registeredConToken });
+      assert.strictEqual(con2Saved.status, 200);
+      assert.strictEqual(con2Saved.body.length, 0, "Contractor 2 must not see Contractor 1 saved tenders");
+
+      const unsaveRes = await api(baseUrl, "POST", "/api/saved/43/save", { token: con1Token });
+      assert.strictEqual(unsaveRes.status, 200);
+      assert.strictEqual(unsaveRes.body.saved, false);
+
+      // AI summary grounded in source
+      const aiRes = await api(baseUrl, "POST", "/api/tenders/43/summarize");
+      assert.strictEqual(aiRes.status, 200);
+      assert(Array.isArray(aiRes.body.summaryPoints) && aiRes.body.summaryPoints.length > 0);
+      assert(!aiRes.body.summaryPoints.some((p) => p.includes("Includes detailed materials audits")));
+
+      // Contractor blocked from Admin APIs
+      assert.strictEqual((await api(baseUrl, "GET", "/api/admin/stats", { token: con1Token })).status, 403);
+      assert.strictEqual(
+        (await api(baseUrl, "POST", "/api/admin/tenders", { token: con1Token, body: {} })).status,
         403
       );
-      assert.strictEqual((await api(baseUrl, "PUT", `/api/applications/${appId}/withdraw`, { token: secondConToken })).status, 403);
-    })();
+      assert.strictEqual(
+        (await api(baseUrl, "DELETE", "/api/admin/tenders/43", { token: con1Token })).status,
+        403
+      );
+    });
 
-    console.log(`\nALL ${results.length} ROLE-SYSTEM CHECKS PASSED SUCCESSFULLY.`);
+    await record("17, 18, 19 & 20. Applications create/update/ownership isolation & Admin applications monitor", async () => {
+      const createApp = await api(baseUrl, "POST", "/api/applications", {
+        token: registeredConToken,
+        body: {
+          tender_id: 43,
+          applied_on: addDaysStr(0),
+          portal_name: "MahaTenders (mahatenders.gov.in)",
+          reference_number: "MH-2026-DEMO-771",
+          application_status: "Submitted",
+          bid_amount: 6750000000,
+          proposal_notes: "Initial test submission"
+        }
+      });
+      assert.strictEqual(createApp.status, 201);
+      const newAppId = createApp.body.application.id;
+
+      // Update status to Under Review
+      const updApp = await api(baseUrl, "PUT", `/api/applications/${newAppId}`, {
+        token: registeredConToken,
+        body: {
+          tender_id: 43,
+          applied_on: addDaysStr(0),
+          portal_name: "MahaTenders (mahatenders.gov.in)",
+          reference_number: "MH-2026-DEMO-771",
+          application_status: "Under Review",
+          bid_amount: 6750000000,
+          proposal_notes: "Moved to technical scrutiny"
+        }
+      });
+      assert.strictEqual(updApp.status, 200);
+      assert.strictEqual(updApp.body.application.application_status, "Under Review");
+
+      const myApps = await api(baseUrl, "GET", "/api/applications/my", { token: registeredConToken });
+      assert.strictEqual(myApps.status, 200);
+      assert.strictEqual(myApps.body.totalApplications, 1);
+      assert.strictEqual(myApps.body.underReview, 1);
+
+      // Ownership isolation: CON1001 cannot view or edit new contractor's application
+      assert.strictEqual(
+        (await api(baseUrl, "GET", `/api/applications/${newAppId}`, { token: con1Token })).status,
+        403
+      );
+      assert.strictEqual(
+        (await api(baseUrl, "PUT", `/api/applications/${newAppId}`, { token: con1Token, body: {} })).status,
+        403
+      );
+
+      // Admin can inspect applications
+      const admApps = await api(baseUrl, "GET", "/api/admin/applications", { token: adminToken });
+      assert.strictEqual(admApps.status, 200);
+      assert(admApps.body.some((a) => a.id === newAppId));
+    });
+
+    await record("21, 23 & 24. Removed endpoints return 404, obsolete pages redirect, active pages return 200 & FK check passes", async () => {
+      const deadEndpoints = [
+        "/api/inquiries/mine",
+        "/api/manager/dashboard",
+        "/api/users/notifications",
+        "/api/admin/managers",
+        "/api/admin/inquiries"
+      ];
+      for (const ep of deadEndpoints) {
+        const res = await api(baseUrl, "GET", ep, { token: adminToken });
+        assert.strictEqual(res.status, 404, `Expected 404 for removed endpoint ${ep}, got ${res.status}`);
+      }
+
+      const activePages = [
+        "index.html",
+        "login.html",
+        "register.html",
+        "tenders.html",
+        "tenderDetails.html",
+        "saved.html",
+        "dashboard.html",
+        "admin.html",
+        "about.html"
+      ];
+      for (const page of activePages) {
+        const res = await fetch(`${baseUrl}/${page}`, { redirect: "manual" });
+        assert.strictEqual(res.status, 200, `${page} did not return 200`);
+      }
+
+      for (const deadPage of ["contact.html", "manager.html", "analytics.html"]) {
+        const res = await fetch(`${baseUrl}/${deadPage}`, { redirect: "manual" });
+        assert.strictEqual(res.status, 301, `${deadPage} expected 301 redirect, got ${res.status}`);
+      }
+
+      const fkViolations = await db.queryAsync("PRAGMA foreign_key_check");
+      assert.strictEqual(fkViolations.length, 0, "Foreign key violations detected");
+    });
+
+    console.log(`\nALL ${results.length} TWO-ROLE ARCHITECTURE CHECKS PASSED SUCCESSFULLY.`);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     await new Promise((resolve) => db.rawDb.close(resolve));
-    // Restore pristine database snapshot so synthetic test data is not left behind
     fs.copyFileSync(backupPath, dbPath);
-    fs.unlinkSync(backupPath);
+    try {
+      fs.unlinkSync(backupPath);
+    } catch {}
   }
 }
 
 runTests().catch((err) => {
-  console.error("TEST SUITE FAILED:", err);
+  console.error("\nTEST FAILURE:", err);
   process.exit(1);
 });

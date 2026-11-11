@@ -1,19 +1,45 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const { normalizeState } = require("../constants");
+const {
+  computeEffectiveTenderStatus,
+  normalizeLocationText,
+  parseLocationFilter,
+  normalizeState
+} = require("../constants");
 
-// 1. Get Tenders (with dynamic filters including state, category, location, department, budget, deadline)
+const NORMALIZED_LOC_SQL =
+  "TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(location, '')), ',', ' '), '-', ' '), '–', ' '), '—', ' '), '/', ' '), '  ', ' '), '  ', ' '), '  ', ' '))";
+
+function enrichTenderRow(row) {
+  let reqDocs = [];
+  try {
+    reqDocs = JSON.parse(row.required_documents || "[]");
+  } catch {
+    reqDocs = [];
+  }
+  const effectiveStatus = computeEffectiveTenderStatus(row.deadline, row.status);
+  return {
+    ...row,
+    tender_code: row.tender_code || `TK-${String(row.id).padStart(4, "0")}`,
+    published_date: row.published_date || (row.created_at ? String(row.created_at).slice(0, 10) : ""),
+    raw_status: row.status || "Open",
+    status: effectiveStatus,
+    required_documents: reqDocs
+  };
+}
+
+// 1. Get Tenders (dynamic search & filter across title, category, state, location, budget, deadline, status)
 router.get("/", (req, res) => {
   const { search, category, state, location, department, minBudget, maxBudget, deadline, status } = req.query;
 
   let query = "SELECT * FROM tenders WHERE 1=1";
   const params = [];
 
-  if (search) {
-    query += " AND (name LIKE ? OR description LIKE ? OR department LIKE ? OR location LIKE ? OR state LIKE ?)";
+  if (search && search.trim()) {
+    query += " AND (name LIKE ? OR description LIKE ? OR department LIKE ? OR location LIKE ? OR state LIKE ? OR COALESCE(tender_code, '') LIKE ?)";
     const val = `%${search.trim()}%`;
-    params.push(val, val, val, val, val);
+    params.push(val, val, val, val, val, val);
   }
 
   if (category) {
@@ -28,63 +54,59 @@ router.get("/", (req, res) => {
   }
 
   if (location && typeof location === "string" && location.trim().length > 0) {
-    const rawLoc = location.trim();
-    const resolvedState = normalizeState(rawLoc);
+    const { localityTerms, stateTokens } = parseLocationFilter(location);
 
-    if (resolvedState) {
-      query += " AND (location LIKE ? OR location LIKE ? OR LOWER(state) = LOWER(?))";
-      params.push(`%${rawLoc}%`, `%${resolvedState}%`, resolvedState);
-    } else {
-      const tokens = rawLoc.split(/[,/]+/).map((t) => t.trim()).filter(Boolean);
-      if (tokens.length > 1) {
-        const orClauses = tokens.map(() => "(location LIKE ? OR state LIKE ?)").join(" OR ");
-        query += ` AND (${orClauses})`;
-        tokens.forEach((t) => params.push(`%${t}%`, `%${t}%`));
-      } else {
-        query += " AND (location LIKE ? OR state LIKE ?)";
-        params.push(`%${rawLoc}%`, `%${rawLoc}%`);
-      }
+    // Every non-state locality segment MUST match the tender's location column (AND logic)
+    for (const term of localityTerms) {
+      query += ` AND ${NORMALIZED_LOC_SQL} LIKE ?`;
+      params.push(`%${term}%`);
+    }
+
+    // Any state segment included in location (e.g. "Ratnagiri, Gujarat") must ALSO match via AND logic
+    for (const st of stateTokens) {
+      query += ` AND (LOWER(TRIM(state)) = LOWER(?) OR ${NORMALIZED_LOC_SQL} LIKE ?)`;
+      params.push(st, `%${normalizeLocationText(st)}%`);
     }
   }
 
-  if (department) {
+  if (department && department.trim()) {
     query += " AND department LIKE ?";
     params.push(`%${department.trim()}%`);
   }
 
-  if (minBudget) {
-    query += " AND budget >= ?";
-    params.push(parseFloat(minBudget));
+  if (minBudget !== undefined && minBudget !== "") {
+    const minVal = parseFloat(minBudget);
+    if (!isNaN(minVal)) {
+      query += " AND budget >= ?";
+      params.push(minVal);
+    }
   }
 
-  if (maxBudget) {
-    query += " AND budget <= ?";
-    params.push(parseFloat(maxBudget));
+  if (maxBudget !== undefined && maxBudget !== "") {
+    const maxVal = parseFloat(maxBudget);
+    if (!isNaN(maxVal)) {
+      query += " AND budget <= ?";
+      params.push(maxVal);
+    }
   }
 
-  if (deadline) {
+  if (deadline && deadline.trim()) {
     query += " AND deadline <= ?";
-    params.push(deadline);
+    params.push(deadline.trim());
   }
 
-  if (status) {
-    query += " AND LOWER(status) = LOWER(?)";
-    params.push(status.trim());
-  }
-
-  query += " ORDER BY id ASC";
+  query += " ORDER BY id DESC";
 
   db.query(query, params, (err, results) => {
     if (err) return res.status(500).json({ message: err.message });
 
-    const tenders = results.map((t) => {
-      try {
-        t.required_documents = JSON.parse(t.required_documents || "[]");
-      } catch (e) {
-        t.required_documents = [];
-      }
-      return t;
-    });
+    let tenders = (results || []).map(enrichTenderRow);
+
+    // Filter accurately on computed effective status ('Open', 'Closing Soon', 'Closed')
+    if (status && typeof status === "string" && status.trim()) {
+      const target = status.trim().toLowerCase();
+      tenders = tenders.filter((t) => (t.status || "").toLowerCase() === target);
+    }
 
     return res.json(tenders);
   });
@@ -105,86 +127,95 @@ router.get("/:id", async (req, res) => {
       );
     }
 
-    const tender = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
-    if (!tender) {
+    const row = await db.getAsync("SELECT * FROM tenders WHERE id = ? LIMIT 1", [tenderId]);
+    if (!row) {
       return res.status(404).json({ message: "Tender not found" });
     }
 
-    try {
-      tender.required_documents = JSON.parse(tender.required_documents || "[]");
-    } catch (e) {
-      tender.required_documents = [];
-    }
-    return res.json(tender);
+    return res.json(enrichTenderRow(row));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 });
 
-// 3. AI Summarization Endpoint
+// 3. AI Summarization Endpoint (Gemini API + factual source-grounded local fallback)
 router.post("/:id/summarize", (req, res) => {
   db.query("SELECT * FROM tenders WHERE id = ? LIMIT 1", [req.params.id], async (err, results) => {
-    if (err) return res.status(500).json({ message: err.message });
-    if (results.length === 0) return res.status(404).json({ message: "Tender not found" });
+    if (err) {
+      return res.status(503).json({
+        message: "AI summarization is temporarily unavailable. Please try again later."
+      });
+    }
+    if (!results || results.length === 0) {
+      return res.status(404).json({ message: "Tender not found" });
+    }
 
-    const tender = results[0];
-    let docList = [];
-    try {
-      docList = JSON.parse(tender.required_documents || "[]");
-    } catch (e) {
-      docList = [];
+    const tender = enrichTenderRow(results[0]);
+    const docList = Array.isArray(tender.required_documents) ? tender.required_documents : [];
+
+    if (!tender.description || !String(tender.description).trim()) {
+      return res.status(503).json({
+        message: "AI summarization is temporarily unavailable because no source description is present."
+      });
     }
 
     const generateLocalSummary = () => {
-      const sentences = tender.description.split(/[.!?]/).map((s) => s.trim()).filter(Boolean);
-      const points = sentences.slice(0, 3).map((s) => s + ".");
-      if (sentences.length > 3) {
-        points.push("Includes detailed materials audits and milestone reviews.");
-      }
+      const sentences = String(tender.description)
+        .split(/(?<=[.!?])\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const summaryPoints = sentences.slice(0, 4).map((s) => (/[.!?]$/.test(s) ? s : `${s}.`));
+
+      const eligText = tender.eligibility && String(tender.eligibility).trim()
+        ? String(tender.eligibility).split(/(?<=[.!?])\s+/)[0].trim()
+        : "Not specified in tender record.";
 
       return {
         tenderId: tender.id,
+        tenderCode: tender.tender_code,
         tenderName: tender.name,
-        budget: `INR ${(tender.budget / 10000000).toFixed(2)} Crore (approx. $${(tender.budget / 83000000).toFixed(2)}M USD)`,
-        deadline: tender.deadline,
-        eligibility: tender.eligibility.split(".")[0] + ".",
-        requiredDocuments: docList.slice(0, 3),
-        summaryPoints: points,
+        budget: tender.budget
+          ? `INR ${(tender.budget / 10000000).toFixed(2)} Crore`
+          : "Not specified",
+        deadline: tender.deadline || "Not specified",
+        eligibility: eligText,
+        requiredDocuments: docList.slice(0, 5),
+        summaryPoints,
         method: "Local Procurement Analyzer"
       };
     };
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      setTimeout(() => {
-        return res.json(generateLocalSummary());
-      }, 500);
-      return;
+      return res.json(generateLocalSummary());
     }
 
     const promptText = `
-      You are an expert procurement analyst for government tenders. Summarize the following tender details into a clean JSON structure.
-      Tender Name: ${tender.name}
+      You are a factual government tender analyst. Summarize ONLY the provided tender fields into JSON.
+      Do NOT invent, assume, or add any budget, requirement, deadline, or eligibility details not present in the source fields below.
+
+      Tender Title: ${tender.name}
+      Tender ID: ${tender.tender_code}
       Department: ${tender.department}
       Category: ${tender.category}
       State: ${tender.state}
-      Budget: INR ${tender.budget}
       Location: ${tender.location}
-      Deadline: ${tender.deadline}
-      Eligibility Criteria: ${tender.eligibility}
-      Full Description: ${tender.description}
-      Required Documents: ${docList.join(", ")}
+      Estimated Budget (INR): ${tender.budget}
+      Submission Deadline: ${tender.deadline}
+      Eligibility Criteria: ${tender.eligibility || "Not specified"}
+      Required Documents: ${docList.length ? docList.join(", ") : "None listed"}
+      Source Description: ${tender.description}
 
-      Respond ONLY with a valid JSON object matching this schema. Do not include markdown codeblocks or other explanations.
-      JSON Schema:
+      Respond ONLY with valid JSON matching this schema (no markdown blocks):
       {
         "tenderId": ${tender.id},
-        "tenderName": "${tender.name}",
-        "budget": "Formatted budget string (e.g. 'INR 450 Crore')",
+        "tenderCode": "${tender.tender_code}",
+        "tenderName": "${tender.name.replace(/"/g, '\\"')}",
+        "budget": "Formatted budget from source field",
         "deadline": "${tender.deadline}",
-        "eligibility": "One-sentence executive eligibility summary",
-        "requiredDocuments": ["3 key documents from the list"],
-        "summaryPoints": ["3-4 clear bullet points summarizing the work scope and main technical requirements of the tender"],
+        "eligibility": "Factual eligibility summary strictly from source text, or 'Not specified in source details'",
+        "requiredDocuments": ["Only documents listed above, if any"],
+        "summaryPoints": ["3-4 concise points grounded strictly in the source description above"],
         "method": "Gemini AI Summarizer"
       }
     `;
@@ -201,9 +232,12 @@ router.post("/:id/summarize", (req, res) => {
         }
       );
 
+      if (!apiResponse.ok) {
+        throw new Error(`Gemini API HTTP ${apiResponse.status}`);
+      }
+
       const apiData = await apiResponse.json();
       const generatedText = apiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
       if (!generatedText) {
         throw new Error("Empty response from Gemini API");
       }
@@ -212,7 +246,7 @@ router.post("/:id/summarize", (req, res) => {
       const summaryObj = JSON.parse(cleanJsonStr);
       return res.json(summaryObj);
     } catch (apiErr) {
-      console.warn("Gemini API call failed, using local summarizer fallback:", apiErr.message);
+      console.warn("Gemini API unavailable, using source-grounded local fallback:", apiErr.message);
       return res.json(generateLocalSummary());
     }
   });

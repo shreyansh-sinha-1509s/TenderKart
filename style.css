@@ -1677,4 +1677,27 @@ body.dark-theme .hero-nav-btn:hover {
   }
 }
 
+/* Collapse desktop nav cleanly on medium-narrow viewports */
+@media (max-width: 960px) {
+  #desktop-nav-links, #desktop-nav-actions {
+    display: none !important;
+  }
+  #mobile-menu-btn {
+    display: flex !important;
+  }
+}
+
+/* Light-mode readable badge contrast overrides */
+body:not(.dark-theme) .badge-blue { background: rgba(37, 99, 235, 0.12); color: #1D4ED8; }
+body:not(.dark-theme) .badge-green { background: rgba(16, 185, 129, 0.14); color: #047857; }
+body:not(.dark-theme) .badge-orange { background: rgba(245, 158, 11, 0.16); color: #B45309; }
+body:not(.dark-theme) .badge-purple { background: rgba(139, 92, 246, 0.12); color: #6D28D9; }
+body:not(.dark-theme) .badge-red { background: rgba(239, 68, 68, 0.12); color: #B91C1C; }
+
+.nav-link.active {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+
 
